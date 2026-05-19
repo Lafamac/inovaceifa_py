@@ -1,0 +1,160 @@
+from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from core.models import Fazenda, Safra
+from operacoes.models import OrdemServico, OrdemServicoTalhao, ItemInsumoOSReal
+from planejamento.models import (
+    PlanejamentoSafra, OrdemServicoPlanejada, OrdemServicoPlanejadaTalhao,
+    ItemInsumoOSPlanejado, ParametroOperacionalOS, PlanejamentoMaoObraTerceiros,
+    PlanejamentoAdubo, PlanejamentoRateio
+)
+from planejamento.serializers import (
+    PlanejamentoSafraSerializer, OrdemServicoPlanejadaSerializer,
+    PlanejamentoAduboSerializer, PlanejamentoRateioSerializer
+)
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    """
+    Permissão que restringe operações de escrita (POST, PUT, PATCH, DELETE)
+    apenas para usuários com perfil de Superusuário (nivel = 1).
+    """
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        is_super = getattr(request.user, 'perfil', None) and request.user.perfil.nivel == 1
+        return bool(is_super or request.user.is_superuser)
+
+
+def setup_tenant_context(request):
+    """
+    Garante que as propriedades de tenant estejam populadas no request
+    caso o middleware tenha sido executado antes da autenticação (como no DRF/JWT/testes).
+    """
+    if not getattr(request, 'fazendas_permitidas', None) or not request.fazendas_permitidas.exists():
+        request.fazendas_permitidas = Fazenda.objects.none()
+        if request.user and request.user.is_authenticated:
+            is_super = getattr(request.user, 'perfil', None) and request.user.perfil.nivel == 1
+            if is_super or request.user.is_superuser:
+                request.fazendas_permitidas = Fazenda.objects.filter(ativo=True)
+            else:
+                request.fazendas_permitidas = request.user.fazendas_permitidas.filter(ativo=True)
+
+    if not getattr(request, 'safra_ativa', None):
+        safra_id = request.headers.get('X-Safra-ID') or request.META.get('HTTP_X_SAFRA_ID')
+        if safra_id:
+            try:
+                safra = Safra.objects.get(id=safra_id, ativo=True)
+                if safra.fazenda in request.fazendas_permitidas:
+                    request.safra_ativa = safra
+                    request.fazenda_ativa = safra.fazenda
+            except (Safra.DoesNotExist, ValueError):
+                pass
+
+
+class BaseTenantPlanejamentoViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+
+    def initial(self, request, *args, **kwargs):
+        setup_tenant_context(request)
+        super().initial(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return self.queryset.filter(ativo=True)
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save()
+
+
+class PlanejamentoSafraViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = PlanejamentoSafra.objects.all()
+    serializer_class = PlanejamentoSafraSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(
+            fazenda__in=self.request.fazendas_permitidas
+        )
+        if self.request.safra_ativa:
+            qs = qs.filter(safra=self.request.safra_ativa)
+        return qs
+
+    @action(detail=True, methods=['post'], url_path='aprovar')
+    def aprovar(self, request, pk=None):
+        planejamento = self.get_object()
+        planejamento.aprovado = True
+        planejamento.save()
+        return Response({"detail": "Planejamento aprovado com sucesso e bloqueado para edições futuras."})
+
+    @action(detail=True, methods=['post'], url_path='gerar-ordens-servico')
+    def gerar_ordens_servico(self, request, pk=None):
+        planejamento = self.get_object()
+        
+        if not planejamento.aprovado:
+            planejamento.aprovado = True
+            planejamento.save()
+
+        ordens_planejadas = planejamento.ordens_servico.filter(ativo=True)
+        contador_gerado = 0
+
+        for os_plan in ordens_planejadas:
+            os_real = OrdemServico.objects.create(
+                fazenda=planejamento.fazenda,
+                safra=planejamento.safra,
+                tipo_operacao=os_plan.tipo_operacao,
+                data_inicio_planejada=os_plan.data_inicio_planejada,
+                data_fim_planejada=os_plan.data_fim_planejada,
+                status='APROVADA',
+                observacao=os_plan.observacao,
+                origem_planejada=os_plan
+            )
+
+            for pt in os_plan.talhoes.filter(ativo=True):
+                OrdemServicoTalhao.objects.create(
+                    ordem_servico=os_real,
+                    talhao=pt.talhao
+                )
+
+            for insumo_plan in os_plan.insumos.filter(ativo=True):
+                ItemInsumoOSReal.objects.create(
+                    ordem_servico=os_real,
+                    produto=insumo_plan.produto,
+                    dose_planejada=insumo_plan.dose_planejada,
+                    quantidade_planejada=insumo_plan.quantidade_planejada
+                )
+
+            contador_gerado += 1
+
+        return Response({
+            "detail": f"Geração concluída com sucesso! Foram geradas {contador_gerado} Ordens de Serviço Reais."
+        }, status=status.HTTP_200_OK)
+
+
+class OrdemServicoPlanejadaViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = OrdemServicoPlanejada.objects.all()
+    serializer_class = OrdemServicoPlanejadaSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            planejamento__fazenda__in=self.request.fazendas_permitidas
+        )
+
+
+class PlanejamentoAduboViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = PlanejamentoAdubo.objects.all()
+    serializer_class = PlanejamentoAduboSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            planejamento__fazenda__in=self.request.fazendas_permitidas
+        )
+
+
+class PlanejamentoRateioViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = PlanejamentoRateio.objects.all()
+    serializer_class = PlanejamentoRateioSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            planejamento__fazenda__in=self.request.fazendas_permitidas
+        )
