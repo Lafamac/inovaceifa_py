@@ -108,7 +108,7 @@ export const OperationalEfficiency = () => {
         
         <div className="rounded-xl border border-slate-200/40 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 block">Hectares Executados</span>
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-400 block">Hectares Executados</span>
             <div className="mt-2 text-lg font-black text-slate-800 dark:text-slate-100">
               {formatHa(total_area_talhoes_concluidos)}
             </div>
@@ -121,11 +121,11 @@ export const OperationalEfficiency = () => {
 
         <div className="rounded-xl border border-slate-200/40 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 block">Horas Próprias Consolidadas</span>
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-400 block">Horas Próprias Consolidadas</span>
             <div className="mt-2 text-lg font-black text-slate-800 dark:text-slate-100">
               {formatHrs(total_horas_trabalhadas_proprias)}
             </div>
-            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1 block">Apontamentos de Mão de Obra Própria</span>
+            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 mt-1 block">Apontamentos de Mão de Obra Própria</span>
           </div>
           <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/30 p-3 text-indigo-600 dark:text-indigo-400">
             <Clock className="w-6 h-6" />
@@ -134,7 +134,7 @@ export const OperationalEfficiency = () => {
 
         <div className="rounded-xl border border-slate-200/40 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 block">Produtividade Média Global</span>
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-400 block">Produtividade Média Global</span>
             <div className="mt-2 text-lg font-black text-slate-800 dark:text-slate-100">
               {formatEficiencia(eficiencia_global_ha_hora)}
             </div>

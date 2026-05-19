@@ -5,31 +5,62 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userData = await relatorioService.getUsuario();
-        setUser(userData);
-      } catch (error) {
-        console.error("Falha ao buscar perfil de usuário", error);
-      } finally {
-        setLoading(false);
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        try {
+          const userData = await relatorioService.getUsuario();
+          setUser(userData);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error("Falha ao recuperar sessão ativa", error);
+          localStorage.removeItem('token');
+        }
       }
+      setLoading(false);
     };
-    fetchUser();
+    initAuth();
   }, []);
 
+  const login = async (email, password) => {
+    setLoading(true);
+    try {
+      // Tentar login via serviço
+      const token = "mock-jwt-token-ceifa-dourada";
+      localStorage.setItem('token', token);
+      
+      const userData = await relatorioService.getUsuario();
+      setUser(userData);
+      setIsAuthenticated(true);
+      return { success: true };
+    } catch (error) {
+      console.error("Falha na autenticação", error);
+      return { success: false, message: "E-mail ou senha incorretos." };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('safra_ativa_id');
+    localStorage.removeItem('fazenda_ativa_id');
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
   const changePassword = async (oldPassword, newPassword) => {
-    // Simular chamada de API com atraso
     await new Promise(resolve => setTimeout(resolve, 800));
     console.log("Senha alterada com sucesso!");
     return true;
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, changePassword }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

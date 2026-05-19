@@ -250,16 +250,16 @@ export const CashFlow = () => {
           <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
             <thead className="bg-slate-50 dark:bg-slate-950/45">
               <tr>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Descrição / Categoria</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Vencimento</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Valor</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Descrição / Categoria</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Vencimento</th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Valor</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-slate-900/20 divide-y divide-slate-100 dark:divide-slate-800">
               {filteredLedger.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-4 py-8 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
+                  <td colSpan="4" className="px-4 py-8 text-center text-xs font-semibold text-slate-400 dark:text-slate-400">
                     Nenhum lançamento correspondente aos filtros aplicados.
                   </td>
                 </tr>
@@ -284,7 +284,7 @@ export const CashFlow = () => {
                       <td className="px-4 py-3.5">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.descricao}</span>
-                          <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">{item.categoria}</span>
+                          <span className="text-[10px] font-medium text-slate-400 dark:text-slate-400 mt-0.5">{item.categoria}</span>
                         </div>
                       </td>
                       

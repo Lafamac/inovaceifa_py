@@ -111,7 +111,7 @@ export const CropComparison = () => {
         
         <div className="rounded-xl border border-slate-200/40 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Custo Planejado</span>
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">Custo Planejado</span>
             <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-1.5 text-blue-600 dark:text-blue-400">
               <Activity className="w-4 h-4" />
             </div>
@@ -123,7 +123,7 @@ export const CropComparison = () => {
 
         <div className="rounded-xl border border-slate-200/40 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Custo Realizado</span>
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">Custo Realizado</span>
             <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-1.5 text-emerald-600 dark:text-emerald-400">
               <DollarSign className="w-4 h-4" />
             </div>
@@ -139,7 +139,7 @@ export const CropComparison = () => {
             : 'border-emerald-200/40 dark:border-emerald-900/30 bg-emerald-50/20 dark:bg-emerald-950/10'
         }`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Divergência Orçamentária</span>
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">Divergência Orçamentária</span>
             <div className={`rounded-lg p-1.5 ${
               estouro 
                 ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400' 
@@ -152,7 +152,7 @@ export const CropComparison = () => {
             <div className={`text-lg font-black ${estouro ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
               {estouro ? '+' : '-'}{percentualDiferenca}%
             </div>
-            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-400">
               ({estouro ? 'Acima' : 'Abaixo'} do Planejado)
             </div>
           </div>
