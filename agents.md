@@ -74,18 +74,20 @@
 - [ ] Implementar cálculo de Valor Hora Máquina no mês e COE.
 - [ ] Implementar regra bloqueante: fechamento do custo mensal das máquinas (`CustoMensalMaquina`) obrigatório antes da consolidação financeira das OSs daquele mês.
 
-### 💰 Fase 6.5: Compras, Contas a Pagar e Estoque (`compras_financeiro`)
-- [ ] Criar app `compras_financeiro` (ou estender `cadastros` e criar `financeiro`) para gerenciar as aquisições da fazenda.
-- [ ] Modelar `PedidoCompra` (campos: fornecedor, data_pedido, valor_total, safra, fazenda, status: RASCUNHO, APROVADO, RECEBIDO, CANCELADO).
-- [ ] Modelar `ItemPedidoCompra` (campos: produto, quantidade, valor_unitario, valor_total).
-- [ ] Modelar `ContasAPagar` (campos: descricao, valor, data_vencimento, data_pagamento, status: PENDENTE, PAGO, CANCELADO, fazenda, safra, pedido_compra (opcional)).
-- [ ] Implementar Regra de Negócio / Service de Recebimento de Compra:
-  - Ao marcar `PedidoCompra` como **RECEBIDO**:
-    1. Criar automaticamente lançamento de `ContasAPagar` no valor total do pedido.
-    2. Criar automaticamente registro de `EstoqueMovimento` do tipo **'ENTRADA'** para cada produto do pedido, atualizando o estoque real.
-- [ ] Integrar no app `cadastros` (`EstoqueMovimento`):
-  - Lançamentos de **'SAIDA'** automáticos gerados a partir do consumo real de insumos apontado nas Ordens de Serviço (Fase 6).
-  - Lançamentos de **'ENTRADA'** automáticos gerados a partir do recebimento dos Pedidos de Compra (Fase 6.5).
+### 💰 Fase 6.5: Compras, Vendas, Financeiro e Estoque (`financeiro`)
+- [ ] Criar app `financeiro` (ou estender `cadastros`) para gerenciar as aquisições e vendas da fazenda.
+- [ ] **Módulo de Compras (Insumos/Produtos)**:
+  - [ ] Modelar `PedidoCompra` (fornecedor, data_pedido, valor_total, safra, fazenda, status: RASCUNHO, APROVADO, RECEBIDO, CANCELADO).
+  - [ ] Modelar `ItemPedidoCompra` (produto, quantidade, valor_unitario, valor_total).
+  - [ ] Modelar `ContasAPagar` (descricao, valor, data_vencimento, data_pagamento, status: PENDENTE, PAGO, CANCELADO, fazenda, safra, pedido_compra).
+  - [ ] Implementar Regra de Negócio de Recebimento de Compra: ao marcar como **RECEBIDO**, gera automaticamente um lançamento em `ContasAPagar` e registra movimentos de **'ENTRADA'** no estoque (`EstoqueMovimento`).
+- [ ] **Módulo de Vendas (Receitas e Comercialização)**:
+  - [ ] Modelar `PedidoVenda` (cliente, data_venda, tipo_produto [Café, Cereais, Sucata, Outros], quantidade_sacas, preco_unitario, valor_total, safra, fazenda, status: RASCUNHO, CONFIRMADO, ENTREGUE, CANCELADO).
+  - [ ] Modelar `ContasAReceber` (descricao, categoria_receita [Venda Café, Cereais, Sucata, Custeio Agrícola, Outros], valor, data_vencimento, data_recebimento, status: PENDENTE, RECEBIDO, CANCELADO, fazenda, safra, pedido_venda).
+  - [ ] Implementar Regra de Negócio de Confirmação de Venda: ao confirmar o `PedidoVenda`, gera automaticamente o respectivo `ContasAReceber`.
+- [ ] **Controle de Estoque integrado**:
+  - [ ] Lançamentos de **'SAIDA'** automáticos gerados a partir do consumo real apontado nas OSs (Fase 6).
+  - [ ] Lançamentos de **'ENTRADA'** automáticos gerados a partir do recebimento dos Pedidos de Compra (Fase 6.5).
 
 ### 📊 Fase 7: Relatórios (`relatorios`)
 - [ ] Criar app `relatorios` apenas com views analíticas (somente leitura - cálculos via query/service).
@@ -164,6 +166,14 @@
 - [ ] `POST /api/ordens-servico/{id}/concluir/`
 - [ ] `GET/POST /api/gastos-rateio/`
 - [ ] `GET/POST /api/abastecimentos/`
+
+### Compras, Vendas & Financeiro (Fase 6.5)
+- [ ] `GET/POST /api/financeiro/pedidos-compra/`
+- [ ] `POST /api/financeiro/pedidos-compra/{id}/receber/`
+- [ ] `GET/POST /api/financeiro/pedidos-venda/`
+- [ ] `POST /api/financeiro/pedidos-venda/{id}/confirmar/`
+- [ ] `GET/POST /api/financeiro/contas-pagar/`
+- [ ] `GET/POST /api/financeiro/contas-receber/`
 
 ### Relatórios Analíticos
 - [ ] `GET /api/relatorios/comparativo-safra/`
