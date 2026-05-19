@@ -5,8 +5,11 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 
 from planejamento.views import BaseTenantPlanejamentoViewSet
-from .models import PedidoCompra, ItemPedidoCompra, ContasAPagar
-from .serializers import PedidoCompraSerializer, ItemPedidoCompraSerializer, ContasAPagarSerializer
+from .models import PedidoCompra, ItemPedidoCompra, ContasAPagar, PedidoVenda, ContasAReceber
+from .serializers import (
+    PedidoCompraSerializer, ItemPedidoCompraSerializer, ContasAPagarSerializer,
+    PedidoVendaSerializer, ContasAReceberSerializer
+)
 from cadastros.models import EstoqueMovimento
 
 class PedidoCompraViewSet(BaseTenantPlanejamentoViewSet):
@@ -82,6 +85,74 @@ class ItemPedidoCompraViewSet(BaseTenantPlanejamentoViewSet):
 class ContasAPagarViewSet(BaseTenantPlanejamentoViewSet):
     queryset = ContasAPagar.objects.all()
     serializer_class = ContasAPagarSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(
+            fazenda__in=self.request.fazendas_permitidas
+        )
+        if self.request.safra_ativa:
+            qs = qs.filter(safra=self.request.safra_ativa)
+        return qs
+
+
+class PedidoVendaViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = PedidoVenda.objects.all()
+    serializer_class = PedidoVendaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(
+            fazenda__in=self.request.fazendas_permitidas
+        )
+        if self.request.safra_ativa:
+            qs = qs.filter(safra=self.request.safra_ativa)
+        return qs
+
+    @action(detail=True, methods=['post'], url_path='confirmar')
+    def confirmar(self, request, pk=None):
+        pedido = self.get_object()
+        
+        if pedido.status != 'RASCUNHO':
+            return Response(
+                {"detail": "Apenas pedidos com status 'RASCUNHO' podem ser confirmados."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            pedido.status = 'CONFIRMADO'
+            pedido.save()
+
+            # Mapear categoria_receita baseado no tipo_produto do PedidoVenda
+            categoria_map = {
+                'CAFE': 'VENDA_CAFE',
+                'CEREAIS': 'CEREAIS',
+                'SUCATA': 'SUCATA',
+                'OUTROS': 'OUTROS'
+            }
+            categoria = categoria_map.get(pedido.tipo_produto, 'OUTROS')
+
+            # 1. Criar Contas a Receber correspondente ao valor total do pedido
+            ContasAReceber.objects.create(
+                fazenda=pedido.fazenda,
+                safra=pedido.safra,
+                pedido_venda=pedido,
+                descricao=f"Venda para o cliente: {pedido.cliente} (Ref. Pedido #{pedido.id})",
+                categoria_receita=categoria,
+                valor=pedido.valor_total,
+                data_vencimento=pedido.data_venda,  # data base de vencimento
+                status='PENDENTE'
+            )
+
+        return Response(
+            {"status": "Pedido de venda confirmado com sucesso. Contas a receber gerado.", "id": pedido.id},
+            status=status.HTTP_200_OK
+        )
+
+
+class ContasAReceberViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = ContasAReceber.objects.all()
+    serializer_class = ContasAReceberSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

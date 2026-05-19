@@ -70,3 +70,74 @@ class ContasAPagar(BaseModel):
 
     def __str__(self):
         return f"Contas a Pagar: {self.descricao} - R$ {self.valor} ({self.status})"
+
+
+class PedidoVenda(BaseModel):
+    TIPO_PRODUTO_CHOICES = [
+        ('CAFE', 'Café'),
+        ('CEREAIS', 'Cereais'),
+        ('SUCATA', 'Sucata'),
+        ('OUTROS', 'Outros'),
+    ]
+
+    STATUS_CHOICES = [
+        ('RASCUNHO', 'Rascunho'),
+        ('CONFIRMADO', 'Confirmado'),
+        ('ENTREGUE', 'Entregue'),
+        ('CANCELADO', 'Cancelado'),
+    ]
+
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='pedidos_venda')
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='pedidos_venda')
+    cliente = models.CharField(max_length=255)
+    data_venda = models.DateField()
+    tipo_produto = models.CharField(max_length=50, choices=TIPO_PRODUTO_CHOICES)
+    quantidade_sacas = models.DecimalField(max_digits=12, decimal_places=2)
+    preco_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    valor_total = models.DecimalField(max_digits=15, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='RASCUNHO')
+
+    class Meta:
+        verbose_name = "Pedido de Venda"
+        verbose_name_plural = "Pedidos de Venda"
+
+    def save(self, *args, **kwargs):
+        self.valor_total = self.quantidade_sacas * self.preco_unitario
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Venda {self.id} - {self.cliente} ({self.status})"
+
+
+class ContasAReceber(BaseModel):
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('RECEBIDO', 'Recebido'),
+        ('CANCELADO', 'Cancelado'),
+    ]
+
+    CATEGORIA_RECEITA_CHOICES = [
+        ('VENDA_CAFE', 'Venda Café'),
+        ('CEREAIS', 'Cereais'),
+        ('SUCATA', 'Sucata'),
+        ('CUSTEIO_AGRICOLA', 'Custeio Agrícola'),
+        ('OUTROS', 'Outros'),
+    ]
+
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='contas_a_receber')
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='contas_a_receber')
+    pedido_venda = models.ForeignKey(PedidoVenda, on_delete=models.SET_NULL, null=True, blank=True, related_name='contas_a_receber')
+    descricao = models.CharField(max_length=255)
+    categoria_receita = models.CharField(max_length=50, choices=CATEGORIA_RECEITA_CHOICES)
+    valor = models.DecimalField(max_digits=12, decimal_places=2)
+    data_vencimento = models.DateField()
+    data_recebimento = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='PENDENTE')
+
+    class Meta:
+        verbose_name = "Contas a Receber"
+        verbose_name_plural = "Contas a Receber"
+
+    def __str__(self):
+        return f"Contas a Receber: {self.descricao} - R$ {self.valor} ({self.status})"
+
