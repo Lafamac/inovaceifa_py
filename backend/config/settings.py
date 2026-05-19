@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'planejamento',
     'operacoes',
     'financeiro',
+    'relatorios',
 ]
 
 MIDDLEWARE = [
