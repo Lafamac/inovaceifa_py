@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from drf_spectacular.utils import OpenApiResponse, OpenApiTypes, extend_schema
 from django.db.models import Sum
 from core.models import Fazenda, Safra
 from referencias.models import (
@@ -217,6 +218,11 @@ class EstoqueSaldoViewSet(viewsets.ViewSet):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=["Cadastros"],
+        responses={200: OpenApiResponse(response=OpenApiTypes.OBJECT)},
+        summary="Saldos de estoque por produto",
+    )
     def list(self, request):
         fazenda = request.fazenda_ativa
         safra = request.safra_ativa

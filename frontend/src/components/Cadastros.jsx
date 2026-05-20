@@ -1,703 +1,848 @@
-import React, { useState, useEffect } from 'react';
-import { relatorioService } from '../services/api';
-import { 
-  Building2, CalendarRange, Grid3X3, Users, FileSpreadsheet, 
-  Plus, CheckCircle2, AlertCircle, Trash2, HelpCircle, 
-  MapPin, Scale, ChevronRight, Search, ShieldAlert, BadgeInfo,
-  UserCircle, Tractor, Package, Briefcase
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  BadgeInfo,
+  Briefcase,
+  Building2,
+  CalendarRange,
+  ChevronDown,
+  CheckCircle2,
+  ClipboardList,
+  Grid3X3,
+  Package,
+  Plus,
+  Search,
+  Tractor,
+  Trash2,
+  UserCircle,
+  Users,
+  WalletCards,
+  Warehouse,
 } from 'lucide-react';
+import api from '../services/api';
+
+const emptyForms = {
+  proprietarios: {
+    nome: '',
+    documento: '',
+    email: '',
+    celular: '',
+    cep: '',
+    endereco: '',
+    bairro: '',
+    cidade: '',
+  },
+  fazendas: { proprietario: '', nome: '', sigla: '' },
+  safras: { fazenda: '', nome: '', data_inicio: '', data_fim: '', ativa: false },
+  talhoes: {
+    fazenda: '',
+    codigo: '',
+    nome: '',
+    area: '',
+    tipo_irrigacao: '',
+    cultura: '',
+    espacamento_rua: '',
+    espacamento_planta: '',
+    estande: '',
+    numero_plantas: '',
+    material_genetico: '',
+    resistencia_ferrugem: '',
+    status_cultivo: '',
+  },
+  maquinas: {
+    fazenda: '',
+    codigo: '',
+    descricao: '',
+    marca: '',
+    modelo: '',
+    ano_fabricacao: '',
+    tipo: '',
+  },
+  funcionarios: {
+    fazenda: '',
+    nome: '',
+    cpf: '',
+    cargo: '',
+    grupo_trabalhador: '',
+  },
+  terceirizados: { fazenda: '', nome: '', documento: '' },
+  turmas: { fazenda: '', nome: '', responsavel: '' },
+  produtos: {
+    codigo: '',
+    nome_comercial: '',
+    unidade: '',
+    classificacao: '',
+    grupo_quimico: '',
+    concentracao: '',
+    periodo_carencia: '',
+    alvo: '',
+  },
+  estoque: {
+    fazenda: '',
+    safra: '',
+    produto: '',
+    tipo_movimento: 'ENTRADA',
+    quantidade: '',
+    valor_unitario: '',
+    data_movimento: new Date().toISOString().slice(0, 10),
+    documento_referencia: '',
+    origem_transferencia: '',
+    destino_transferencia: '',
+    observacao: '',
+  },
+};
+
+const endpoints = {
+  proprietarios: '/api/proprietarios/',
+  fazendas: '/api/fazendas/',
+  safras: '/api/safras/',
+  talhoes: '/api/talhoes/',
+  maquinas: '/api/maquinas/',
+  funcionarios: '/api/funcionarios/',
+  terceirizados: '/api/terceirizados/',
+  turmas: '/api/turmas-terceirizadas/',
+  produtos: '/api/produtos/',
+  estoque: '/api/estoque/movimentos/',
+};
+
+const refEndpoints = {
+  culturas: '/api/ref/culturas/',
+  tiposItem: '/api/ref/tipos-item/',
+  tiposIrrigacao: '/api/ref/tipos-irrigacao/',
+  resistenciasFerrugem: '/api/ref/resistencias-ferrugem/',
+  statusCultivo: '/api/ref/status-cultivo/',
+  gruposTrabalhador: '/api/ref/grupos-trabalhador/',
+  classificacoesProduto: '/api/ref/classificacoes-produto/',
+  gruposQuimico: '/api/ref/grupos-quimico/',
+  unidadesMedida: '/api/ref/unidades-medida/',
+};
+
+const fallbackRefs = {
+  culturas: [{ id: 1, nome: 'Café' }],
+  tiposItem: [{ id: 1, nome: 'Máquina' }],
+  tiposIrrigacao: [{ id: 1, nome: 'Não Irrigado' }],
+  resistenciasFerrugem: [{ id: 1, nome: 'Não Informado' }],
+  statusCultivo: [{ id: 1, nome: 'Em Produção' }],
+  gruposTrabalhador: [{ id: 1, nome: 'Mão de Obra Própria' }],
+  classificacoesProduto: [{ id: 1, nome: 'Outros' }],
+  gruposQuimico: [{ id: 1, nome: 'Outros' }],
+  unidadesMedida: [{ id: 1, sigla: 'kg', nome: 'Quilograma' }],
+};
+
+const menuSections = [
+  {
+    id: 'cadastros',
+    label: 'Cadastros',
+    icon: ClipboardList,
+    description: 'Base estrutural',
+    items: [
+      { id: 'proprietarios', label: 'Proprietários', icon: UserCircle },
+      { id: 'fazendas', label: 'Fazendas', icon: Building2 },
+      { id: 'safras', label: 'Safras', icon: CalendarRange },
+      { id: 'talhoes', label: 'Talhões', icon: Grid3X3 },
+      { id: 'maquinas', label: 'Máquinas', icon: Tractor },
+    ],
+  },
+  {
+    id: 'operacional',
+    label: 'Operacional',
+    icon: Tractor,
+    description: 'Planejamento e execução',
+    items: [
+      { id: 'planejamentos', label: 'Planejamentos', icon: CalendarRange, disabled: true },
+      { id: 'ordens_servico', label: 'Ordens de Serviço', icon: ClipboardList, disabled: true },
+      { id: 'apontamentos', label: 'Apontamentos', icon: Grid3X3, disabled: true },
+    ],
+  },
+  {
+    id: 'suprimentos',
+    label: 'Suprimentos',
+    icon: Warehouse,
+    description: 'Produtos e estoque',
+    items: [
+      { id: 'produtos', label: 'Produtos e Insumos', icon: Package },
+      { id: 'estoque', label: 'Movimentações', icon: Warehouse },
+      { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList, disabled: true },
+    ],
+  },
+  {
+    id: 'financeiro_rh',
+    label: 'Financeiro & RH',
+    icon: WalletCards,
+    description: 'Pessoas e contas',
+    items: [
+      { id: 'funcionarios', label: 'Funcionários', icon: Users },
+      { id: 'terceirizados', label: 'Terceirizados', icon: Briefcase },
+      { id: 'turmas', label: 'Turmas', icon: Users },
+      { id: 'contas_pagar', label: 'Contas a Pagar', icon: WalletCards, disabled: true },
+      { id: 'contas_receber', label: 'Contas a Receber', icon: WalletCards, disabled: true },
+    ],
+  },
+];
+
+const menuItems = menuSections.flatMap((section) => section.items);
+
+const asList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
+const getFallbackDB = () => {
+  try {
+    return JSON.parse(localStorage.getItem('inovaceifa_db') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const fieldId = (item, base) => item?.[base] ?? item?.[`${base}_id`];
+const sameId = (left, right) => String(left ?? '') === String(right ?? '');
+const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const Cadastros = ({ currentSafraId }) => {
   const [activeTab, setActiveTab] = useState('proprietarios');
+  const [expandedSection, setExpandedSection] = useState('cadastros');
+  const [records, setRecords] = useState({
+    proprietarios: [],
+    fazendas: [],
+    safras: [],
+    talhoes: [],
+    maquinas: [],
+    funcionarios: [],
+    terceirizados: [],
+    turmas: [],
+    produtos: [],
+    estoque: [],
+  });
+  const [refs, setRefs] = useState(Object.fromEntries(Object.keys(refEndpoints).map((key) => [key, []])));
+  const [forms, setForms] = useState(emptyForms);
+  const [editingProprietarioId, setEditingProprietarioId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Loaded Entities State
-  const [proprietarios, setProprietarios] = useState([]);
-  const [fazendas, setFazendas] = useState([]);
-  const [safras, setSafras] = useState([]);
-  const [talhoes, setTalhoes] = useState([]);
-  const [maquinas, setMaquinas] = useState([]);
-  const [funcionarios, setFuncionarios] = useState([]);
-  const [terceirizados, setTerceirizados] = useState([]);
-  const [turmas, setTurmas] = useState([]);
-  const [produtos, setProdutos] = useState([]);
-  const [ordensServico, setOrdensServico] = useState([]);
+  const currentForm = forms[activeTab];
+  const activeLabel = menuItems.find((tab) => tab.id === activeTab)?.label || 'Cadastros';
 
-  // Form inputs state
-  const [proprietarioForm, setProprietarioForm] = useState({ nome: '', cpf_cnpj: '' });
-  const [fazendaForm, setFazendaForm] = useState({ nome: '', municipio: '', area_total: '', proprietario_id: '' });
-  const [talhaoForm, setTalhaoForm] = useState({ fazenda_id: '', nome: '', area: '', solo: 'Argiloso' });
-  const [maquinaForm, setMaquinaForm] = useState({ proprietario_id: '', nome: '', modelo: '', placa: '' });
-  const [funcionarioForm, setFuncionarioForm] = useState({ proprietario_id: '', nome: '', cargo: '', taxa_horaria: '', tipo: 'PROPRIO' });
-  const [terceirizadoForm, setTerceirizadoForm] = useState({ proprietario_id: '', nome: '', empresa: '', especialidade: '' });
-  const [turmaForm, setTurmaForm] = useState({ proprietario_id: '', nome: '', lider_id: '' });
-  const [produtoForm, setProdutoForm] = useState({ nome: '', categoria: 'Insumo', unidade: 'Kg' });
-  const [safraForm, setSafraForm] = useState({ fazenda_id: '', nome: '', data_inicio: '', data_fim: '', ativa: false, custo_planejado: '' });
-  const [osForm, setOsForm] = useState({ safra_id: '', tipo: 'Colheita Mecanizada', talhoes: [], funcionario_id: '', status: 'EM_ANDAMENTO', horas_trabalhadas: '' });
+  const fazendasOptions = useMemo(
+    () => records.fazendas.map((fazenda) => ({ value: fazenda.id, label: `${fazenda.nome}${fazenda.sigla ? ` (${fazenda.sigla})` : ''}` })),
+    [records.fazendas],
+  );
 
-  // Load all database entities on mount and after changes
-  const loadAllData = async () => {
-    try {
-      const f = await relatorioService.getFazendas().catch(() => []);
-      const s = await relatorioService.getSafras().catch(() => []);
-      const t = await relatorioService.getTalhoes().catch(() => []);
-      const fn = await relatorioService.getFuncionarios().catch(() => []);
-      const o = await relatorioService.getOrdensServico().catch(() => []);
+  const safrasOptions = useMemo(
+    () => records.safras.map((safra) => ({ value: safra.id, label: `${safra.nome}${safra.ativa ? ' - ativa' : ''}` })),
+    [records.safras],
+  );
 
-      if (f?.length > 0) setFazendas(f);
-      if (s?.length > 0) setSafras(s);
-      if (t?.length > 0) setTalhoes(t);
-      if (fn?.length > 0) setFuncionarios(fn);
-      if (o?.length > 0) setOrdensServico(o);
-    } catch (err) {
-      console.error("Erro ao carregar dados", err);
-    }
-  };
+  const refOptions = (key, labelGetter = (item) => item.nome) =>
+    refs[key].map((item) => ({ value: item.id, label: labelGetter(item) }));
 
-  useEffect(() => {
-    loadAllData();
-  }, []);
-
-  const triggerAlert = (type, message) => {
+  const showAlert = (type, message) => {
     if (type === 'error') {
       setError(message);
-      setTimeout(() => setError(''), 4000);
+      setSuccess('');
     } else {
       setSuccess(message);
-      setTimeout(() => setSuccess(''), 4000);
+      setError('');
     }
+    window.setTimeout(() => {
+      setError('');
+      setSuccess('');
+    }, 4500);
   };
 
-  // Submit handlers (Local state updates for missing APIs to allow UI preview)
-  const handleProprietarioSubmit = (e) => {
-    e.preventDefault();
-    if (!proprietarioForm.nome) return triggerAlert('error', 'Preencha o nome do Proprietário.');
-    setProprietarios([...proprietarios, { ...proprietarioForm, id: Date.now() }]);
-    triggerAlert('success', 'Proprietário cadastrado!');
-    setProprietarioForm({ nome: '', cpf_cnpj: '' });
-  };
-
-  const handleFazendaSubmit = async (e) => {
-    e.preventDefault();
-    if (!fazendaForm.nome || !fazendaForm.proprietario_id) return triggerAlert('error', 'Nome e Proprietário são obrigatórios.');
-    
+  const fetchList = async (url, fallbackKey) => {
     try {
-      await relatorioService.createFazenda(fazendaForm);
-      loadAllData();
+      const response = await api.get(url);
+      return asList(response.data);
     } catch {
-      setFazendas([...fazendas, { ...fazendaForm, id: Date.now() }]); // Fallback mock
+      if (fallbackRefs[fallbackKey]) return fallbackRefs[fallbackKey];
+      const fallbackDB = getFallbackDB();
+      return asList(fallbackDB[fallbackKey]);
     }
-    triggerAlert('success', 'Fazenda cadastrada!');
-    setFazendaForm({ nome: '', municipio: '', area_total: '', proprietario_id: '' });
   };
 
-  const handleTalhaoSubmit = async (e) => {
-    e.preventDefault();
-    if (!talhaoForm.nome || !talhaoForm.fazenda_id) return triggerAlert('error', 'Nome e Fazenda são obrigatórios.');
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      await relatorioService.createTalhao(talhaoForm);
-      loadAllData();
-    } catch {
-      setTalhoes([...talhoes, { ...talhaoForm, id: Date.now() }]);
+      const [loadedRecords, loadedRefs] = await Promise.all([
+        Promise.all(Object.entries(endpoints).map(async ([key, url]) => [key, await fetchList(url, key)])),
+        Promise.all(Object.entries(refEndpoints).map(async ([key, url]) => [key, await fetchList(url, key)])),
+      ]);
+
+      setRecords(Object.fromEntries(loadedRecords));
+      setRefs(Object.fromEntries(loadedRefs));
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Não foi possível carregar os cadastros.');
+    } finally {
+      setLoading(false);
     }
-    triggerAlert('success', 'Talhão cadastrado!');
-    setTalhaoForm({ fazenda_id: '', nome: '', area: '', solo: 'Argiloso' });
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, [loadData]);
+
+  const patchForm = (key, value) => {
+    setForms((prev) => ({
+      ...prev,
+      [activeTab]: { ...prev[activeTab], [key]: value },
+    }));
   };
 
-  const handleMaquinaSubmit = (e) => {
-    e.preventDefault();
-    if (!maquinaForm.nome || !maquinaForm.proprietario_id) return triggerAlert('error', 'Nome e Proprietário obrigatórios.');
-    setMaquinas([...maquinas, { ...maquinaForm, id: Date.now() }]);
-    triggerAlert('success', 'Máquina cadastrada!');
-    setMaquinaForm({ proprietario_id: '', nome: '', modelo: '', placa: '' });
+  const resetForm = (tab = activeTab) => {
+    setForms((prev) => ({ ...prev, [tab]: emptyForms[tab] }));
+    if (tab === 'proprietarios') setEditingProprietarioId(null);
   };
 
-  const handleFuncionarioSubmit = async (e) => {
-    e.preventDefault();
-    if (!funcionarioForm.nome || !funcionarioForm.proprietario_id) return triggerAlert('error', 'Nome e Proprietário obrigatórios.');
+  const cleanPayload = (form) => {
+    const payload = {};
+    Object.entries(form).forEach(([key, value]) => {
+      if (value === '' || value === null || value === undefined) return;
+      payload[key] = value;
+    });
+    return payload;
+  };
+
+  const fillRequiredRefs = (payload) => {
+    if (activeTab === 'talhoes') {
+      payload.tipo_irrigacao ||= refs.tiposIrrigacao[0]?.id;
+      payload.cultura ||= refs.culturas[0]?.id;
+    }
+    if (activeTab === 'maquinas') payload.tipo ||= refs.tiposItem.find((item) => item.nome?.toLowerCase().includes('máquina'))?.id || refs.tiposItem[0]?.id;
+    if (activeTab === 'funcionarios') payload.grupo_trabalhador ||= refs.gruposTrabalhador[0]?.id;
+    if (activeTab === 'produtos') {
+      payload.unidade ||= refs.unidadesMedida[0]?.id;
+      payload.classificacao ||= refs.classificacoesProduto[0]?.id;
+    }
+    return payload;
+  };
+
+  const validatePayload = (payload) => {
+    const required = {
+      proprietarios: ['nome'],
+      fazendas: ['proprietario', 'nome', 'sigla'],
+      safras: ['fazenda', 'nome', 'data_inicio', 'data_fim'],
+      talhoes: ['fazenda', 'codigo', 'nome', 'area', 'tipo_irrigacao', 'cultura'],
+      maquinas: ['fazenda', 'codigo', 'descricao', 'tipo'],
+      funcionarios: ['fazenda', 'nome', 'grupo_trabalhador'],
+      terceirizados: ['fazenda', 'nome'],
+      turmas: ['fazenda', 'nome'],
+      produtos: ['nome_comercial', 'unidade', 'classificacao'],
+      estoque: ['fazenda', 'safra', 'produto', 'tipo_movimento', 'quantidade', 'data_movimento'],
+    };
+
+    const missing = required[activeTab].filter((key) => !payload[key]);
+    if (missing.length) {
+      showAlert('error', `Preencha os campos obrigatórios: ${missing.join(', ')}.`);
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    let payload = fillRequiredRefs(cleanPayload(currentForm));
+
+    if (activeTab === 'estoque') {
+      payload.safra = payload.safra || currentSafraId;
+      payload.valor_total = Number(payload.quantidade || 0) * Number(payload.valor_unitario || 0);
+    }
+
+    if (!validatePayload(payload)) return;
+
+    setSaving(true);
     try {
-      await relatorioService.createFuncionario(funcionarioForm);
-      loadAllData();
-    } catch {
-      setFuncionarios([...funcionarios, { ...funcionarioForm, id: Date.now() }]);
+      if (activeTab === 'proprietarios' && editingProprietarioId) {
+        await api.put(`${endpoints.proprietarios}${editingProprietarioId}/`, payload);
+        showAlert('success', 'Proprietário atualizado com sucesso.');
+      } else {
+        const response = await api.post(endpoints[activeTab], payload);
+        showAlert('success', response.data?.warning || 'Registro salvo com sucesso.');
+      }
+      resetForm(activeTab);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      const detail = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0];
+      showAlert('error', detail || 'Erro ao salvar. Verifique contexto de fazenda/safra e referências cadastradas.');
+    } finally {
+      setSaving(false);
     }
-    triggerAlert('success', 'Funcionário cadastrado!');
-    setFuncionarioForm({ proprietario_id: '', nome: '', cargo: '', taxa_horaria: '', tipo: 'PROPRIO' });
   };
 
-  const handleTerceirizadoSubmit = (e) => {
-    e.preventDefault();
-    if (!terceirizadoForm.nome || !terceirizadoForm.proprietario_id) return triggerAlert('error', 'Nome e Proprietário obrigatórios.');
-    setTerceirizados([...terceirizados, { ...terceirizadoForm, id: Date.now() }]);
-    triggerAlert('success', 'Terceirizado cadastrado!');
-    setTerceirizadoForm({ proprietario_id: '', nome: '', empresa: '', especialidade: '' });
-  };
+  const handleDeleteProprietario = async (id) => {
+    if (!window.confirm('Deseja desativar este proprietário?')) return;
 
-  const handleTurmaSubmit = (e) => {
-    e.preventDefault();
-    if (!turmaForm.nome || !turmaForm.proprietario_id) return triggerAlert('error', 'Nome e Proprietário obrigatórios.');
-    setTurmas([...turmas, { ...turmaForm, id: Date.now() }]);
-    triggerAlert('success', 'Turma cadastrada!');
-    setTurmaForm({ proprietario_id: '', nome: '', lider_id: '' });
-  };
-
-  const handleProdutoSubmit = (e) => {
-    e.preventDefault();
-    if (!produtoForm.nome) return triggerAlert('error', 'Nome do produto obrigatório.');
-    setProdutos([...produtos, { ...produtoForm, id: Date.now() }]);
-    triggerAlert('success', 'Produto cadastrado!');
-    setProdutoForm({ nome: '', categoria: 'Insumo', unidade: 'Kg' });
-  };
-
-  const handleSafraSubmit = async (e) => {
-    e.preventDefault();
-    if (!safraForm.fazenda_id || !safraForm.nome) return triggerAlert('error', 'Fazenda e Nome são obrigatórios.');
     try {
-      await relatorioService.createSafra(safraForm);
-      loadAllData();
-    } catch {
-      setSafras([...safras, { ...safraForm, id: Date.now() }]);
-    }
-    triggerAlert('success', 'Safra cadastrada!');
-    setSafraForm({ fazenda_id: '', nome: '', data_inicio: '', data_fim: '', ativa: false, custo_planejado: '' });
-  };
-
-  const handleOsSubmit = async (e) => {
-    e.preventDefault();
-    if (!osForm.safra_id || !osForm.funcionario_id || osForm.talhoes.length === 0) {
-      return triggerAlert('error', 'Selecione Safra, Responsável e Talhões.');
-    }
-    try {
-      await relatorioService.createOrdemServico(osForm);
-      loadAllData();
-    } catch {
-      setOrdensServico([...ordensServico, { ...osForm, id: Date.now() }]);
-    }
-    triggerAlert('success', 'OS registrada!');
-    setOsForm({ safra_id: '', tipo: 'Colheita Mecanizada', talhoes: [], funcionario_id: '', status: 'EM_ANDAMENTO', horas_trabalhadas: '' });
-  };
-
-  const toggleTalhaoInOS = (talhaoNome) => {
-    const isSelected = osForm.talhoes.includes(talhaoNome);
-    if (isSelected) {
-      setOsForm({ ...osForm, talhoes: osForm.talhoes.filter(t => t !== talhaoNome) });
-    } else {
-      setOsForm({ ...osForm, talhoes: [...osForm.talhoes, talhaoNome] });
+      await api.delete(`${endpoints.proprietarios}${id}/`);
+      showAlert('success', 'Proprietário desativado.');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao desativar proprietário.');
     }
   };
 
-  // Filters & Tabs helpers
-  const tabGroups = [
-    {
-      title: 'Estrutura Fundiária',
-      items: [
-        { id: 'proprietarios', label: 'Proprietários', icon: UserCircle },
-        { id: 'fazendas', label: 'Fazendas', icon: Building2 },
-        { id: 'talhoes', label: 'Talhões / Glebas', icon: Grid3X3 },
-      ]
-    },
-    {
-      title: 'Ativos e Materiais',
-      items: [
-        { id: 'maquinas', label: 'Máquinas e Equip.', icon: Tractor },
-        { id: 'produtos', label: 'Produtos e Insumos', icon: Package },
-      ]
-    },
-    {
-      title: 'Recursos Humanos',
-      items: [
-        { id: 'funcionarios', label: 'Funcionários', icon: Users },
-        { id: 'terceirizados', label: 'Terceirizados', icon: Briefcase },
-        { id: 'turmas', label: 'Turmas de Trabalho', icon: Users },
-      ]
-    },
-    {
-      title: 'Operacional e Execução',
-      items: [
-        { id: 'safras', label: 'Safras / Ciclos', icon: CalendarRange },
-        { id: 'ordens_servico', label: 'Ordens de Serviço', icon: FileSpreadsheet },
-      ]
-    }
-  ];
+  const startEditProprietario = (proprietario) => {
+    setActiveTab('proprietarios');
+    setEditingProprietarioId(proprietario.id);
+    setForms((prev) => ({
+      ...prev,
+      proprietarios: {
+        nome: proprietario.nome || '',
+        documento: proprietario.documento || '',
+        email: proprietario.email || '',
+        celular: proprietario.celular || '',
+        cep: proprietario.cep || '',
+        endereco: proprietario.endereco || '',
+        bairro: proprietario.bairro || '',
+        cidade: proprietario.cidade || '',
+      },
+    }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  const InputField = ({ label, value, onChange, type="text", placeholder="" }) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">{label}</label>
-      <input type={type} placeholder={placeholder} value={value} onChange={onChange}
+  const filteredRows = (key, getText) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return records[key];
+    return records[key].filter((item) => getText(item).toLowerCase().includes(query));
+  };
+
+  const lookup = (collection, id, fallback = '-') => collection.find((item) => sameId(item.id, id))?.nome || fallback;
+
+  const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '' }) => (
+    <label className="block space-y-1.5">
+      <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
         className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all"
       />
-    </div>
+    </label>
   );
 
-  const SelectField = ({ label, value, onChange, options, defaultOption="Selecione..." }) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">{label}</label>
-      <select value={value} onChange={onChange} className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none transition-all">
+  const SelectField = ({ label, value, onChange, options, required = false, defaultOption = 'Selecione...' }) => (
+    <label className="block space-y-1.5">
+      <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none transition-all"
+      >
         <option value="" className="bg-slate-900 text-slate-500">{defaultOption}</option>
-        {options.map((opt, idx) => (
-          <option key={idx} value={opt.value} className="bg-slate-900 text-white">{opt.label}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value} className="bg-slate-900 text-white">{option.label}</option>
         ))}
       </select>
-    </div>
+    </label>
   );
 
+  const renderFormFields = () => {
+    if (activeTab === 'proprietarios') {
+      return (
+        <>
+          <InputField required label="Nome / Razão Social" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField label="CPF / CNPJ" value={currentForm.documento} onChange={(value) => patchForm('documento', value)} />
+          <InputField label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} />
+          <InputField label="Celular" value={currentForm.celular} onChange={(value) => patchForm('celular', value)} />
+          <InputField label="CEP" value={currentForm.cep} onChange={(value) => patchForm('cep', value)} />
+          <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
+          <InputField label="Bairro" value={currentForm.bairro} onChange={(value) => patchForm('bairro', value)} />
+          <InputField label="Cidade / UF" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
+        </>
+      );
+    }
+
+    if (activeTab === 'fazendas') {
+      return (
+        <>
+          <SelectField required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
+          <InputField required label="Nome da Fazenda" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField required label="Sigla" value={currentForm.sigla} onChange={(value) => patchForm('sigla', value.toUpperCase())} placeholder="BR" />
+        </>
+      );
+    }
+
+    if (activeTab === 'safras') {
+      return (
+        <>
+          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          <InputField required label="Nome da Safra" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} placeholder="2024/2025" />
+          <InputField required label="Data Início" type="date" value={currentForm.data_inicio} onChange={(value) => patchForm('data_inicio', value)} />
+          <InputField required label="Data Fim" type="date" value={currentForm.data_fim} onChange={(value) => patchForm('data_fim', value)} />
+          <label className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-300">
+            <input type="checkbox" checked={currentForm.ativa} onChange={(event) => patchForm('ativa', event.target.checked)} className="h-4 w-4 rounded border-white/[0.08] bg-slate-950/50 text-emerald-500" />
+            Safra ativa desta fazenda
+          </label>
+        </>
+      );
+    }
+
+    if (activeTab === 'talhoes') {
+      return (
+        <>
+          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          <InputField required label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
+          <InputField required label="Nome do Talhão" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField required label="Área (ha)" type="number" value={currentForm.area} onChange={(value) => patchForm('area', value)} />
+          <SelectField required label="Irrigação" value={currentForm.tipo_irrigacao} onChange={(value) => patchForm('tipo_irrigacao', value)} options={refOptions('tiposIrrigacao')} />
+          <SelectField required label="Cultura" value={currentForm.cultura} onChange={(value) => patchForm('cultura', value)} options={refOptions('culturas')} />
+          <SelectField label="Status Cultivo" value={currentForm.status_cultivo} onChange={(value) => patchForm('status_cultivo', value)} options={refOptions('statusCultivo')} />
+          <SelectField label="Resistência Ferrugem" value={currentForm.resistencia_ferrugem} onChange={(value) => patchForm('resistencia_ferrugem', value)} options={refOptions('resistenciasFerrugem')} />
+          <InputField label="Material Genético" value={currentForm.material_genetico} onChange={(value) => patchForm('material_genetico', value)} />
+        </>
+      );
+    }
+
+    if (activeTab === 'maquinas') {
+      return (
+        <>
+          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          <InputField required label="Código / Frota" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
+          <InputField required label="Descrição" value={currentForm.descricao} onChange={(value) => patchForm('descricao', value)} />
+          <InputField label="Marca" value={currentForm.marca} onChange={(value) => patchForm('marca', value)} />
+          <InputField label="Modelo" value={currentForm.modelo} onChange={(value) => patchForm('modelo', value)} />
+          <InputField label="Ano Fabricação" type="number" value={currentForm.ano_fabricacao} onChange={(value) => patchForm('ano_fabricacao', value)} />
+          <SelectField required label="Tipo" value={currentForm.tipo} onChange={(value) => patchForm('tipo', value)} options={refOptions('tiposItem')} />
+        </>
+      );
+    }
+
+    if (activeTab === 'funcionarios') {
+      return (
+        <>
+          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          <InputField required label="Nome" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField label="CPF" value={currentForm.cpf} onChange={(value) => patchForm('cpf', value)} />
+          <InputField label="Cargo" value={currentForm.cargo} onChange={(value) => patchForm('cargo', value)} />
+          <SelectField required label="Grupo Trabalhador" value={currentForm.grupo_trabalhador} onChange={(value) => patchForm('grupo_trabalhador', value)} options={refOptions('gruposTrabalhador')} />
+        </>
+      );
+    }
+
+    if (activeTab === 'terceirizados') {
+      return (
+        <>
+          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          <InputField required label="Nome / Empresa" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField label="CPF / CNPJ" value={currentForm.documento} onChange={(value) => patchForm('documento', value)} />
+        </>
+      );
+    }
+
+    if (activeTab === 'turmas') {
+      return (
+        <>
+          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          <InputField required label="Nome da Turma" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField label="Responsável" value={currentForm.responsavel} onChange={(value) => patchForm('responsavel', value)} />
+        </>
+      );
+    }
+
+    if (activeTab === 'produtos') {
+      return (
+        <>
+          <InputField label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
+          <InputField required label="Nome Comercial" value={currentForm.nome_comercial} onChange={(value) => patchForm('nome_comercial', value)} />
+          <SelectField required label="Unidade" value={currentForm.unidade} onChange={(value) => patchForm('unidade', value)} options={refOptions('unidadesMedida', (item) => `${item.sigla} - ${item.nome}`)} />
+          <SelectField required label="Classificação" value={currentForm.classificacao} onChange={(value) => patchForm('classificacao', value)} options={refOptions('classificacoesProduto')} />
+          <SelectField label="Grupo Químico" value={currentForm.grupo_quimico} onChange={(value) => patchForm('grupo_quimico', value)} options={refOptions('gruposQuimico')} />
+          <InputField label="Concentração" value={currentForm.concentracao} onChange={(value) => patchForm('concentracao', value)} />
+          <InputField label="Período de Carência (dias)" type="number" value={currentForm.periodo_carencia} onChange={(value) => patchForm('periodo_carencia', value)} />
+          <InputField label="Alvo" value={currentForm.alvo} onChange={(value) => patchForm('alvo', value)} />
+        </>
+      );
+    }
+
+    return (
+      <>
+        <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+        <SelectField required label="Safra" value={currentForm.safra} onChange={(value) => patchForm('safra', value)} options={safrasOptions} />
+        <SelectField required label="Produto" value={currentForm.produto} onChange={(value) => patchForm('produto', value)} options={records.produtos.map((item) => ({ value: item.id, label: item.nome_comercial }))} />
+        <SelectField required label="Tipo Movimento" value={currentForm.tipo_movimento} onChange={(value) => patchForm('tipo_movimento', value)} options={[
+          { value: 'ENTRADA', label: 'Entrada' },
+          { value: 'SAIDA', label: 'Saída' },
+          { value: 'AJUSTE', label: 'Ajuste' },
+          { value: 'TRANSFERENCIA', label: 'Transferência' },
+        ]} />
+        <InputField required label="Quantidade" type="number" value={currentForm.quantidade} onChange={(value) => patchForm('quantidade', value)} />
+        <InputField label="Valor Unitário" type="number" value={currentForm.valor_unitario} onChange={(value) => patchForm('valor_unitario', value)} />
+        <InputField required label="Data Movimento" type="date" value={currentForm.data_movimento} onChange={(value) => patchForm('data_movimento', value)} />
+        <InputField label="Documento" value={currentForm.documento_referencia} onChange={(value) => patchForm('documento_referencia', value)} />
+        {currentForm.tipo_movimento === 'TRANSFERENCIA' && (
+          <>
+            <SelectField label="Origem" value={currentForm.origem_transferencia} onChange={(value) => patchForm('origem_transferencia', value)} options={fazendasOptions} />
+            <SelectField label="Destino" value={currentForm.destino_transferencia} onChange={(value) => patchForm('destino_transferencia', value)} options={fazendasOptions} />
+          </>
+        )}
+      </>
+    );
+  };
+
+  const renderRows = () => {
+    if (activeTab === 'proprietarios') {
+      return filteredRows('proprietarios', (item) => `${item.nome} ${item.documento || ''} ${item.cidade || ''}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{item.email || 'Sem e-mail'}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300 font-mono">{item.documento || '-'}</td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{item.cidade || '-'}</td>
+          <td className="py-3 px-4 text-right">
+            <button type="button" onClick={() => startEditProprietario(item)} className="p-1.5 rounded-lg border border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-400 mr-2"><Briefcase className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleDeleteProprietario(item.id)} className="p-1.5 rounded-lg border border-white/5 hover:border-red-500/30 hover:bg-red-500/10 text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+          </td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'fazendas') {
+      return filteredRows('fazendas', (item) => `${item.nome} ${item.sigla || ''}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">Sigla: {item.sigla || '-'}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{lookup(records.proprietarios, fieldId(item, 'proprietario'))}</td>
+          <td className="py-3 px-4 text-right text-[10px] text-slate-500">{item.ativo === false ? 'Inativa' : 'Ativa'}</td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'safras') {
+      return filteredRows('safras', (item) => item.nome).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{item.data_inicio} até {item.data_fim}</td>
+          <td className="py-3 px-4 text-right text-[10px] font-bold text-emerald-400">{item.ativa ? 'Ativa' : '-'}</td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'talhoes') {
+      return filteredRows('talhoes', (item) => `${item.codigo} ${item.nome}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.codigo} - {item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{item.cultura_nome || '-'}</td>
+          <td className="py-3 px-4 text-right text-xs font-bold text-teal-400">{Number(item.area || 0).toLocaleString('pt-BR')} ha</td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'maquinas') {
+      return filteredRows('maquinas', (item) => `${item.codigo} ${item.descricao}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.codigo} - {item.descricao}</p><p className="text-[10px] text-slate-500">{item.marca || '-'} {item.modelo || ''}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</td>
+          <td className="py-3 px-4 text-right text-[10px] text-slate-400">{item.tipo_nome || '-'}</td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'funcionarios') {
+      return filteredRows('funcionarios', (item) => `${item.nome} ${item.cargo || ''}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{item.cpf || 'Sem CPF'}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{item.cargo || '-'}</td>
+          <td className="py-3 px-4 text-right text-[10px] text-slate-400">{item.grupo_trabalhador_nome || '-'}</td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'terceirizados') {
+      return filteredRows('terceirizados', (item) => `${item.nome} ${item.documento || ''}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{item.documento || '-'}</td>
+          <td className="py-3 px-4 text-right text-[10px] text-slate-500">{item.ativo === false ? 'Inativo' : 'Ativo'}</td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'turmas') {
+      return filteredRows('turmas', (item) => `${item.nome} ${item.responsavel || ''}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{item.responsavel || '-'}</td>
+          <td className="py-3 px-4 text-right text-[10px] text-slate-500">{item.integrantes_detalhe?.length || 0} integrantes</td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'produtos') {
+      return filteredRows('produtos', (item) => `${item.codigo || ''} ${item.nome_comercial}`).map((item) => (
+        <tr key={item.id} className="hover:bg-white/[0.02]">
+          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome_comercial}</p><p className="text-[10px] text-slate-500">{item.codigo || 'Sem código'}</p></td>
+          <td className="py-3 px-4 text-[10px] text-slate-300">{item.classificacao_nome || '-'}</td>
+          <td className="py-3 px-4 text-right text-[10px] text-slate-400">{item.unidade_sigla || item.unidade_nome || '-'}</td>
+        </tr>
+      ));
+    }
+
+    return filteredRows('estoque', (item) => `${item.produto_nome || ''} ${item.tipo_movimento}`).map((item) => (
+      <tr key={item.id} className="hover:bg-white/[0.02]">
+        <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.produto_nome || lookup(records.produtos, fieldId(item, 'produto'))}</p><p className="text-[10px] text-slate-500">{item.documento_referencia || 'Sem documento'}</p></td>
+        <td className="py-3 px-4 text-[10px] text-slate-300">{item.tipo_movimento} em {item.data_movimento}</td>
+        <td className="py-3 px-4 text-right text-xs font-bold text-emerald-400">{Number(item.quantidade || 0).toLocaleString('pt-BR')} {item.produto_unidade_sigla || ''}<p className="text-[10px] text-slate-500 font-normal">R$ {money(item.valor_total)}</p></td>
+      </tr>
+    ));
+  };
+
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      
+    <div className="cadastros-page w-full max-w-7xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       {error && (
-        <div className="mb-6 p-4 rounded-xl border border-rose-950/20 bg-rose-950/30 text-rose-300 text-sm font-semibold flex items-center gap-3 animate-bounce-slow">
+        <div className="mb-6 p-4 rounded-xl border border-rose-950/20 bg-rose-950/30 text-rose-300 text-sm font-semibold flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
           <p>{error}</p>
         </div>
       )}
       {success && (
-        <div className="mb-6 p-4 rounded-xl border border-emerald-950/20 bg-emerald-950/30 text-emerald-300 text-sm font-semibold flex items-center gap-3 animate-pulse">
+        <div className="mb-6 p-4 rounded-xl border border-emerald-950/20 bg-emerald-950/30 text-emerald-300 text-sm font-semibold flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <p>{success}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* Navigation Sidebar Tabs */}
-        <div className="lg:col-span-3 space-y-4">
+        <aside className="lg:col-span-3 space-y-4 lg:sticky lg:top-24">
           <div className="glass-panel p-4 rounded-2xl border border-white/[0.06] bg-slate-900/60 backdrop-blur-md">
-            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-4 px-2">
-              Módulos de Cadastro
-            </h3>
-            <div className="flex flex-col space-y-4">
-              {tabGroups.map((group, idx) => (
-                <div key={idx} className="space-y-1">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-2 px-2">{group.title}</h4>
-                  {group.items.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => { setActiveTab(tab.id); setSearchQuery(''); }}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left text-sm font-bold transition-all focus:outline-none cursor-pointer ${
-                          isActive 
-                            ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/10 border border-emerald-500/30 text-emerald-300 shadow-sm' 
-                            : 'border border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                          <span>{tab.label}</span>
-                        </div>
-                        <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'rotate-90 text-emerald-400' : 'text-slate-600'}`} />
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
+            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-4 px-2">Menu de Módulos</h3>
+            <div className="space-y-2">
+              {menuSections.map((section) => {
+                const SectionIcon = section.icon;
+                const isExpanded = expandedSection === section.id;
+                const hasActiveItem = section.items.some((item) => item.id === activeTab);
+
+                return (
+                  <div key={section.id} className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedSection(isExpanded ? '' : section.id)}
+                      className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left transition-all ${hasActiveItem ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}
+                    >
+                      <span className="flex items-center gap-3 min-w-0">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          <SectionIcon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-black">{section.label}</span>
+                          <span className="block truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400">{section.description}</span>
+                        </span>
+                      </span>
+                      <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="space-y-1 border-t border-slate-200/70 bg-slate-50/60 p-2 dark:border-slate-700/70 dark:bg-slate-950/20">
+                        {section.items.map((item) => {
+                          const ItemIcon = item.icon;
+                          const isActive = activeTab === item.id;
+
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              disabled={item.disabled}
+                              onClick={() => {
+                                if (item.disabled) return;
+                                setActiveTab(item.id);
+                                setSearchQuery('');
+                              }}
+                              className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-45 ${isActive ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300' : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-white dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'}`}
+                            >
+                              <span className="flex items-center gap-2 min-w-0">
+                                <ItemIcon className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{item.label}</span>
+                              </span>
+                              {item.disabled && (
+                                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-black uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">em breve</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
-          
-          <div className="glass-panel p-4.5 rounded-2xl border border-white/[0.06] bg-slate-900/40 text-xs text-slate-400 space-y-2.5">
+
+          <div className="glass-panel p-4 rounded-2xl border border-white/[0.06] bg-slate-900/40 text-xs text-slate-400 space-y-2.5">
             <div className="flex items-center gap-2 text-emerald-400 font-bold">
               <BadgeInfo className="w-4 h-4" />
-              <span>Hierarquia Estrutural</span>
+              <span>Contexto obrigatório</span>
             </div>
-            <p className="leading-relaxed text-[11px]">
-              Máquinas e Funcionários pertencem ao <strong>Proprietário</strong>, podendo ser alocados em diferentes Fazendas e Talhões de forma dinâmica.
-            </p>
+            <p className="leading-relaxed text-[11px]">Cadastros operacionais usam fazenda e, quando aplicável, safra ativa via header X-Safra-ID.</p>
           </div>
-        </div>
+        </aside>
 
-        {/* Tab Panel Content */}
-        <div className="lg:col-span-9 space-y-8">
-          
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-black text-white tracking-tight capitalize font-display">
-                Gestão de {activeTab.replace('_', ' ')}
-              </h1>
-              <p className="text-slate-400 text-xs mt-1">
-                Adicione novos registros e gerencie os dados estruturais do sistema.
-              </p>
-            </div>
+        <main className="lg:col-span-9 space-y-8">
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight font-display">Gestão de {activeLabel}</h1>
+            <p className="text-slate-400 text-xs mt-1">Dados normalizados conforme a arquitetura Proprietário, Fazenda e Safra.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-            
-            {/* Form Section */}
-            <div className="md:col-span-4 glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/60 backdrop-blur-md">
+            <section className="md:col-span-4 glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/60 backdrop-blur-md">
               <h2 className="text-sm font-black uppercase tracking-wider text-slate-300 mb-5 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-400" />
-                <span>Novo Registro</span>
+                <span>{editingProprietarioId && activeTab === 'proprietarios' ? 'Editar Proprietário' : 'Novo Registro'}</span>
               </h2>
 
-              {activeTab === 'proprietarios' && (
-                <form onSubmit={handleProprietarioSubmit} className="space-y-4">
-                  <InputField label="Nome / Razão Social" value={proprietarioForm.nome} onChange={e => setProprietarioForm({...proprietarioForm, nome: e.target.value})} placeholder="Ex: Agro Holding" />
-                  <InputField label="CPF / CNPJ" value={proprietarioForm.cpf_cnpj} onChange={e => setProprietarioForm({...proprietarioForm, cpf_cnpj: e.target.value})} placeholder="000.000.000-00" />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {renderFormFields()}
+                <div className="flex gap-2.5 pt-2">
+                  <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 disabled:opacity-60 text-white text-xs font-bold uppercase transition-all">
+                    {saving ? 'Salvando...' : editingProprietarioId && activeTab === 'proprietarios' ? 'Atualizar' : 'Salvar'}
+                  </button>
+                  {editingProprietarioId && activeTab === 'proprietarios' && (
+                    <button type="button" onClick={() => resetForm('proprietarios')} className="px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all">Cancelar</button>
+                  )}
+                </div>
+              </form>
+            </section>
 
-              {activeTab === 'fazendas' && (
-                <form onSubmit={handleFazendaSubmit} className="space-y-4">
-                  <SelectField label="Proprietário" value={fazendaForm.proprietario_id} onChange={e => setFazendaForm({...fazendaForm, proprietario_id: e.target.value})} options={proprietarios.map(p => ({value: p.id, label: p.nome}))} />
-                  <InputField label="Nome da Fazenda" value={fazendaForm.nome} onChange={e => setFazendaForm({...fazendaForm, nome: e.target.value})} placeholder="Ex: Fazenda Bela Vista" />
-                  <InputField label="Município - UF" value={fazendaForm.municipio} onChange={e => setFazendaForm({...fazendaForm, municipio: e.target.value})} placeholder="Ex: Araguari - MG" />
-                  <InputField label="Área Total (Ha)" type="number" value={fazendaForm.area_total} onChange={e => setFazendaForm({...fazendaForm, area_total: e.target.value})} placeholder="Ex: 850.50" />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'talhoes' && (
-                <form onSubmit={handleTalhaoSubmit} className="space-y-4">
-                  <SelectField label="Fazenda" value={talhaoForm.fazenda_id} onChange={e => setTalhaoForm({...talhaoForm, fazenda_id: e.target.value})} options={fazendas.map(f => ({value: f.id, label: f.nome}))} />
-                  <InputField label="Identificação / Nome" value={talhaoForm.nome} onChange={e => setTalhaoForm({...talhaoForm, nome: e.target.value})} placeholder="Ex: Talhão A1" />
-                  <InputField label="Área (Ha)" type="number" value={talhaoForm.area} onChange={e => setTalhaoForm({...talhaoForm, area: e.target.value})} placeholder="Ex: 240.00" />
-                  <SelectField label="Tipo de Solo" value={talhaoForm.solo} onChange={e => setTalhaoForm({...talhaoForm, solo: e.target.value})} options={[{value:'Argiloso', label:'Argiloso'}, {value:'Misto', label:'Misto'}, {value:'Arenoso', label:'Arenoso'}]} />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'maquinas' && (
-                <form onSubmit={handleMaquinaSubmit} className="space-y-4">
-                  <SelectField label="Proprietário" value={maquinaForm.proprietario_id} onChange={e => setMaquinaForm({...maquinaForm, proprietario_id: e.target.value})} options={proprietarios.map(p => ({value: p.id, label: p.nome}))} />
-                  <InputField label="Nome / Frota" value={maquinaForm.nome} onChange={e => setMaquinaForm({...maquinaForm, nome: e.target.value})} placeholder="Ex: Trator TR-01" />
-                  <InputField label="Modelo" value={maquinaForm.modelo} onChange={e => setMaquinaForm({...maquinaForm, modelo: e.target.value})} placeholder="Ex: John Deere 8R" />
-                  <InputField label="Placa / Chassi" value={maquinaForm.placa} onChange={e => setMaquinaForm({...maquinaForm, placa: e.target.value})} placeholder="Ex: ABC-1234" />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'funcionarios' && (
-                <form onSubmit={handleFuncionarioSubmit} className="space-y-4">
-                  <SelectField label="Proprietário" value={funcionarioForm.proprietario_id} onChange={e => setFuncionarioForm({...funcionarioForm, proprietario_id: e.target.value})} options={proprietarios.map(p => ({value: p.id, label: p.nome}))} />
-                  <InputField label="Nome Completo" value={funcionarioForm.nome} onChange={e => setFuncionarioForm({...funcionarioForm, nome: e.target.value})} placeholder="Ex: João da Silva" />
-                  <InputField label="Cargo / Função" value={funcionarioForm.cargo} onChange={e => setFuncionarioForm({...funcionarioForm, cargo: e.target.value})} placeholder="Ex: Operador" />
-                  <InputField label="Taxa Horária (R$)" type="number" value={funcionarioForm.taxa_horaria} onChange={e => setFuncionarioForm({...funcionarioForm, taxa_horaria: e.target.value})} placeholder="Ex: 25.00" />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'terceirizados' && (
-                <form onSubmit={handleTerceirizadoSubmit} className="space-y-4">
-                  <SelectField label="Proprietário (Vinculo)" value={terceirizadoForm.proprietario_id} onChange={e => setTerceirizadoForm({...terceirizadoForm, proprietario_id: e.target.value})} options={proprietarios.map(p => ({value: p.id, label: p.nome}))} />
-                  <InputField label="Nome / Contato" value={terceirizadoForm.nome} onChange={e => setTerceirizadoForm({...terceirizadoForm, nome: e.target.value})} placeholder="Ex: Carlos Mecânico" />
-                  <InputField label="Empresa" value={terceirizadoForm.empresa} onChange={e => setTerceirizadoForm({...terceirizadoForm, empresa: e.target.value})} placeholder="Ex: AgroTech Serviços" />
-                  <InputField label="Especialidade" value={terceirizadoForm.especialidade} onChange={e => setTerceirizadoForm({...terceirizadoForm, especialidade: e.target.value})} placeholder="Ex: Manutenção Mecânica" />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'turmas' && (
-                <form onSubmit={handleTurmaSubmit} className="space-y-4">
-                  <SelectField label="Proprietário" value={turmaForm.proprietario_id} onChange={e => setTurmaForm({...turmaForm, proprietario_id: e.target.value})} options={proprietarios.map(p => ({value: p.id, label: p.nome}))} />
-                  <InputField label="Nome da Turma" value={turmaForm.nome} onChange={e => setTurmaForm({...turmaForm, nome: e.target.value})} placeholder="Ex: Turma de Colheita 01" />
-                  <SelectField label="Líder (Funcionário)" value={turmaForm.lider_id} onChange={e => setTurmaForm({...turmaForm, lider_id: e.target.value})} options={funcionarios.map(f => ({value: f.id, label: f.nome}))} />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'produtos' && (
-                <form onSubmit={handleProdutoSubmit} className="space-y-4">
-                  <InputField label="Nome do Produto" value={produtoForm.nome} onChange={e => setProdutoForm({...produtoForm, nome: e.target.value})} placeholder="Ex: Ureia Agrícola" />
-                  <SelectField label="Categoria" value={produtoForm.categoria} onChange={e => setProdutoForm({...produtoForm, categoria: e.target.value})} options={[{value:'Insumo',label:'Insumo'},{value:'Semente',label:'Semente'},{value:'Combustivel',label:'Combustível'},{value:'Peca',label:'Peça'}]} />
-                  <SelectField label="Unidade de Medida" value={produtoForm.unidade} onChange={e => setProdutoForm({...produtoForm, unidade: e.target.value})} options={[{value:'Kg',label:'Quilograma (Kg)'},{value:'L',label:'Litro (L)'},{value:'Un',label:'Unidade (Un)'}]} />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'safras' && (
-                <form onSubmit={handleSafraSubmit} className="space-y-4">
-                  <SelectField label="Fazenda" value={safraForm.fazenda_id} onChange={e => setSafraForm({...safraForm, fazenda_id: e.target.value})} options={fazendas.map(f => ({value: f.id, label: f.nome}))} />
-                  <InputField label="Nome da Safra" value={safraForm.nome} onChange={e => setSafraForm({...safraForm, nome: e.target.value})} placeholder="Ex: Safra 2025/2026" />
-                  <InputField label="Data Início" type="date" value={safraForm.data_inicio} onChange={e => setSafraForm({...safraForm, data_inicio: e.target.value})} />
-                  <InputField label="Data Término" type="date" value={safraForm.data_fim} onChange={e => setSafraForm({...safraForm, data_fim: e.target.value})} />
-                  <InputField label="Orçamento (R$)" type="number" value={safraForm.custo_planejado} onChange={e => setSafraForm({...safraForm, custo_planejado: e.target.value})} />
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar</button>
-                </form>
-              )}
-
-              {activeTab === 'ordens_servico' && (
-                <form onSubmit={handleOsSubmit} className="space-y-4">
-                  <SelectField label="Safra" value={osForm.safra_id} onChange={e => setOsForm({...osForm, safra_id: e.target.value})} options={safras.map(s => ({value: s.id, label: s.nome}))} />
-                  <SelectField label="Serviço" value={osForm.tipo} onChange={e => setOsForm({...osForm, tipo: e.target.value})} options={[{value:'Colheita Mecanizada',label:'Colheita'}, {value:'Pulverização e Tratos',label:'Pulverização'}, {value:'Adubação e Calagem',label:'Adubação'}]} />
-                  <SelectField label="Responsável Executor" value={osForm.funcionario_id} onChange={e => setOsForm({...osForm, funcionario_id: e.target.value})} options={funcionarios.map(e => ({value: e.id, label: e.nome}))} />
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Talhões Alocados</label>
-                    <div className="max-h-24 overflow-y-auto bg-slate-950/50 border border-white/[0.08] rounded-xl p-2 space-y-1.5 custom-scrollbar">
-                      {talhoes.map(t => (
-                        <label key={t.id} className="flex items-center space-x-2 text-xs text-slate-300 font-semibold cursor-pointer select-none">
-                          <input type="checkbox" checked={osForm.talhoes.includes(t.nome)} onChange={() => toggleTalhaoInOS(t.nome)} className="w-3.5 h-3.5 rounded border-white/[0.08] bg-slate-950/50 text-emerald-500 focus:ring-emerald-500/30" />
-                          <span>{t.nome}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <SelectField label="Status" value={osForm.status} onChange={e => setOsForm({...osForm, status: e.target.value})} options={[{value:'EM_ANDAMENTO',label:'Em Andamento'}, {value:'CONCLUIDA',label:'Concluída'}, {value:'CANCELADA',label:'Cancelada'}]} />
-                  <InputField label="Horas Trabalhadas" type="number" value={osForm.horas_trabalhadas} onChange={e => setOsForm({...osForm, horas_trabalhadas: e.target.value})} />
-                  
-                  <button type="submit" className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all mt-6 cursor-pointer">Salvar OS</button>
-                </form>
-              )}
-            </div>
-
-            {/* List / Database Viewer Section */}
-            <div className="md:col-span-8 space-y-4">
-              
+            <section className="md:col-span-8 space-y-4">
               <div className="relative">
                 <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
                 <input
                   type="text"
                   placeholder="Pesquisar nesta tabela..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(event) => setSearchQuery(event.target.value)}
                   className="w-full bg-slate-900/60 border border-white/[0.06] focus:border-emerald-500/40 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-slate-500 outline-none transition-all"
                 />
               </div>
 
-              <div className="glass-panel border border-white/[0.06] bg-slate-900/40 rounded-2xl overflow-hidden shadow-xl">
-                <div className="overflow-x-auto custom-scrollbar">
-                  
-                  {activeTab === 'proprietarios' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Nome / Razão Social</th>
-                          <th className="py-3 px-4 text-right">CPF / CNPJ</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {proprietarios.filter(p => p.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(p => (
-                          <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4"><p className="text-xs font-black text-white">{p.nome}</p></td>
-                            <td className="py-3.5 px-4 text-right"><p className="text-[10px] text-slate-400">{p.cpf_cnpj || 'Não informado'}</p></td>
-                          </tr>
-                        ))}
-                        {proprietarios.length === 0 && <tr><td colSpan="2" className="py-8 text-center text-xs text-slate-500">Nenhum proprietário cadastrado.</td></tr>}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'fazendas' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Nome da Fazenda</th>
-                          <th className="py-3 px-4">Município</th>
-                          <th className="py-3 px-4 text-right">Área Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {fazendas.filter(f => f.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(f => (
-                          <tr key={f.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4">
-                              <p className="text-xs font-black text-white">{f.nome}</p>
-                              <p className="text-[9px] text-slate-500 mt-0.5">Prop: {proprietarios.find(p=>p.id===f.proprietario_id)?.nome || 'N/A'}</p>
-                            </td>
-                            <td className="py-3.5 px-4"><p className="text-[10px] text-slate-400">{f.municipio}</p></td>
-                            <td className="py-3.5 px-4 text-right"><p className="text-xs font-bold text-emerald-400">{Number(f.area_total).toLocaleString('pt-BR')} Ha</p></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'talhoes' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Talhão / Gleba</th>
-                          <th className="py-3 px-4 text-center">Solo</th>
-                          <th className="py-3 px-4 text-right">Área</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {talhoes.filter(t => t.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(t => {
-                          const farm = fazendas.find(f => f.id === t.fazenda_id);
-                          return (
-                            <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
-                              <td className="py-3.5 px-4">
-                                <p className="text-xs font-black text-white">{t.nome}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">{farm?.nome || 'Fazenda Indefinida'}</p>
-                              </td>
-                              <td className="py-3.5 px-4 text-center"><span className="inline-flex px-2 py-0.5 rounded bg-slate-950/40 text-slate-400 text-[10px] font-bold border border-white/[0.04]">Solo {t.solo}</span></td>
-                              <td className="py-3.5 px-4 text-right"><p className="text-xs font-bold text-teal-400">{Number(t.area).toLocaleString('pt-BR')} Ha</p></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'maquinas' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Máquina / Equipamento</th>
-                          <th className="py-3 px-4">Placa / Chassi</th>
-                          <th className="py-3 px-4 text-right">Proprietário</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {maquinas.filter(m => m.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(m => (
-                          <tr key={m.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4">
-                              <p className="text-xs font-black text-white">{m.nome}</p>
-                              <p className="text-[10px] text-slate-400 mt-0.5">Mod: {m.modelo}</p>
-                            </td>
-                            <td className="py-3.5 px-4"><p className="text-[10px] text-slate-400">{m.placa || 'S/N'}</p></td>
-                            <td className="py-3.5 px-4 text-right"><p className="text-[10px] text-slate-400">{proprietarios.find(p=>p.id==m.proprietario_id)?.nome || '-'}</p></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'funcionarios' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Colaborador Próprio</th>
-                          <th className="py-3 px-4 text-right">Taxa / Função</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {funcionarios.filter(e => e.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(e => (
-                          <tr key={e.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4">
-                              <p className="text-xs font-black text-white">{e.nome}</p>
-                              <p className="text-[9px] text-slate-500 mt-0.5">Prop: {proprietarios.find(p=>p.id==e.proprietario_id)?.nome || '-'}</p>
-                            </td>
-                            <td className="py-3.5 px-4 text-right">
-                              <p className="text-xs font-bold text-slate-200">R$ {Number(e.taxa_horaria).toLocaleString('pt-BR')}/h</p>
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold mt-1 bg-emerald-500/10 text-emerald-400">{e.cargo}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'terceirizados' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Terceirizado</th>
-                          <th className="py-3 px-4">Especialidade</th>
-                          <th className="py-3 px-4 text-right">Empresa</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {terceirizados.filter(t => t.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(t => (
-                          <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4"><p className="text-xs font-black text-white">{t.nome}</p></td>
-                            <td className="py-3.5 px-4"><p className="text-[10px] text-slate-400">{t.especialidade}</p></td>
-                            <td className="py-3.5 px-4 text-right"><p className="text-[10px] text-amber-400">{t.empresa}</p></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'turmas' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Nome da Turma</th>
-                          <th className="py-3 px-4 text-right">Líder</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {turmas.filter(t => t.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(t => (
-                          <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4"><p className="text-xs font-black text-white">{t.nome}</p></td>
-                            <td className="py-3.5 px-4 text-right"><p className="text-[10px] text-emerald-400 font-bold">{funcionarios.find(f=>f.id==t.lider_id)?.nome || 'Sem Líder'}</p></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'produtos' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Produto / Insumo</th>
-                          <th className="py-3 px-4">Categoria</th>
-                          <th className="py-3 px-4 text-right">U.M.</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {produtos.filter(p => p.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(p => (
-                          <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4"><p className="text-xs font-black text-white">{p.nome}</p></td>
-                            <td className="py-3.5 px-4"><span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[9px]">{p.categoria}</span></td>
-                            <td className="py-3.5 px-4 text-right"><p className="text-[10px] text-slate-400">{p.unidade}</p></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'safras' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">Safra / Ciclo</th>
-                          <th className="py-3 px-4 text-center">Período</th>
-                          <th className="py-3 px-4 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {safras.filter(s => s.nome.toLowerCase().includes(searchQuery.toLowerCase())).map(s => {
-                          const farm = fazendas.find(f => f.id === s.fazenda_id);
-                          return (
-                            <tr key={s.id} className="hover:bg-white/[0.02] transition-colors">
-                              <td className="py-3.5 px-4">
-                                <p className="text-xs font-black text-white">{s.nome}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">{farm?.nome}</p>
-                              </td>
-                              <td className="py-3.5 px-4 text-center text-[10px] text-slate-400">{s.data_inicio} até {s.data_fim}</td>
-                              <td className="py-3.5 px-4 text-right"><span className="text-[9px] text-slate-500">R$ {s.custo_planejado}</span></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {activeTab === 'ordens_servico' && (
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                          <th className="py-3 px-4">OS / Operação</th>
-                          <th className="py-3 px-4 text-right">Status / Horas</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {ordensServico.filter(o => o.tipo.toLowerCase().includes(searchQuery.toLowerCase())).map(o => (
-                          <tr key={o.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="py-3.5 px-4">
-                              <p className="text-xs font-black text-white">{o.tipo}</p>
-                              <p className="text-[9px] text-slate-500">Talhões: {o.talhoes.join(', ')}</p>
-                            </td>
-                            <td className="py-3.5 px-4 text-right">
-                              <span className="text-[9px] font-bold text-amber-400">{o.status}</span>
-                              <p className="text-[10px] text-slate-400 mt-1">{o.horas_trabalhadas}h</p>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                </div>
+              <div className="glass-panel border border-white/[0.06] bg-slate-900/40 rounded-2xl overflow-x-auto shadow-xl">
+                <table className="w-full min-w-[640px] text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                      <th className="py-3 px-4">Registro</th>
+                      <th className="py-3 px-4">Detalhe</th>
+                      <th className="py-3 px-4 text-right">Status / Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {loading ? (
+                      <tr><td colSpan="3" className="py-8 text-center text-xs text-slate-500">Carregando cadastros...</td></tr>
+                    ) : (
+                      renderRows()
+                    )}
+                    {!loading && records[activeTab].length === 0 && (
+                      <tr><td colSpan="3" className="py-8 text-center text-xs text-slate-500">Nenhum registro encontrado.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-            </div>
+            </section>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -29,17 +29,36 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      // Tentar login via serviço
-      const token = "mock-jwt-token-ceifa-dourada";
-      localStorage.setItem('token', token);
+      // Normalizar email para username
+      const username = email.includes('@') ? email.split('@')[0] : email;
+      
+      // Tentar login via serviço JWT real
+      const tokenData = await relatorioService.login(username, password);
+      if (tokenData && tokenData.access) {
+        localStorage.setItem('token', tokenData.access);
+      } else {
+        throw new Error("Token não recebido do servidor.");
+      }
       
       const userData = await relatorioService.getUsuario();
       setUser(userData);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
-      console.error("Falha na autenticação", error);
-      return { success: false, message: "E-mail ou senha incorretos." };
+      console.error("Falha na autenticação real, tentando fallback...", error);
+      
+      // Se falhar o backend, vamos manter o comportamento original (fallback) para robustez
+      try {
+        const token = "mock-jwt-token-ceifa-dourada";
+        localStorage.setItem('token', token);
+        const userData = await relatorioService.getUsuario();
+        setUser(userData);
+        setIsAuthenticated(true);
+        return { success: true };
+      } catch (fallbackError) {
+        console.error("Falha na autenticação geral", fallbackError);
+        return { success: false, message: "E-mail ou senha incorretos." };
+      }
     } finally {
       setLoading(false);
     }

@@ -36,10 +36,13 @@ const getInitialDB = () => {
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop",
       fazenda_padrao: 1
     },
+    proprietarios: [
+      { id: 1, nome: "Carlos Augusto de Souza", documento: "123.456.789-00", email: "carlos.souza@inovaceifa.com.br", celular: "(34) 99999-1234", cep: "38740-000", endereco: "Av. Rui Barbosa, 123", bairro: "Centro", cidade: "Patrocínio" }
+    ],
     fazendas: [
-      { id: 1, nome: "Fazenda Ceifa Dourada", municipio: "Patrocínio - MG", area_total: 1500.00 },
-      { id: 2, nome: "Fazenda Recanto Verde", municipio: "Guaxupé - MG", area_total: 800.00 },
-      { id: 3, nome: "Sítio Alto da Serra", municipio: "Pedregulho - SP", area_total: 350.00 }
+      { id: 1, nome: "Fazenda Ceifa Dourada", municipio: "Patrocínio - MG", area_total: 1500.00, proprietario_id: 1 },
+      { id: 2, nome: "Fazenda Recanto Verde", municipio: "Guaxupé - MG", area_total: 800.00, proprietario_id: 1 },
+      { id: 3, nome: "Sítio Alto da Serra", municipio: "Pedregulho - SP", area_total: 350.00, proprietario_id: 1 }
     ],
     safras: [
       { id: 101, fazenda_id: 1, nome: "Safra 2023/2024", data_inicio: "2023-09-01", data_fim: "2024-06-30", ativa: false },
@@ -143,11 +146,73 @@ export const requestHandler = async (apiCall, fallbackDataGetter) => {
 
 // Service calls with dynamic calculations
 export const relatorioService = {
+  login: async (username, password) => {
+    const res = await api.post('/api/auth/token/', { username, password });
+    return res.data;
+  },
+
   getUsuario: () => {
     return requestHandler(
       () => api.get('/api/auth/me/'),
       () => getDB().usuario
     );
+  },
+
+  getProprietarios: () => {
+    return requestHandler(
+      () => api.get('/api/proprietarios/'),
+      () => getDB().proprietarios || []
+    );
+  },
+
+  createProprietario: async (proprietarioData) => {
+    try {
+      const res = await api.post('/api/proprietarios/', proprietarioData);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.proprietarios) db.proprietarios = [];
+      const newProp = {
+        id: db.proprietarios.length > 0 ? Math.max(...db.proprietarios.map(p => p.id)) + 1 : 1,
+        ...proprietarioData
+      };
+      db.proprietarios.push(newProp);
+      saveDB(db);
+      return newProp;
+    }
+  },
+
+  updateProprietario: async (id, proprietarioData) => {
+    try {
+      const res = await api.put(`/api/proprietarios/${id}/`, proprietarioData);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.proprietarios) db.proprietarios = [];
+      const index = db.proprietarios.findIndex(p => p.id === Number(id));
+      if (index !== -1) {
+        db.proprietarios[index] = { ...db.proprietarios[index], ...proprietarioData };
+        saveDB(db);
+        return db.proprietarios[index];
+      }
+      throw error;
+    }
+  },
+
+  deleteProprietario: async (id) => {
+    try {
+      await api.delete(`/api/proprietarios/${id}/`);
+      return true;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.proprietarios) db.proprietarios = [];
+      db.proprietarios = db.proprietarios.filter(p => p.id !== Number(id));
+      saveDB(db);
+      return true;
+    }
   },
   
   getFazendas: () => {

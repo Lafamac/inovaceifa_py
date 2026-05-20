@@ -71,3 +71,159 @@
 .dark .recharts-cartesian-grid-vertical line {
   stroke: rgba(255, 255, 255, 0.05) !important;
 }
+
+/* Cadastros page theme polish. These scoped rules neutralize legacy utility
+   classes inside the page while still respecting the global light/dark mode. */
+.cadastros-page {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  color: #0f172a;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.16);
+}
+
+.dark .cadastros-page {
+  background: #0f172a;
+  border-color: rgba(51, 65, 85, 0.9);
+  color: #e2e8f0;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.cadastros-page .glass-panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: none;
+}
+
+.dark .cadastros-page .glass-panel {
+  background: #111827 !important;
+  border-color: rgba(51, 65, 85, 0.95) !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35) !important;
+}
+
+.cadastros-page .text-white,
+.cadastros-page .text-slate-200,
+.cadastros-page .text-slate-300 {
+  color: #0f172a !important;
+}
+
+.dark .cadastros-page .text-white,
+.dark .cadastros-page .text-slate-200,
+.dark .cadastros-page .text-slate-300 {
+  color: #e2e8f0 !important;
+}
+
+.cadastros-page .text-slate-400 {
+  color: #475569 !important;
+}
+
+.dark .cadastros-page .text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+.cadastros-page .text-slate-500 {
+  color: #64748b !important;
+}
+
+.dark .cadastros-page .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.cadastros-page h1,
+.cadastros-page h2,
+.cadastros-page h3 {
+  color: #0f172a !important;
+}
+
+.dark .cadastros-page h1,
+.dark .cadastros-page h2,
+.dark .cadastros-page h3 {
+  color: #f8fafc !important;
+}
+
+.cadastros-page input,
+.cadastros-page select {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.dark .cadastros-page input,
+.dark .cadastros-page select {
+  background: #020617 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.cadastros-page input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.dark .cadastros-page input::placeholder {
+  color: #64748b !important;
+}
+
+.cadastros-page select option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark .cadastros-page select option {
+  background: #020617 !important;
+  color: #f8fafc !important;
+}
+
+.cadastros-page table thead tr {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.dark .cadastros-page table thead tr {
+  background: #020617 !important;
+  border-bottom-color: #334155 !important;
+}
+
+.cadastros-page tbody {
+  background: #ffffff;
+}
+
+.dark .cadastros-page tbody {
+  background: #111827;
+}
+
+.cadastros-page tbody tr {
+  border-bottom: 1px solid #eef2f7 !important;
+}
+
+.dark .cadastros-page tbody tr {
+  border-bottom-color: #1e293b !important;
+}
+
+.cadastros-page tbody tr:hover {
+  background: #f0fdf4 !important;
+}
+
+.dark .cadastros-page tbody tr:hover {
+  background: rgba(6, 78, 59, 0.25) !important;
+}
+
+.cadastros-page aside button:not(:disabled):hover {
+  background: #f1f5f9 !important;
+}
+
+.dark .cadastros-page aside button:not(:disabled):hover {
+  background: #1e293b !important;
+}
+
+.cadastros-page aside button.border-emerald-500\/30 {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #34d399 !important;
+}
+
+.dark .cadastros-page aside button.border-emerald-500\/30 {
+  background: rgba(6, 78, 59, 0.35) !important;
+  color: #6ee7b7 !important;
+  border-color: #10b981 !important;
+}

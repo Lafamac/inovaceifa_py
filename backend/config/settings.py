@@ -164,7 +164,8 @@ SPECTACULAR_SETTINGS = {
 
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
 STATIC_URL = 'static/'
+
+# CORS Configuration
+CORS_ALLOW_ALL_ORIGINS = True
+
