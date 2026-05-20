@@ -7,6 +7,7 @@
 - **Backend**: Python, Django, Django REST Framework, SimpleJWT (`djangorestframework-simplejwt`).
 - **Banco de Dados**: PostgreSQL.
 - **Frontend**: React, Vite, React Router, Axios, Zustand ou Context API, TailwindCSS.
+- **Responsividade & Design**: Layout adaptável móvel-tablet-notebook (Mobile-First / Touch-First), menus colapsáveis, formulários otimizados para toque e grids flexíveis.
 - **Infraestrutura & DevOps**:
   - **Docker**: Ambiente conteinerizado para garantir isolamento e execução uniforme entre desenvolvimento e produção.
   - **Swagger (OpenAPI)**: Documentação interativa de endpoints para fácil integração e testes da API.
@@ -91,30 +92,45 @@
 
 
 ### 📊 Fase 7: Relatórios (`relatorios`)
-- [ ] Criar app `relatorios` apenas com views analíticas (somente leitura - cálculos via query/service).
-- [ ] Implementar endpoints analíticos:
-  - [ ] `/comparativo-safra/` (Comparativo planejado x realizado)
-  - [ ] `/custo-talhao/` (Custo por talhão)
-  - [ ] `/custo-mensal/` (Custo mensal por fazenda)
-  - [ ] `/fluxo-caixa/` (Fluxo de caixa)
-  - [ ] `/eficiencia-operacional/` (Eficiência operacional)
-  - [ ] `/consumo-diesel/` (Consumo de diesel)
-  - [ ] `/mof/` (Análise de mão de obra fixa)
-  - [ ] `/estoque/` (Estoque por produto/fazenda)
-  - [ ] `/gestao-a-vista/` (Gestão à vista)
-  - [ ] `/producao-talhao/` (Produção por talhão)
+- [x] Criar app `relatorios` apenas com views analíticas (somente leitura - cálculos via query/service).
+- [x] Implementar endpoints analíticos:
+  - [x] `/comparativo-safra/` (Comparativo planejado x realizado)
+  - [x] `/custo-talhao/` (Custo por talhão)
+  - [x] `/custo-mensal/` (Custo mensal por fazenda)
+  - [x] `/fluxo-caixa/` (Fluxo de caixa)
+  - [x] `/eficiencia-operacional/` (Eficiência operacional)
+  - [x] `/consumo-diesel/` (Consumo de diesel)
+  - [x] `/mof/` (Análise de mão de obra fixa)
+  - [x] `/estoque/` (Estoque por produto/fazenda)
+  - [x] `/gestao-a-vista/` (Gestão à vista)
+  - [x] `/producao-talhao/` (Produção por talhão)
 
-### 💻 Fase 8: Frontend (React)
+### 💻 Fase 8: Frontend (React) - Totalmente Responsivo (Mobile, Tablet, Notebook)
 - [ ] Setup do Projeto React (Vite, React Router, TailwindCSS, Zustand ou Context).
+- [ ] Configurar layout base responsivo com barra de navegação/sidebar colapsável para mobile e gestos otimizados.
 - [ ] Configurar Axios Interceptor para enviar `X-Safra-ID` automaticamente no header.
 - [ ] Implementar `SafraContext` global mantendo estado de `{ proprietario, fazenda_ativa, safra_ativa }`.
-- [ ] Criar Seletor de Safra/Fazenda no Topo (Header).
-- [ ] Desenvolver Telas respeitando permissões de Perfil:
-  - [ ] Dashboard / Gestão à Vista.
-  - [ ] Cadastros Base.
-  - [ ] Planejamento (Apenas perfil 1).
-  - [ ] Operações / Apontamentos.
-  - [ ] Relatórios Analíticos.
+- [ ] Criar Seletor de Safra/Fazenda responsivo no Topo (Header).
+- [ ] Desenvolver Telas respeitando permissões de Perfil e adaptadas para mobile/tablet/notebook:
+  - [ ] **Dashboard / Gestão à Vista**: Gráficos e resumos otimizados para telas menores.
+  - [ ] **Módulo Completo de Cadastros (CRUDs responsivos)**:
+    - [ ] Proprietário
+    - [ ] Fazenda
+    - [ ] Safra
+    - [ ] Talhão
+    - [ ] Funcionários
+    - [ ] Terceirizados
+    - [ ] Turmas de Trabalho
+    - [ ] Produtos e Insumos
+    - [ ] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo)
+    - [ ] Contas a Pagar (Gestão financeira integrada)
+    - [ ] Ordens de Serviço (Cadastro, listagem e apontamentos operacionais em campo)
+  - [ ] **Planejamento de Safra (Apenas perfil 1)**:
+    - [ ] Interface intuitiva para criação, edição e aprovação de planejamentos (talhões, adubação, insumos, mão de obra terceirizada, rateios).
+    - [ ] Fluxo e botão para **Geração de Ordens de Serviço Reais** (`POST /api/planejamentos/{id}/gerar-ordens-servico/`).
+  - [ ] **Impressão e Gestão de Ordens de Serviço**:
+    - [ ] Tela de impressão amigável (CSS `@media print` customizado para folha A4 e PDFs bem estruturados para operadores de campo).
+  - [ ] **Relatórios Analíticos**: Visualização responsiva de tabelas e fluxos.
 
 ---
 
@@ -177,16 +193,16 @@
 - [ ] `GET/POST /api/financeiro/contas-receber/`
 
 ### Relatórios Analíticos
-- [ ] `GET /api/relatorios/comparativo-safra/`
-- [ ] `GET /api/relatorios/custo-talhao/`
-- [ ] `GET /api/relatorios/custo-mensal/`
-- [ ] `GET /api/relatorios/fluxo-caixa/`
-- [ ] `GET /api/relatorios/eficiencia-operacional/`
-- [ ] `GET /api/relatorios/consumo-diesel/`
-- [ ] `GET /api/relatorios/mof/`
-- [ ] `GET /api/relatorios/estoque/`
-- [ ] `GET /api/relatorios/gestao-a-vista/`
-- [ ] `GET /api/relatorios/producao-talhao/`
+- [x] `GET /api/relatorios/comparativo-safra/`
+- [x] `GET /api/relatorios/custo-talhao/`
+- [x] `GET /api/relatorios/custo-mensal/`
+- [x] `GET /api/relatorios/fluxo-caixa/`
+- [x] `GET /api/relatorios/eficiencia-operacional/`
+- [x] `GET /api/relatorios/consumo-diesel/`
+- [x] `GET /api/relatorios/mof/`
+- [x] `GET /api/relatorios/estoque/`
+- [x] `GET /api/relatorios/gestao-a-vista/`
+- [x] `GET /api/relatorios/producao-talhao/`
 
 ---
 
@@ -206,4 +222,3 @@
 3. **Evitar Colunas por Talhão**: Na tabela de rateio, usar tabelas filhas normalizadas (`RateioTalhao`), nunca colunas dinâmicas.
 4. **Fechamento de Custos Bloqueante**: A consolidação mensal financeira das OSs exige o fechamento prévio e obrigatório dos custos das máquinas no respectivo mês (`CustoMensalMaquina`).
 5. **Filtros e Permissões**: Testar rigorosamente filtros por `safra` e validações de acesso a endpoints desde o primeiro dia de implementação de cada fase.
-
