@@ -519,6 +519,245 @@ export const relatorioService = {
         };
       }
     );
+  },
+
+  getCustoTalhao: (safraId, fazendaId) => {
+    return requestHandler(
+      () => api.get(`/api/relatorios/custo-talhao/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      () => {
+        const db = getDB();
+        const talhoes = db.talhoes.filter(t => t.fazenda_id === Number(fazendaId));
+        return {
+          fazenda_id: fazendaId,
+          fazenda_name: db.fazendas.find(f => f.id === Number(fazendaId))?.nome || "Fazenda",
+          custos_por_talhao: talhoes.map(t => {
+            const area = t.area;
+            const mo = area * 450.00;
+            const hm = area * 320.00;
+            const ins = area * 1150.00;
+            return {
+              id: t.id,
+              codigo: t.nome.split(" - ")[0],
+              nome: t.nome.split(" - ")[1] || t.nome,
+              area: area,
+              cultura: "Café",
+              mão_de_obra: Number(mo.toFixed(2)),
+              hora_maquina: Number(hm.toFixed(2)),
+              insumos: Number(ins.toFixed(2)),
+              total: Number((mo + hm + ins).toFixed(2))
+            };
+          })
+        };
+      }
+    );
+  },
+
+  getCustoMensal: (safraId, fazendaId) => {
+    return requestHandler(
+      () => api.get(`/api/relatorios/custo-mensal/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      () => {
+        const db = getDB();
+        const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
+        const meses = [
+          { key: "2024-09", mes: "Set/2024", insumos: 85000.00, mao_obra: 42000.00, outros: 15000.00 },
+          { key: "2024-10", mes: "Out/2024", insumos: 125000.00, mao_obra: 43000.00, outros: 12000.00 },
+          { key: "2024-11", mes: "Nov/2024", insumos: 65000.00, mao_obra: 45000.00, outros: 18000.00 },
+          { key: "2024-12", mes: "Dez/2024", insumos: 14000.00, mao_obra: 49000.00, outros: 25000.00 },
+          { key: "2025-01", mes: "Jan/2025", insumos: 195000.00, mao_obra: 52000.00, outros: 30000.00 },
+          { key: "2025-02", mes: "Fev/2025", insumos: 45000.00, mao_obra: 48000.00, outros: 14000.00 }
+        ];
+        return {
+          fazenda_id: fazendaId,
+          fazenda_nome: fz.nome,
+          custos_mensais: meses.map(m => ({
+            ...m,
+            total: Number((m.insumos + m.mao_obra + m.outros).toFixed(2))
+          }))
+        };
+      }
+    );
+  },
+
+  getConsumoDiesel: (safraId, fazendaId) => {
+    return requestHandler(
+      () => api.get(`/api/relatorios/consumo-diesel/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      () => {
+        const db = getDB();
+        const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
+        const mensal = [
+          { key: "2024-09", mes: "Set/2024", litros: 1200.0, valor_total: 7200.0 },
+          { key: "2024-10", mes: "Out/2024", litros: 1500.0, valor_total: 9050.0 },
+          { key: "2024-11", mes: "Nov/2024", litros: 1100.0, valor_total: 6600.0 },
+          { key: "2024-12", mes: "Dez/2024", litros: 800.0, valor_total: 4880.0 },
+          { key: "2025-01", mes: "Jan/2025", litros: 1600.0, valor_total: 9760.0 },
+          { key: "2025-02", mes: "Fev/2025", litros: 1350.0, valor_total: 8235.0 }
+        ].map(m => ({
+          ...m,
+          preco_medio: Number((m.valor_total / m.litros).toFixed(2))
+        }));
+
+        const total_litros = mensal.reduce((sum, curr) => sum + curr.litros, 0);
+        const total_valor = mensal.reduce((sum, curr) => sum + curr.valor_total, 0);
+
+        return {
+          fazenda_id: fazendaId,
+          fazenda_nome: fz.nome,
+          consolidado: {
+            total_litros: Number(total_litros.toFixed(2)),
+            total_valor: Number(total_valor.toFixed(2)),
+            preco_medio: total_litros > 0 ? Number((total_valor / total_litros).toFixed(2)) : 0.0
+          },
+          consumo_mensal_estoque: mensal,
+          maquinas_abastecimento: [
+            { maquina_id: 1, codigo: "TR-01", maquina__codigo: "TR-01", codigo_maquina: "TR-01", maquina_codigo: "TR-01", codigo: "TR-01", descricao: "Trator John Deere 5078E", custo_abastecimento_total: 24500.00, horas_trabalhadas_total: 420.0 },
+            { maquina_id: 2, codigo: "TR-02", maquina__codigo: "TR-02", codigo_maquina: "TR-02", maquina_codigo: "TR-02", codigo: "TR-02", descricao: "Trator Massey Ferguson 4707", custo_abastecimento_total: 15300.00, horas_trabalhadas_total: 310.0 },
+            { maquina_id: 3, codigo: "CL-01", maquina__codigo: "CL-01", codigo_maquina: "CL-01", maquina_codigo: "CL-01", codigo: "CL-01", descricao: "Colhedora de Café Pinhalense", custo_abastecimento_total: 18925.00, horas_trabalhadas_total: 180.0 }
+          ]
+        };
+      }
+    );
+  },
+
+  getAnaliseMOF: (safraId, fazendaId) => {
+    return requestHandler(
+      () => api.get(`/api/relatorios/mof/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      () => {
+        const db = getDB();
+        const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
+        const folha = [
+          { key: "2024-09", mes: "09/2024", salario_base: 38000.00, encargos: 11400.00, beneficios: 7600.00, funcionarios_count: 14 },
+          { key: "2024-10", mes: "10/2024", salario_base: 38000.00, encargos: 11400.00, beneficios: 7600.00, funcionarios_count: 14 },
+          { key: "2024-11", mes: "11/2024", salario_base: 38000.00, encargos: 11400.00, beneficios: 7600.00, funcionarios_count: 14 },
+          { key: "2024-12", mes: "12/2024", salario_base: 42000.00, encargos: 12600.00, beneficios: 8400.00, funcionarios_count: 15 },
+          { key: "2025-01", mes: "01/2025", salario_base: 42000.00, encargos: 12600.00, beneficios: 8400.00, funcionarios_count: 15 },
+          { key: "2025-02", mes: "02/2025", salario_base: 42000.00, encargos: 12600.00, beneficios: 8400.00, funcionarios_count: 15 }
+        ].map(m => ({
+          ...m,
+          total: Number((m.salario_base + m.encargos + m.beneficios).toFixed(2))
+        }));
+
+        const funcs = [
+          { funcionario_id: 1, nome: "João Silva", cargo: "Operador de Trator", grupo: "Campo", salario_base: 18000.00, encargos: 5400.00, beneficios: 3600.00, meses_trabalhados: 6 },
+          { funcionario_id: 2, nome: "Maria Oliveira", cargo: "Auxiliar Agrícola", grupo: "Campo", salario_base: 13200.00, encargos: 3960.00, beneficios: 2640.00, meses_trabalhados: 6 },
+          { funcionario_id: 3, nome: "Pedro Santos", cargo: "Supervisor de Campo", grupo: "Supervisão", salario_base: 28000.00, encargos: 8400.00, beneficios: 5600.00, meses_trabalhados: 6 },
+          { funcionario_id: 4, nome: "José Ferreira", cargo: "Auxiliar de Secagem", grupo: "Pós-Colheita", salario_base: 12600.00, encargos: 3780.00, beneficios: 2520.00, meses_trabalhados: 6 }
+        ].map(f => ({
+          ...f,
+          total: Number((f.salario_base + f.encargos + f.beneficios).toFixed(2))
+        }));
+
+        return {
+          fazenda_id: fazendaId,
+          fazenda_nome: fz.nome,
+          folha_mensal: folha,
+          funcionarios_totais: funcs
+        };
+      }
+    );
+  },
+
+  getEstoque: (safraId, fazendaId) => {
+    return requestHandler(
+      () => api.get(`/api/relatorios/estoque/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      () => {
+        const db = getDB();
+        const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
+        const estoque = [
+          { produto_id: 1, codigo: "INS-001", nome_comercial: "Adubo NPK 20-00-20", unidade: "KG", classificacao: "Adubos / Fertilizantes", saldo: 45000.0000, preco_medio: 3.2500, valor_total: 146250.00, alerta_negativo: false },
+          { produto_id: 2, codigo: "INS-002", nome_comercial: "Calcário Agrícola", unidade: "T", classificacao: "Adubos / Fertilizantes", saldo: 120.0000, preco_medio: 180.0000, valor_total: 21600.00, alerta_negativo: false },
+          { produto_id: 3, codigo: "INS-003", nome_comercial: "Fungicida Priori Xtra", unidade: "L", classificacao: "Defensivos Químicos", saldo: 85.0000, preco_medio: 310.0000, valor_total: 26350.00, alerta_negativo: false },
+          { produto_id: 4, codigo: "INS-004", nome_comercial: "Óleo Mineral", unidade: "L", classificacao: "Defensivos Químicos", saldo: -15.0000, preco_medio: 22.0000, valor_total: -330.00, alerta_negativo: true },
+          { produto_id: 5, codigo: "INS-005", nome_comercial: "Gesso Agrícola", unidade: "T", classificacao: "Adubos / Fertilizantes", saldo: 45.0000, preco_medio: 145.0000, valor_total: 6525.00, alerta_negativo: false },
+          { produto_id: 6, codigo: "DSL-001", nome_comercial: "Óleo Diesel S10", unidade: "L", classificacao: "Combustíveis", saldo: 2800.0000, preco_medio: 5.8500, valor_total: 16380.00, alerta_negativo: false }
+        ];
+
+        return {
+          fazenda_id: fazendaId,
+          fazenda_nome: fz.nome,
+          estoque: estoque
+        };
+      }
+    );
+  },
+
+  getGestaoAVista: (safraId, fazendaId) => {
+    return requestHandler(
+      () => api.get(`/api/relatorios/gestao-a-vista/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      () => {
+        const db = getDB();
+        const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
+        const talhoes = db.talhoes.filter(t => t.fazenda_id === Number(fazendaId));
+        const totalArea = talhoes.reduce((sum, curr) => sum + curr.area, 0);
+
+        return {
+          fazenda_id: fazendaId,
+          fazenda_nome: fz.nome,
+          kpis: {
+            hectares_cultivados: totalArea || 1380.00,
+            estimativa_producao_sacas: 48500.00,
+            produtividade_esperada: 35.14,
+            coe_planejado: 980000.00,
+            coe_realizado: 812000.00,
+            total_horas_operador: 450.00,
+            eficiencia_geral: 3.07,
+            os_status: {
+              RASCUNHO: 1,
+              APROVADA: 2,
+              EM_EXECUCAO: 3,
+              CONCLUIDA: 18,
+              CANCELADA: 0,
+              ATRASADA: 4
+            }
+          }
+        };
+      }
+    );
+  },
+
+  getProducaoTalhao: (safraId, fazendaId) => {
+    return requestHandler(
+      () => api.get(`/api/relatorios/producao-talhao/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      () => {
+        const db = getDB();
+        const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
+        const talhoes = db.talhoes.filter(t => t.fazenda_id === Number(fazendaId));
+        const listData = talhoes.map((t, index) => {
+          const area = t.area;
+          const est_sacas = area * 35;
+          const real_sacas = est_sacas * (1 + (index % 3 === 0 ? 0.12 : index % 3 === 1 ? -0.05 : 0.02));
+          const est_prod = 35;
+          const real_prod = real_sacas / area;
+          const desvio = real_sacas - est_sacas;
+          const desvio_pct = (desvio / est_sacas) * 100;
+
+          return {
+            talhao_id: t.id,
+            codigo: t.nome.split(" - ")[0],
+            nome: t.nome.split(" - ")[1] || t.nome,
+            area: area,
+            estimado: {
+              sacas: Number(est_sacas.toFixed(2)),
+              produtividade: Number(est_prod.toFixed(2))
+            },
+            real: {
+              sacas: Number(real_sacas.toFixed(2)),
+              produtividade: Number(real_prod.toFixed(2))
+            },
+            desvio_sacas: Number(desvio.toFixed(2)),
+            desvio_percentual: Number(desvio_pct.toFixed(2))
+          };
+        });
+
+        const total_sacas = listData.reduce((sum, curr) => sum + curr.real.sacas, 0);
+
+        return {
+          fazenda_id: fazendaId,
+          fazenda_nome: fz.nome,
+          total_comercializado_sacas: Number(total_sacas.toFixed(2)),
+          producao_por_talhao: listData
+        };
+      }
+    );
   }
 };
 

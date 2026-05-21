@@ -222,3 +222,4 @@
 3. **Evitar Colunas por Talhão**: Na tabela de rateio, usar tabelas filhas normalizadas (`RateioTalhao`), nunca colunas dinâmicas.
 4. **Fechamento de Custos Bloqueante**: A consolidação mensal financeira das OSs exige o fechamento prévio e obrigatório dos custos das máquinas no respectivo mês (`CustoMensalMaquina`).
 5. **Filtros e Permissões**: Testar rigorosamente filtros por `safra` e validações de acesso a endpoints desde o primeiro dia de implementação de cada fase.
+
