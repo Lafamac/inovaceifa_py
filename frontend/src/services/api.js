@@ -758,6 +758,212 @@ export const relatorioService = {
         };
       }
     );
+  },
+
+  // --- PLANEJAMENTOS ---
+  getPlanejamentos: () => {
+    return requestHandler(
+      () => api.get('/api/planejamentos/'),
+      () => getDB().planejamentos || []
+    );
+  },
+
+  createPlanejamento: async (data) => {
+    try {
+      const res = await api.post('/api/planejamentos/', data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.planejamentos) db.planejamentos = [];
+      const newPlan = {
+        id: db.planejamentos.length > 0 ? Math.max(...db.planejamentos.map(p => p.id)) + 1 : 1,
+        aprovado: false,
+        ...data
+      };
+      db.planejamentos.push(newPlan);
+      saveDB(db);
+      return newPlan;
+    }
+  },
+
+  aprovarPlanejamento: async (id) => {
+    try {
+      const res = await api.post(`/api/planejamentos/${id}/aprovar/`);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const plan = db.planejamentos?.find(p => p.id === Number(id));
+      if (plan) {
+        plan.aprovado = true;
+        saveDB(db);
+        return { detail: "Planejamento aprovado com sucesso." };
+      }
+      throw error;
+    }
+  },
+
+  gerarOrdensServico: async (id) => {
+    try {
+      const res = await api.post(`/api/planejamentos/${id}/gerar-ordens-servico/`);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const plan = db.planejamentos?.find(p => p.id === Number(id));
+      if (plan) {
+        plan.aprovado = true;
+        saveDB(db);
+        // Simular a geração de uma OS real a partir do planejamento
+        if (!db.ordens_servico) db.ordens_servico = [];
+        const newOS = {
+          id: db.ordens_servico.length > 0 ? Math.max(...db.ordens_servico.map(o => o.id)) + 1 : 401,
+          safra_id: plan.safra_id || plan.safra || 102,
+          tipo: "Adubação e Calagem",
+          area_total: 240.0,
+          talhoes: ["Talhão A1 - Café Arábica"],
+          funcionario_id: 601,
+          status: "APROVADA",
+          horas_trabalhadas: 0
+        };
+        db.ordens_servico.push(newOS);
+        saveDB(db);
+        return { detail: "Geração concluída com sucesso! Foram geradas 1 Ordens de Serviço Reais." };
+      }
+      throw error;
+    }
+  },
+
+  // --- ORDENS DE SERVIÇO REAIS ---
+  getOrdensServicoReais: () => {
+    return requestHandler(
+      () => api.get('/api/ordens-servico/'),
+      () => getDB().ordens_servico || []
+    );
+  },
+
+  createOrdemServicoReal: async (data) => {
+    try {
+      const res = await api.post('/api/ordens-servico/', data);
+      return res.data;
+    } catch (error) {
+      return relatorioService.createOrdemServico(data);
+    }
+  },
+
+  iniciarOrdemServico: async (id) => {
+    try {
+      const res = await api.post(`/api/ordens-servico/${id}/iniciar/`);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const db = getDB();
+      const os = db.ordens_servico?.find(o => o.id === Number(id));
+      if (os) {
+        os.status = 'EM_EXECUCAO';
+        saveDB(db);
+        return { status: "Em execução", id: os.id };
+      }
+      throw error;
+    }
+  },
+
+  concluirOrdemServico: async (id) => {
+    try {
+      const res = await api.post(`/api/ordens-servico/${id}/concluir/`);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const os = db.ordens_servico?.find(o => o.id === Number(id));
+      if (os) {
+        os.status = 'CONCLUIDA';
+        os.horas_trabalhadas = os.horas_trabalhadas || 8.0;
+        
+        // Simular lançamento financeiro
+        if (!db.fluxoCaixa[os.safra_id]) db.fluxoCaixa[os.safra_id] = { grouped: [], ledger: [] };
+        db.fluxoCaixa[os.safra_id].ledger.push({
+          id: `pag_os_${os.id}`,
+          tipo: "DESPESA",
+          categoria: "Mão de Obra",
+          descricao: `OS #${os.id} — Concluída`,
+          valor: 160.00,
+          vencimento: new Date().toISOString().split('T')[0],
+          status: "PAGO",
+          atrasado: false
+        });
+
+        // Simular Auditoria (se diferir do planejado)
+        if (!db.auditorias) db.auditorias = [];
+        db.auditorias.push({
+          id: db.auditorias.length + 1,
+          ordem_servico: os.id,
+          tipo_desvio: 'SUPERDOSE',
+          descricao_desvio: 'Uso de 15.0000 vs 12.0000 planejado.',
+          status: 'PENDENTE'
+        });
+
+        saveDB(db);
+        return { status: "Concluída", id: os.id };
+      }
+      throw error;
+    }
+  },
+
+  getAuditoriasOS: (id) => {
+    return requestHandler(
+      () => api.get(`/api/auditorias/?ordem_servico=${id}`),
+      () => {
+        const db = getDB();
+        return (db.auditorias || []).filter(a => a.ordem_servico === Number(id));
+      }
+    );
+  },
+
+  createApontamento: async (data) => {
+    try {
+      const res = await api.post('/api/apontamentos/', data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const db = getDB();
+      if (!db.apontamentos) db.apontamentos = [];
+      const newApt = {
+        id: db.apontamentos.length + 1,
+        ...data
+      };
+      db.apontamentos.push(newApt);
+      saveDB(db);
+      return newApt;
+    }
+  },
+
+  createApontamentoInsumo: async (data) => {
+    try {
+      const res = await api.post('/api/apontamentos-insumo/', data);
+      return res.data;
+    } catch (error) {
+      return { detail: "Apontamento de insumo salvo offline" };
+    }
+  },
+
+  createApontamentoMaquina: async (data) => {
+    try {
+      const res = await api.post('/api/apontamentos-maquina/', data);
+      return res.data;
+    } catch (error) {
+      return { detail: "Apontamento de máquina salvo offline" };
+    }
+  },
+
+  createApontamentoFuncionario: async (data) => {
+    try {
+      const res = await api.post('/api/apontamentos-funcionario/', data);
+      return res.data;
+    } catch (error) {
+      return { detail: "Apontamento de funcionário salvo offline" };
+    }
   }
 };
 

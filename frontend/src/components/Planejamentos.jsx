@@ -1,0 +1,782 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTenant } from '../context/TenantContext';
+import { useAuth } from '../context/AuthContext';
+import { relatorioService } from '../services/api';
+import api from '../services/api';
+import { 
+  Sprout, 
+  Calendar, 
+  MapPin, 
+  Loader2, 
+  AlertCircle, 
+  CheckCircle2, 
+  Plus, 
+  Trash2, 
+  FileText, 
+  Check, 
+  Lock, 
+  LockOpen,
+  DollarSign,
+  TrendingUp,
+  Activity,
+  Layers,
+  ChevronRight,
+  X
+} from 'lucide-react';
+
+export const Planejamentos = () => {
+  const { safraAtiva, fazendaAtiva } = useTenant();
+  const { user } = useAuth();
+  const isSuperUsuario = user && (user.perfil_id === 1 || user.cargo?.toLowerCase().includes('gerente') || user.cargo?.toLowerCase().includes('super'));
+
+  // Estados principais
+  const [planejamentos, setPlanejamentos] = useState([]);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Referências do banco
+  const [tiposOperacao, setTiposOperacao] = useState([]);
+  const [talhoes, setTalhoes] = useState([]);
+  const [produtos, setProdutos] = useState([]);
+
+  // Formulário de Novo Planejamento
+  const [showNewPlanModal, setShowNewPlanModal] = useState(false);
+  const [newPlanForm, setNewPlanForm] = useState({
+    descricao: '',
+    data_planejamento: new Date().toISOString().slice(0, 10),
+    observacao: ''
+  });
+
+  // Formulário de Nova OS Planejada
+  const [showNewOSModal, setShowNewOSModal] = useState(false);
+  const [newOSForm, setNewOSForm] = useState({
+    tipo_operacao: '',
+    data_inicio_planejada: new Date().toISOString().slice(0, 10),
+    data_fim_planejada: new Date().toISOString().slice(0, 10),
+    observacao: '',
+    talhoes_selecionados: [],
+    insumos_selecionados: [] // array de { produto_id, dose_planejada, quantidade_planejada }
+  });
+
+  // Temporários para adicionar Insumo na OS
+  const [tempInsumo, setTempInsumo] = useState({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+
+  const showAlert = (type, message) => {
+    if (type === 'error') {
+      setError(message);
+      setSuccess('');
+    } else {
+      setSuccess(message);
+      setError('');
+    }
+    window.setTimeout(() => {
+      setError('');
+      setSuccess('');
+    }, 4500);
+  };
+
+  const loadReferences = useCallback(async () => {
+    try {
+      const [resOps, resTalhoes, resProds] = await Promise.all([
+        api.get('/api/ref/tipos-operacao/'),
+        api.get('/api/talhoes/'),
+        api.get('/api/produtos/')
+      ]);
+      setTiposOperacao(resOps.data?.results || resOps.data || []);
+      
+      // Filtrar talhões da fazenda ativa
+      const allTalhoes = resTalhoes.data?.results || resTalhoes.data || [];
+      const currentTalhoes = allTalhoes.filter(t => t.fazenda_id === fazendaAtiva?.id || t.fazenda === fazendaAtiva?.id);
+      setTalhoes(currentTalhoes);
+      
+      setProdutos(resProds.data?.results || resProds.data || []);
+    } catch (err) {
+      console.error("Erro ao carregar referências", err);
+    }
+  }, [fazendaAtiva]);
+
+  const fetchPlanejamentos = useCallback(async () => {
+    if (!safraAtiva || !fazendaAtiva) return;
+    setLoading(true);
+    try {
+      const list = await relatorioService.getPlanejamentos();
+      // Filtrar por fazenda e safra ativas
+      const filtrados = list.filter(p => 
+        (p.fazenda_id === fazendaAtiva.id || p.fazenda === fazendaAtiva.id) && 
+        (p.safra_id === safraAtiva.id || p.safra === safraAtiva.id)
+      );
+      setPlanejamentos(filtrados);
+      
+      // Atualizar plano selecionado se aplicável
+      if (selectedPlan) {
+        const atualizado = filtrados.find(p => p.id === selectedPlan.id);
+        setSelectedPlan(atualizado || null);
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Não foi possível carregar os planejamentos.');
+    } finally {
+      setLoading(false);
+    }
+  }, [safraAtiva, fazendaAtiva, selectedPlan]);
+
+  useEffect(() => {
+    fetchPlanejamentos();
+    loadReferences();
+  }, [fetchPlanejamentos, loadReferences]);
+
+  const handleCreatePlanejamento = async (e) => {
+    e.preventDefault();
+    if (!newPlanForm.descricao) {
+      showAlert('error', 'Digite uma descrição para o planejamento.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        ...newPlanForm,
+        fazenda: fazendaAtiva.id,
+        safra: safraAtiva.id
+      };
+      await relatorioService.createPlanejamento(payload);
+      showAlert('success', 'Planejamento de safra criado com sucesso!');
+      setShowNewPlanModal(false);
+      setNewPlanForm({
+        descricao: '',
+        data_planejamento: new Date().toISOString().slice(0, 10),
+        observacao: ''
+      });
+      await fetchPlanejamentos();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao salvar o planejamento.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAprovar = async (id) => {
+    if (!isSuperUsuario) {
+      showAlert('error', 'Apenas o Superusuário tem permissão para aprovar planejamentos.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await relatorioService.aprovarPlanejamento(id);
+      showAlert('success', 'Planejamento aprovado com sucesso! Alterações futuras foram bloqueadas.');
+      await fetchPlanejamentos();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Falha ao aprovar o planejamento.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleGerarOSs = async (id) => {
+    if (!isSuperUsuario) {
+      showAlert('error', 'Apenas o Superusuário tem permissão para gerar Ordens de Serviço.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await relatorioService.gerarOrdensServico(id);
+      showAlert('success', res.detail || 'Ordens de Serviço Reais geradas com sucesso!');
+      await fetchPlanejamentos();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao gerar as Ordens de Serviço a partir do planejamento.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddOSPlanejada = async (e) => {
+    e.preventDefault();
+    if (!newOSForm.tipo_operacao) {
+      showAlert('error', 'Selecione o tipo de operação.');
+      return;
+    }
+    if (newOSForm.talhoes_selecionados.length === 0) {
+      showAlert('error', 'Selecione ao menos um talhão.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // 1. Criar a OS Planejada principal
+      const osPayload = {
+        planejamento: selectedPlan.id,
+        tipo_operacao: Number(newOSForm.tipo_operacao),
+        data_inicio_planejada: newOSForm.data_inicio_planejada,
+        data_fim_planejada: newOSForm.data_fim_planejada,
+        observacao: newOSForm.observacao
+      };
+      const resOS = await api.post('/api/ordens-servico-planejadas/', osPayload);
+      const osId = resOS.data.id;
+
+      // 2. Vincular os Talhões
+      await Promise.all(newOSForm.talhoes_selecionados.map(tId => 
+        api.post('/api/ordens-servico-planejadas-talhoes/', {
+          ordem_servico_planejada: osId,
+          talhao: Number(tId)
+        })
+      ));
+
+      // 3. Vincular os Insumos Planejados
+      await Promise.all(newOSForm.insumos_selecionados.map(ins => 
+        api.post('/api/item-insumo-osplanejado/', {
+          ordem_servico_planejada: osId,
+          produto: Number(ins.produto_id),
+          dose_planejada: Number(ins.dose_planejada),
+          quantidade_planejada: Number(ins.quantidade_planejada)
+        })
+      ));
+
+      showAlert('success', 'Ordem de serviço planejada adicionada com sucesso!');
+      setShowNewOSModal(false);
+      setNewOSForm({
+        tipo_operacao: '',
+        data_inicio_planejada: new Date().toISOString().slice(0, 10),
+        data_fim_planejada: new Date().toISOString().slice(0, 10),
+        observacao: '',
+        talhoes_selecionados: [],
+        insumos_selecionados: []
+      });
+      await fetchPlanejamentos();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao salvar a ordem planejada.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addTempInsumo = () => {
+    if (!tempInsumo.produto_id || !tempInsumo.dose_planejada || !tempInsumo.quantidade_planejada) {
+      showAlert('error', 'Preencha todos os campos do insumo.');
+      return;
+    }
+    setNewOSForm(prev => ({
+      ...prev,
+      insumos_selecionados: [...prev.insumos_selecionados, { ...tempInsumo }]
+    }));
+    setTempInsumo({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+  };
+
+  const removeInsumoFromOS = (idx) => {
+    setNewOSForm(prev => ({
+      ...prev,
+      insumos_selecionados: prev.insumos_selecionados.filter((_, i) => i !== idx)
+    }));
+  };
+
+  const handleToggleTalhaoSelection = (tId) => {
+    setNewOSForm(prev => {
+      const exists = prev.talhoes_selecionados.includes(tId);
+      return {
+        ...prev,
+        talhoes_selecionados: exists
+          ? prev.talhoes_selecionados.filter(id => id !== tId)
+          : [...prev.talhoes_selecionados, tId]
+      };
+    });
+  };
+
+  if (loading && planejamentos.length === 0) {
+    return (
+      <div className="flex h-[400px] w-full items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors">
+        <div className="flex flex-col items-center space-y-3">
+          <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Carregando planejamentos agrícolas...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      
+      {/* Mensagens de Alerta */}
+      {error && (
+        <div className="p-4 rounded-xl border border-rose-950/20 bg-rose-950/30 text-rose-300 text-sm font-semibold flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+      {success && (
+        <div className="p-4 rounded-xl border border-emerald-950/20 bg-emerald-950/30 text-emerald-300 text-sm font-semibold flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <p>{success}</p>
+        </div>
+      )}
+
+      {/* Cabeçalho */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight font-display flex items-center gap-2">
+            <Sprout className="w-6 h-6 text-emerald-500" />
+            Planejamento de Safra
+          </h1>
+          <p className="text-slate-400 text-xs mt-1">
+            Mapeie o orçamento, distribua insumos por talhão e gere as OSs da safra.
+          </p>
+        </div>
+
+        {safraAtiva && (
+          <button
+            onClick={() => setShowNewPlanModal(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-bold py-2.5 px-5 text-xs uppercase shadow-md shadow-emerald-600/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Planejamento
+          </button>
+        )}
+      </div>
+
+      {!safraAtiva ? (
+        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center bg-slate-900/10 backdrop-blur-md">
+          <AlertCircle className="mx-auto h-10 w-10 text-slate-500 animate-pulse" />
+          <h2 className="mt-4 text-sm font-bold text-slate-300">Nenhuma Safra Ativa</h2>
+          <p className="mt-1 text-xs text-slate-500">Selecione uma safra ativa no seletor do topo para gerenciar os planejamentos agrícolas.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Coluna Esquerda: Listagem de Planejamentos */}
+          <section className="lg:col-span-4 space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">Planejamentos da Safra</h3>
+            
+            {planejamentos.length === 0 ? (
+              <div className="rounded-2xl border border-slate-800/80 p-8 text-center bg-slate-950/20 text-slate-500 text-xs">
+                Nenhum planejamento cadastrado para a safra {safraAtiva?.nome}.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {planejamentos.map(plan => {
+                  const isSelected = selectedPlan?.id === plan.id;
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => setSelectedPlan(plan)}
+                      className={`glass-panel p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                        isSelected 
+                          ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/40 text-emerald-400 shadow-sm'
+                          : 'border-white/[0.06] bg-slate-900/30 text-slate-300 hover:bg-slate-800/20'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold truncate">{plan.descricao}</h4>
+                          <span className="block text-[9px] text-slate-500 mt-1 font-mono uppercase tracking-wider">
+                            Criado em {new Date(plan.data_planejamento).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        {plan.aprovado ? (
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-950 border border-emerald-900 text-emerald-400">
+                            <Lock className="w-3 h-3" />
+                          </span>
+                        ) : (
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-950 border border-amber-900 text-amber-400">
+                            <LockOpen className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] text-slate-500">
+                        <span>{plan.ordens_servico?.length || 0} OS planejadas</span>
+                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-emerald-400' : ''}`} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Coluna Direita: Detalhamento do Planejamento Selecionado */}
+          <section className="lg:col-span-8">
+            {!selectedPlan ? (
+              <div className="glass-panel p-12 rounded-2xl border border-white/[0.06] bg-slate-900/20 text-center text-slate-400">
+                <FileText className="mx-auto w-10 h-10 text-slate-600 mb-3" />
+                <p className="text-xs font-bold">Selecione um planejamento na coluna ao lado para visualizar os detalhes, OSs estruturadas e orçamentos.</p>
+              </div>
+            ) : (
+              <div className="glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/40 space-y-6">
+                
+                {/* Cabeçalho do Planejamento Selecionado */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-white/[0.06] pb-5 gap-4">
+                  <div>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border mb-2 ${
+                      selectedPlan.aprovado 
+                        ? 'bg-emerald-950/60 border-emerald-800 text-emerald-400' 
+                        : 'bg-amber-950/60 border-amber-800 text-amber-400'
+                    }`}>
+                      {selectedPlan.aprovado ? <Lock className="w-2.5 h-2.5" /> : <LockOpen className="w-2.5 h-2.5" />}
+                      {selectedPlan.aprovado ? 'Aprovado (Bloqueado)' : 'Rascunho (Editável)'}
+                    </span>
+                    <h2 className="text-base font-black text-white font-display">{selectedPlan.descricao}</h2>
+                    {selectedPlan.observacao && (
+                      <p className="text-[11px] text-slate-400 mt-1 max-w-xl">{selectedPlan.observacao}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!selectedPlan.aprovado && isSuperUsuario && (
+                      <button
+                        onClick={() => handleAprovar(selectedPlan.id)}
+                        disabled={saving}
+                        className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold px-3 py-2 text-[10px] uppercase tracking-wider cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Aprovar
+                      </button>
+                    )}
+                    
+                    {isSuperUsuario && (
+                      <button
+                        onClick={() => handleGerarOSs(selectedPlan.id)}
+                        disabled={saving}
+                        className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-bold px-3.5 py-2 text-[10px] uppercase tracking-wider cursor-pointer"
+                      >
+                        <Activity className="w-3.5 h-3.5" />
+                        Gerar OS Reais
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sub-telas de OS Planejadas */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-teal-500" />
+                      <span>Ordens de Serviço Estruturadas ({selectedPlan.ordens_servico?.length || 0})</span>
+                    </h3>
+                    
+                    {!selectedPlan.aprovado && (
+                      <button
+                        onClick={() => setShowNewOSModal(true)}
+                        className="flex items-center gap-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-bold px-3 py-1.5 text-[10px] uppercase tracking-wider cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 text-emerald-400" />
+                        Adicionar OS
+                      </button>
+                    )}
+                  </div>
+
+                  {(!selectedPlan.ordens_servico || selectedPlan.ordens_servico.length === 0) ? (
+                    <div className="p-6 rounded-2xl border border-dashed border-white/5 bg-slate-950/15 text-center text-slate-500 text-xs">
+                      Nenhuma ordem de serviço planejada adicionada a este orçamento.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {selectedPlan.ordens_servico.map((os, idx) => (
+                        <div key={os.id || idx} className="rounded-xl border border-white/[0.04] bg-slate-950/30 p-4 space-y-3 text-left">
+                          
+                          <div className="flex items-start justify-between border-b border-white/[0.04] pb-2.5">
+                            <div>
+                              <h4 className="text-xs font-black text-white">{os.tipo_operacao_nome || `Operação #${os.tipo_operacao}`}</h4>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                Janela: {new Date(os.data_inicio_planejada).toLocaleDateString('pt-BR')} até {new Date(os.data_fim_planejada).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                          </div>
+
+                          {os.observacao && (
+                            <p className="text-[10px] text-slate-400 bg-slate-900/40 p-2 rounded-lg">{os.observacao}</p>
+                          )}
+
+                          {/* Talhões da OS */}
+                          <div className="space-y-1">
+                            <span className="block text-[9px] font-black text-slate-500 uppercase">Talhões Alvo</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {os.talhoes_detalhe?.map(t => (
+                                <span key={t.id} className="inline-flex rounded-lg bg-slate-900 border border-white/5 px-2 py-0.5 text-[9px] text-slate-300">
+                                  {t.codigo} - {t.nome} ({Number(t.area).toLocaleString('pt-BR')} ha)
+                                </span>
+                              )) || <span className="text-[10px] text-slate-600">Nenhum talhão selecionado</span>}
+                            </div>
+                          </div>
+
+                          {/* Insumos Planejados */}
+                          <div className="space-y-1.5 border-t border-white/[0.02] pt-2">
+                            <span className="block text-[9px] font-black text-slate-500 uppercase">Insumos e Doses Planejadas</span>
+                            {os.insumos_detalhe?.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {os.insumos_detalhe.map(ins => (
+                                  <div key={ins.id} className="flex justify-between items-center rounded-lg bg-slate-900/60 p-2 border border-white/[0.02]">
+                                    <span className="text-[10px] text-white font-bold truncate max-w-[150px]">{ins.produto_nome}</span>
+                                    <span className="text-[9px] text-emerald-400 font-mono">
+                                      Dose: {Number(ins.dose_planejada).toLocaleString('pt-BR')} | Total: {Number(ins.quantidade_planejada).toLocaleString('pt-BR')} {ins.produto_unidade || 'un'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-600">Nenhum insumo planejado para esta operação</span>
+                            )}
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+          </section>
+
+        </div>
+      )}
+
+      {/* MODAL: Novo Planejamento de Safra */}
+      {showNewPlanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-500" />
+                <span>Novo Planejamento de Safra</span>
+              </h3>
+              <button onClick={() => setShowNewPlanModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
+            </div>
+
+            <form onSubmit={handleCreatePlanejamento} className="space-y-4 text-left">
+              <label className="block space-y-1.5">
+                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Descrição do Planejamento *</span>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Planejamento Agrícola e Adubação Secagem 2024/25"
+                  value={newPlanForm.descricao}
+                  onChange={(e) => setNewPlanForm(prev => ({ ...prev, descricao: e.target.value }))}
+                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                />
+              </label>
+
+              <label className="block space-y-1.5">
+                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data do Planejamento *</span>
+                <input
+                  type="date"
+                  required
+                  value={newPlanForm.data_planejamento}
+                  onChange={(e) => setNewPlanForm(prev => ({ ...prev, data_planejamento: e.target.value }))}
+                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                />
+              </label>
+
+              <label className="block space-y-1.5">
+                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Observações / Notas</span>
+                <textarea
+                  placeholder="Notas adicionais sobre o orçamento e premissas da safra..."
+                  value={newPlanForm.observacao}
+                  onChange={(e) => setNewPlanForm(prev => ({ ...prev, observacao: e.target.value }))}
+                  rows={3}
+                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20"
+              >
+                {saving ? 'Criando...' : 'Salvar Planejamento'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Nova OS Planejada */}
+      {showNewOSModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-500" />
+                <span>Nova Ordem de Serviço Planejada</span>
+              </h3>
+              <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
+            </div>
+
+            <form onSubmit={handleAddOSPlanejada} className="space-y-5 text-left">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Operação *</span>
+                  <select
+                    required
+                    value={newOSForm.tipo_operacao}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, tipo_operacao: e.target.value }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  >
+                    <option value="">Selecione...</option>
+                    {tiposOperacao.map(op => (
+                      <option key={op.id} value={op.id} className="bg-slate-900">{op.nome}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1.5">
+                    <span className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider">Início Planejado</span>
+                    <input
+                      type="date"
+                      required
+                      value={newOSForm.data_inicio_planejada}
+                      onChange={(e) => setNewOSForm(prev => ({ ...prev, data_inicio_planejada: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-white outline-none"
+                    />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider">Término Planejado</span>
+                    <input
+                      type="date"
+                      required
+                      value={newOSForm.data_fim_planejada}
+                      onChange={(e) => setNewOSForm(prev => ({ ...prev, data_fim_planejada: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-white outline-none"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Seletor de Talhões */}
+              <div className="space-y-2">
+                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
+                {talhoes.length === 0 ? (
+                  <p className="text-xs text-slate-500">Nenhum talhão cadastrado para esta fazenda.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 bg-slate-950/40 rounded-xl border border-white/[0.04]">
+                    {talhoes.map(t => {
+                      const isSelected = newOSForm.talhoes_selecionados.includes(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => handleToggleTalhaoSelection(t.id)}
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
+                            isSelected 
+                              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
+                              : 'bg-slate-900 border border-white/5 text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          {t.codigo} ({Number(t.area).toLocaleString('pt-BR')} ha)
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Formulário Interno de Insumos */}
+              <div className="space-y-3 border-t border-white/[0.06] pt-4">
+                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Insumos Planejados</span>
+                
+                {/* Lista de insumos adicionados */}
+                {newOSForm.insumos_selecionados.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {newOSForm.insumos_selecionados.map((ins, idx) => {
+                      const prodName = produtos.find(p => p.id === Number(ins.produto_id))?.nome_comercial || 'Insumo';
+                      const prodUnit = produtos.find(p => p.id === Number(ins.produto_id))?.unidade_sigla || 'un';
+                      return (
+                        <div key={idx} className="flex items-center justify-between bg-slate-950/40 border border-white/[0.04] p-2.5 rounded-xl text-xs">
+                          <span className="text-white font-bold">{prodName}</span>
+                          <div className="flex items-center gap-3 text-slate-400">
+                            <span>Dose: <strong className="text-emerald-400 font-mono">{ins.dose_planejada}</strong></span>
+                            <span>Total: <strong className="text-emerald-400 font-mono">{ins.quantidade_planejada} {prodUnit}</strong></span>
+                            <button type="button" onClick={() => removeInsumoFromOS(idx)} className="text-rose-400 hover:text-rose-300 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Controles para adicionar insumo */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-950/20 p-3 rounded-xl border border-white/[0.04]">
+                  <div className="md:col-span-5 text-left">
+                    <label className="block space-y-1">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Escolher Produto</span>
+                      <select
+                        value={tempInsumo.produto_id}
+                        onChange={(e) => setTempInsumo(prev => ({ ...prev, produto_id: e.target.value }))}
+                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                      >
+                        <option value="">Selecione...</option>
+                        {produtos.map(p => (
+                          <option key={p.id} value={p.id} className="bg-slate-900">{p.nome_comercial} ({p.unidade_sigla || 'un'})</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="md:col-span-3 text-left">
+                    <label className="block space-y-1">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dose (ha/planta)</span>
+                      <input
+                        type="number"
+                        placeholder="Ex: 2.5"
+                        value={tempInsumo.dose_planejada}
+                        onChange={(e) => setTempInsumo(prev => ({ ...prev, dose_planejada: e.target.value }))}
+                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="md:col-span-3 text-left">
+                    <label className="block space-y-1">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Qtd Total Planejada</span>
+                      <input
+                        type="number"
+                        placeholder="Ex: 500"
+                        value={tempInsumo.quantidade_planejada}
+                        onChange={(e) => setTempInsumo(prev => ({ ...prev, quantidade_planejada: e.target.value }))}
+                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="md:col-span-1 text-center">
+                    <button
+                      type="button"
+                      onClick={addTempInsumo}
+                      className="w-full flex h-8 items-center justify-center rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white font-bold cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 border-t border-white/[0.06] pt-4">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recomendações / Instruções Técnicas</span>
+                  <textarea
+                    placeholder="Instruções para o operador no campo..."
+                    value={newOSForm.observacao}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, observacao: e.target.value }))}
+                    rows={2}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+              >
+                {saving ? 'Adicionando...' : 'Salvar Ordem Planejada'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};

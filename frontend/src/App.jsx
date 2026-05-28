@@ -4,6 +4,8 @@ import { TenantProvider, useTenant } from './context/TenantContext';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { Cadastros } from './components/Cadastros';
+import { Planejamentos } from './components/Planejamentos';
+import { OrdensServico } from './components/OrdensServico';
 import { Login } from './components/Login';
 import { Footer } from './components/Footer';
 
@@ -35,11 +37,10 @@ function AppContent() {
 
       {/* Main Content Area with dynamic tab routing */}
       <div className="flex-grow">
-        {activeView === 'dashboard' ? (
-          <Dashboard />
-        ) : (
-          <Cadastros currentSafraId={safraAtiva?.id} />
-        )}
+        {activeView === 'dashboard' && <Dashboard />}
+        {activeView === 'planejamento' && <Planejamentos />}
+        {activeView === 'operacoes' && <OrdensServico />}
+        {activeView === 'cadastros' && <Cadastros currentSafraId={safraAtiva?.id} setActiveView={setActiveView} />}
       </div>
 
       {/* Footer */}

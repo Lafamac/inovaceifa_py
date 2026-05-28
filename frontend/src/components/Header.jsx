@@ -14,7 +14,9 @@ import {
   Lock,
   Loader2,
   LayoutDashboard,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Tractor,
+  Calendar
 } from 'lucide-react';
 
 export const Header = ({ activeView, setActiveView }) => {
@@ -104,6 +106,28 @@ export const Header = ({ activeView, setActiveView }) => {
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Painel</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('planejamento')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeView === 'planejamento'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
+                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/[0.02]'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Planejamento</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('operacoes')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeView === 'operacoes'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
+                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/[0.02]'
+                  }`}
+                >
+                  <Tractor className="w-3.5 h-3.5" />
+                  <span>Operações</span>
                 </button>
                 <button
                   onClick={() => setActiveView('cadastros')}

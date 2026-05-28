@@ -149,9 +149,9 @@ const menuSections = [
     icon: Tractor,
     description: 'Planejamento e execução',
     items: [
-      { id: 'planejamentos', label: 'Planejamentos', icon: CalendarRange, disabled: true },
-      { id: 'ordens_servico', label: 'Ordens de Serviço', icon: ClipboardList, disabled: true },
-      { id: 'apontamentos', label: 'Apontamentos', icon: Grid3X3, disabled: true },
+      { id: 'planejamentos', label: 'Planejamentos', icon: CalendarRange },
+      { id: 'ordens_servico', label: 'Ordens de Serviço', icon: ClipboardList },
+      { id: 'apontamentos', label: 'Apontamentos', icon: Grid3X3 },
     ],
   },
   {
@@ -200,7 +200,7 @@ const fieldId = (item, base) => item?.[base] ?? item?.[`${base}_id`];
 const sameId = (left, right) => String(left ?? '') === String(right ?? '');
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export const Cadastros = ({ currentSafraId }) => {
+export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const [activeTab, setActiveTab] = useState('proprietarios');
   const [expandedSection, setExpandedSection] = useState('cadastros');
   const [records, setRecords] = useState({
@@ -749,6 +749,14 @@ export const Cadastros = ({ currentSafraId }) => {
                               disabled={item.disabled}
                               onClick={() => {
                                 if (item.disabled) return;
+                                if (item.id === 'planejamentos') {
+                                  setActiveView('planejamento');
+                                  return;
+                                }
+                                if (item.id === 'ordens_servico' || item.id === 'apontamentos') {
+                                  setActiveView('operacoes');
+                                  return;
+                                }
                                 setActiveTab(item.id);
                                 setSearchQuery('');
                               }}
