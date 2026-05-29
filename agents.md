@@ -27,53 +27,53 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### 🚀 Fase 1: Fundação do Backend e Autenticação (`accounts`)
-- [ ] Inicializar repositório e configurar Django, PostgreSQL e variáveis de ambiente.
-- [ ] Configurar containers **Docker** (`docker-compose.yml`) com a aplicação e o banco PostgreSQL.
-- [ ] Integrar **Swagger** (OpenAPI) para documentação dinâmica dos endpoints da API.
-- [ ] Configurar **Flyway** para controle estrutural e versionamento do PostgreSQL.
-- [ ] Criar rotina/script de inicialização do banco: verificar tabelas na base, criá-las se ausentes e inserir o usuário administrador padrão (`admin@teste.com`, password `12345` e `perfil_id=1`).
-- [ ] Implementar classe BaseModel com *Soft Delete* (`ativo = models.BooleanField(default=True)` e `created_at`/`updated_at`).
-- [ ] Criar app `accounts` com model `Usuario` (herdando `AbstractUser`) e model `Perfil`.
-- [ ] Configurar constantes de perfil: `1` (Superusuário), `2` (Proprietário), `3` (Operador).
-- [ ] Modelar vínculo de usuários com fazendas permitidas.
-- [ ] Configurar DRF e endpoints JWT (`/api/auth/token/`, `refresh`, `verify`).
+- [x] Inicializar repositório e configurar Django, PostgreSQL e variáveis de ambiente.
+- [x] Configurar containers **Docker** (`docker-compose.yml`) com a aplicação e o banco PostgreSQL.
+- [x] Integrar **Swagger** (OpenAPI) para documentação dinâmica dos endpoints da API.
+- [x] Configurar **Flyway** para controle estrutural e versionamento do PostgreSQL.
+- [x] Criar rotina/script de inicialização do banco: verificar tabelas na base, criá-las se ausentes e inserir o usuário administrador padrão (`admin@teste.com`, password `12345` e `perfil_id=1`).
+- [x] Implementar classe BaseModel com *Soft Delete* (`ativo = models.BooleanField(default=True)` e `created_at`/`updated_at`).
+- [x] Criar app `accounts` com model `Usuario` (herdando `AbstractUser`) e model `Perfil`.
+- [x] Configurar constantes de perfil: `1` (Superusuário), `2` (Proprietário), `3` (Operador).
+- [x] Modelar vínculo de usuários com fazendas permitidas.
+- [x] Configurar DRF e endpoints JWT (`/api/auth/token/`, `refresh`, `verify`).
 
 ### 🚜 Fase 2: Core e Contexto Multi-Tenant (`core`)
-- [ ] Criar app `core` com models: `Proprietario`, `Fazenda`, `Safra`.
-- [ ] Criar regra de negócio: Uma fazenda pode ter várias safras, apenas uma ativa por fazenda.
-- [ ] Criar middleware/service de contexto para interceptar header `X-Safra-ID`.
-- [ ] Injetar no request: `request.safra_ativa`, `request.fazendas_permitidas` e validar acesso à safra.
-- [ ] Bloquear endpoints operacionais sem `safra_ativa`.
+- [x] Criar app `core` com models: `Proprietario`, `Fazenda`, `Safra`.
+- [x] Criar regra de negócio: Uma fazenda pode ter várias safras, apenas uma ativa por fazenda.
+- [x] Criar middleware/service de contexto para interceptar header `X-Safra-ID`.
+- [x] Injetar no request: `request.safra_ativa`, `request.fazendas_permitidas` e validar acesso à safra.
+- [x] Bloquear endpoints operacionais sem `safra_ativa`.
 
 ### 📚 Fase 3: Tabelas de Referência (`referencias`)
-- [ ] Criar app `referencias` com todos os modelos auxiliares requeridos: `Cultura`, `TipoItem`, `StatusCultivo`, `TipoIrrigacao`, `ResistenciaFerrugem`, `StatusOrdemServico`, `Modalidade`, `TipoRateio`, `ContaGerencial`, `TipoDestinacao`, `GrupoTrabalhador`, `ClassificacaoProduto`, `GrupoQuimico`, `UnidadeMedida`, `AtividadeEducampo`, `CriterioRateio`, `TipoOperacao`.
-- [ ] Negar acesso de escrita na API de referências para `perfil_id=3` (Operador) — somente `perfil_id=1` (Superusuário) possui permissão total de escrita em referências críticas.
-- [ ] Criar scripts/seeds iniciais para popular todas as tabelas de referências (utilizando os dados normalizados da planilha).
+- [x] Criar app `referencias` com todos os modelos auxiliares requeridos: `Cultura`, `TipoItem`, `StatusCultivo`, `TipoIrrigacao`, `ResistenciaFerrugem`, `StatusOrdemServico`, `Modalidade`, `TipoRateio`, `ContaGerencial`, `TipoDestinacao`, `GrupoTrabalhador`, `ClassificacaoProduto`, `GrupoQuimico`, `UnidadeMedida`, `AtividadeEducampo`, `CriterioRateio`, `TipoOperacao`.
+- [x] Negar acesso de escrita na API de referências para `perfil_id=3` (Operador) — somente `perfil_id=1` (Superusuário) possui permissão total de escrita em referências críticas.
+- [x] Criar scripts/seeds iniciais para popular todas as tabelas de referências (utilizando os dados normalizados da planilha).
 
 ### 📋 Fase 4: Cadastros Base e Estoque (`cadastros`)
-- [ ] Criar app `cadastros` e API endpoints correspondentes.
-- [ ] Modelar `Talhao` e `EstimativaProducaoTalhao`.
-- [ ] Modelar `Maquina` e `CustoMensalMaquina` (separados).
-- [ ] Modelar Mão de Obra (`Funcionario`, `SalarioMensal`, `Terceirizado`, `TurmaTerceirizada`).
-- [ ] Modelar Insumos/Estoque (`Produto`, `EstoqueMovimento`).
-- [ ] Implementar lógica de estoque em tabela única de movimentos com `fazenda_id` e `safra_id`, gerando saldo dinamicamente (saldo negativo gera alerta exibido dinamicamente, não bloqueio).
-- [ ] Implementar operação dedicada de transferência interna para rastrear origem e destino de insumos entre fazendas.
+- [x] Criar app `cadastros` e API endpoints correspondentes.
+- [x] Modelar `Talhao` e `EstimativaProducaoTalhao`.
+- [x] Modelar `Maquina` e `CustoMensalMaquina` (separados).
+- [x] Modelar Mão de Obra (`Funcionario`, `SalarioMensal`, `Terceirizado`, `TurmaTerceirizada`).
+- [x] Modelar Insumos/Estoque (`Produto`, `EstoqueMovimento`).
+- [x] Implementar lógica de estoque em tabela única de movimentos com `fazenda_id` e `safra_id`, gerando saldo dinamicamente (saldo negativo gera alerta exibido dinamicamente, não bloqueio).
+- [x] Implementar operação dedicada de transferência interna para rastrear origem e destino de insumos entre fazendas.
 
 ### ⚙️ Fase 5: Planejamento (`planejamento`)
-- [ ] Criar app `planejamento` e API endpoints (perfil `1` cria/edita/aprova).
-- [ ] Modelar `PlanejamentoSafra`, `OrdemServicoPlanejada`, e `ItemInsumoOSPlanejado`.
-- [ ] Modelar `ParametroOperacionalOS`, `PlanejamentoMaoObraTerceiros`, `PlanejamentoAdubo` e `PlanejamentoRateio`.
-- [ ] Implementar Endpoint de geração: `POST /api/planejamentos/{id}/gerar-ordens-servico/`.
+- [x] Criar app `planejamento` e API endpoints (perfil `1` cria/edita/aprova).
+- [x] Modelar `PlanejamentoSafra`, `OrdemServicoPlanejada`, e `ItemInsumoOSPlanejado`.
+- [x] Modelar `ParametroOperacionalOS`, `PlanejamentoMaoObraTerceiros`, `PlanejamentoAdubo` e `PlanejamentoRateio`.
+- [x] Implementar Endpoint de geração: `POST /api/planejamentos/{id}/gerar-ordens-servico/`.
 
 ### 🚜 Fase 6: Operações e Execução Real (`operacoes`)
-- [ ] Criar app `operacoes` e API endpoints.
-- [ ] Modelar `OrdemServico` (OS Real, com campos de controle: datas reais, horímetros, diesel, etc.).
-- [ ] Implementar cálculo de status dinâmico de OS (Rascunho, Aprovada, Em Execução, Concluída, Cancelada) - status `ATRASADA` deve ser calculado on-the-fly (`data_fim_planejada < hoje`).
-- [ ] Modelar `ItemInsumoOSReal`, `CustoOperacionalOS`, `ExecucaoMaoObraTerceiros`.
-- [ ] Modelar `GastoRateioRealizado`, `RateioTalhao` e `AbastecimentoMaquina`.
-- [ ] Implementar Services de Rateio (por área, produção, fazenda ou talhão específico) de forma síncrona e bem testada inicialmente.
-- [ ] Implementar cálculo de Valor Hora Máquina no mês e COE.
-- [ ] Implementar regra bloqueante: fechamento do custo mensal das máquinas (`CustoMensalMaquina`) obrigatório antes da consolidação financeira das OSs daquele mês.
+- [x] Criar app `operacoes` e API endpoints.
+- [x] Modelar `OrdemServico` (OS Real, com campos de controle: datas reais, horímetros, diesel, etc.).
+- [x] Implementar cálculo de status dinâmico de OS (Rascunho, Aprovada, Em Execução, Concluída, Cancelada) - status `ATRASADA` deve ser calculado on-the-fly (`data_fim_planejada < hoje`).
+- [x] Modelar `ItemInsumoOSReal`, `CustoOperacionalOS`, `ExecucaoMaoObraTerceiros`.
+- [x] Modelar `GastoRateioRealizado`, `RateioTalhao` e `AbastecimentoMaquina`.
+- [x] Implementar Services de Rateio (por área, produção, fazenda ou talhão específico) de forma síncrona e bem testada inicialmente.
+- [x] Implementar cálculo de Valor Hora Máquina no mês e COE.
+- [x] Implementar regra bloqueante: fechamento do custo mensal das máquinas (`CustoMensalMaquina`) obrigatório antes da consolidação financeira das OSs daquele mês.
 
 ### 💰 Fase 6.5: Compras, Vendas, Financeiro e Estoque (`financeiro`)
 - [x] Criar app `financeiro` (ou estender `cadastros`) para gerenciar as aquisições e vendas da fazenda.
@@ -106,91 +106,91 @@
   - [x] `/producao-talhao/` (Produção por talhão)
 
 ### 💻 Fase 8: Frontend (React) - Totalmente Responsivo (Mobile, Tablet, Notebook)
-- [ ] Setup do Projeto React (Vite, React Router, TailwindCSS, Zustand ou Context).
-- [ ] Configurar layout base responsivo com barra de navegação/sidebar colapsável para mobile e gestos otimizados.
-- [ ] Configurar Axios Interceptor para enviar `X-Safra-ID` automaticamente no header.
-- [ ] Implementar `SafraContext` global mantendo estado de `{ proprietario, fazenda_ativa, safra_ativa }`.
-- [ ] Criar Seletor de Safra/Fazenda responsivo no Topo (Header).
-- [ ] Desenvolver Telas respeitando permissões de Perfil e adaptadas para mobile/tablet/notebook:
-  - [ ] **Dashboard / Gestão à Vista**: Gráficos e resumos otimizados para telas menores.
-  - [ ] **Módulo Completo de Cadastros (CRUDs responsivos)**:
-    - [ ] Proprietário
-    - [ ] Fazenda
-    - [ ] Safra
-    - [ ] Talhão
-    - [ ] Funcionários
-    - [ ] Terceirizados
-    - [ ] Turmas de Trabalho
-    - [ ] Produtos e Insumos
-    - [ ] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo)
-    - [ ] Contas a Pagar (Gestão financeira integrada)
-    - [ ] Ordens de Serviço (Cadastro, listagem e apontamentos operacionais em campo)
-  - [ ] **Planejamento de Safra (Apenas perfil 1)**:
-    - [ ] Interface intuitiva para criação, edição e aprovação de planejamentos (talhões, adubação, insumos, mão de obra terceirizada, rateios).
-    - [ ] Fluxo e botão para **Geração de Ordens de Serviço Reais** (`POST /api/planejamentos/{id}/gerar-ordens-servico/`).
-  - [ ] **Impressão e Gestão de Ordens de Serviço**:
-    - [ ] Tela de impressão amigável (CSS `@media print` customizado para folha A4 e PDFs bem estruturados para operadores de campo).
-  - [ ] **Relatórios Analíticos**: Visualização responsiva de tabelas e fluxos.
+- [x] Setup do Projeto React (Vite, React Router, TailwindCSS, Zustand ou Context).
+- [x] Configurar layout base responsivo com barra de navegação/sidebar colapsável para mobile e gestos otimizados.
+- [x] Configurar Axios Interceptor para enviar `X-Safra-ID` automaticamente no header.
+- [x] Implementar `SafraContext` global mantendo estado de `{ proprietario, fazenda_ativa, safra_ativa }`.
+- [x] Criar Seletor de Safra/Fazenda responsivo no Topo (Header).
+- [x] Desenvolver Telas respeitando permissões de Perfil e adaptadas para mobile/tablet/notebook:
+  - [x] **Dashboard / Gestão à Vista**: Gráficos e resumos otimizados para telas menores.
+  - [x] **Módulo Completo de Cadastros (CRUDs responsivos)**:
+    - [x] Proprietário
+    - [x] Fazenda
+    - [x] Safra
+    - [x] Talhão
+    - [x] Funcionários
+    - [x] Terceirizados
+    - [x] Turmas de Trabalho
+    - [x] Produtos e Insumos
+    - [x] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo)
+    - [x] Contas a Pagar (Gestão financeira integrada)
+    - [x] Ordens de Serviço (Cadastro, listagem e apontamentos operacionais em campo)
+  - [x] **Planejamento de Safra (Apenas perfil 1)**:
+    - [x] Interface intuitiva para criação, edição e aprovação de planejamentos (talhões, adubação, insumos, mão de obra terceirizada, rateios).
+    - [x] Fluxo e botão para **Geração de Ordens de Serviço Reais** (`POST /api/planejamentos/{id}/gerar-ordens-servico/`).
+  - [x] **Impressão e Gestão de Ordens de Serviço**:
+    - [x] Tela de impressão amigável (CSS `@media print` customizado para folha A4 e PDFs bem estruturados para operadores de campo).
+  - [x] **Relatórios Analíticos**: Visualização responsiva de tabelas e fluxos.
 
 ---
 
 ## 🔌 Checklist de Endpoints API (Verificação e Conclusão)
 
 ### Autenticação & Perfil
-- [ ] `POST /api/auth/token/` (Obter tokens JWT)
-- [ ] `POST /api/auth/token/refresh/` (Atualizar token)
-- [ ] `POST /api/auth/token/verify/` (Validar token)
+- [x] `POST /api/auth/token/` (Obter tokens JWT)
+- [x] `POST /api/auth/token/refresh/` (Atualizar token)
+- [x] `POST /api/auth/token/verify/` (Validar token)
 
 ### Core
-- [ ] `GET/POST /api/proprietarios/`
-- [ ] `GET/POST /api/fazendas/`
-- [ ] `GET/POST /api/safras/`
+- [x] `GET/POST /api/proprietarios/`
+- [x] `GET/POST /api/fazendas/`
+- [x] `GET/POST /api/safras/`
 
 ### Referências
-- [ ] `GET/POST /api/ref/culturas/`
-- [ ] `GET/POST /api/ref/tipos-operacao/`
-- [ ] `GET/POST /api/ref/contas-gerenciais/`
-- [ ] `GET/POST /api/ref/tipos-rateio/`
-- [ ] `GET/POST /api/ref/criterios-rateio/`
-- [ ] `GET/POST /api/ref/atividades-educampo/`
-- [ ] `GET/POST /api/ref/classificacoes-produto/`
-- [ ] `GET/POST /api/ref/unidades-medida/`
-- [ ] `GET/POST /api/ref/status-os/`
+- [x] `GET/POST /api/ref/culturas/`
+- [x] `GET/POST /api/ref/tipos-operacao/`
+- [x] `GET/POST /api/ref/contas-gerenciais/`
+- [x] `GET/POST /api/ref/tipos-rateio/`
+- [x] `GET/POST /api/ref/criterios-rateio/`
+- [x] `GET/POST /api/ref/atividades-educampo/`
+- [x] `GET/POST /api/ref/classificacoes-produto/`
+- [x] `GET/POST /api/ref/unidades-medida/`
+- [x] `GET/POST /api/ref/status-os/`
 
 ### Cadastros Base
-- [ ] `GET/POST /api/talhoes/`
-- [ ] `GET/POST /api/maquinas/`
-- [ ] `GET/POST /api/funcionarios/`
-- [ ] `GET/POST /api/terceirizados/`
-- [ ] `GET/POST /api/turmas-terceirizadas/`
-- [ ] `GET/POST /api/produtos/`
-- [ ] `GET/POST /api/estoque/movimentos/` (Entradas, Saídas, Ajustes, Transferências)
-- [ ] `GET /api/estoque/saldos/`
+- [x] `GET/POST /api/talhoes/`
+- [x] `GET/POST /api/maquinas/`
+- [x] `GET/POST /api/funcionarios/`
+- [x] `GET/POST /api/terceirizados/`
+- [x] `GET/POST /api/turmas-terceirizadas/`
+- [x] `GET/POST /api/produtos/`
+- [x] `GET/POST /api/estoque/movimentos/` (Entradas, Saídas, Ajustes, Transferências)
+- [x] `GET /api/estoque/saldos/`
 
 ### Planejamento
-- [ ] `GET/POST /api/planejamentos/`
-- [ ] `POST /api/planejamentos/{id}/aprovar/`
-- [ ] `GET/POST /api/planejamentos/{id}/ordens-servico/`
-- [ ] `GET/POST /api/planejamentos/{id}/mao-obra-terceiros/`
-- [ ] `GET/POST /api/planejamentos/{id}/adubacao/`
-- [ ] `GET/POST /api/planejamentos/{id}/rateios/`
-- [ ] `POST /api/planejamentos/{id}/gerar-ordens-servico/`
+- [x] `GET/POST /api/planejamentos/`
+- [x] `POST /api/planejamentos/{id}/aprovar/`
+- [x] `GET/POST /api/planejamentos/{id}/ordens-servico/`
+- [x] `GET/POST /api/planejamentos/{id}/mao-obra-terceiros/`
+- [x] `GET/POST /api/planejamentos/{id}/adubacao/`
+- [x] `GET/POST /api/planejamentos/{id}/rateios/`
+- [x] `POST /api/planejamentos/{id}/gerar-ordens-servico/`
 
 ### Operações & Execução
-- [ ] `GET/POST /api/ordens-servico/`
-- [ ] `POST /api/ordens-servico/{id}/executar/`
-- [ ] `POST /api/ordens-servico/{id}/cancelar/`
-- [ ] `POST /api/ordens-servico/{id}/concluir/`
-- [ ] `GET/POST /api/gastos-rateio/`
-- [ ] `GET/POST /api/abastecimentos/`
+- [x] `GET/POST /api/ordens-servico/`
+- [x] `POST /api/ordens-servico/{id}/executar/`
+- [x] `POST /api/ordens-servico/{id}/cancelar/`
+- [x] `POST /api/ordens-servico/{id}/concluir/`
+- [x] `GET/POST /api/gastos-rateio/`
+- [x] `GET/POST /api/abastecimentos/`
 
 ### Compras, Vendas & Financeiro (Fase 6.5)
-- [ ] `GET/POST /api/financeiro/pedidos-compra/`
-- [ ] `POST /api/financeiro/pedidos-compra/{id}/receber/`
-- [ ] `GET/POST /api/financeiro/pedidos-venda/`
-- [ ] `POST /api/financeiro/pedidos-venda/{id}/confirmar/`
-- [ ] `GET/POST /api/financeiro/contas-pagar/`
-- [ ] `GET/POST /api/financeiro/contas-receber/`
+- [x] `GET/POST /api/financeiro/pedidos-compra/`
+- [x] `POST /api/financeiro/pedidos-compra/{id}/receber/`
+- [x] `GET/POST /api/financeiro/pedidos-venda/`
+- [x] `POST /api/financeiro/pedidos-venda/{id}/confirmar/`
+- [x] `GET/POST /api/financeiro/contas-pagar/`
+- [x] `GET/POST /api/financeiro/contas-receber/`
 
 ### Relatórios Analíticos
 - [x] `GET /api/relatorios/comparativo-safra/`
@@ -222,4 +222,3 @@
 3. **Evitar Colunas por Talhão**: Na tabela de rateio, usar tabelas filhas normalizadas (`RateioTalhao`), nunca colunas dinâmicas.
 4. **Fechamento de Custos Bloqueante**: A consolidação mensal financeira das OSs exige o fechamento prévio e obrigatório dos custos das máquinas no respectivo mês (`CustoMensalMaquina`).
 5. **Filtros e Permissões**: Testar rigorosamente filtros por `safra` e validações de acesso a endpoints desde o primeiro dia de implementação de cada fase.
-

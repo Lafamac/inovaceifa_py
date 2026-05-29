@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '../context/TenantContext';
 import { relatorioService } from '../services/api';
+import { exportToCSV } from '../services/exportUtils';
 import { 
   BarChart, 
   Bar, 
@@ -206,12 +207,33 @@ export const CustoTalhao = () => {
 
       {/* Detailed Table */}
       <div className="glass-panel rounded-2xl border border-slate-200/50 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/50 p-5 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
             Planilha Analítica de Rateios
           </h4>
-          <span className="text-[10px] text-slate-400 font-bold">{filteredTalhoes.length} talhão(ões) encontrado(s)</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                const headers = ['Código', 'Talhão', 'Área (ha)', 'Mão de Obra', 'Hora Máquina', 'Insumos', 'Custo Total', 'R$/ha'];
+                exportToCSV(`Custo_Talhao_${fazendaAtiva?.nome || 'Fazenda'}`, headers, filteredTalhoes, t => [
+                  t.codigo,
+                  t.nome,
+                  t.area.toFixed(1),
+                  t.mão_de_obra.toFixed(2),
+                  t.hora_maquina.toFixed(2),
+                  t.insumos.toFixed(2),
+                  t.total.toFixed(2),
+                  (t.area > 0 ? t.total / t.area : 0).toFixed(2)
+                ]);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all cursor-pointer active:scale-95 shadow-sm"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Exportar CSV</span>
+            </button>
+            <span className="text-[10px] text-slate-400 font-bold">{filteredTalhoes.length} talhão(ões) encontrado(s)</span>
+          </div>
         </div>
         
         <div className="overflow-x-auto -mx-5">

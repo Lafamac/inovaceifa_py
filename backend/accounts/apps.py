@@ -49,6 +49,9 @@ class AccountsConfig(AppConfig):
                     perfil=perfil_admin
                 )
                 print("Usuário administrador padrão criado com sucesso!")
+            else:
+                # Caso o usuário já exista, garante que ele tenha o perfil de superusuário associado se estiver nulo
+                Usuario.objects.filter(email='admin@teste.com', perfil__isnull=True).update(perfil=perfil_admin)
             
             # Executa o auto-seeding das tabelas de referências auxiliares e cadastros base
             from django.core.management import call_command

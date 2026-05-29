@@ -27,7 +27,12 @@ import {
 export const Planejamentos = () => {
   const { safraAtiva, fazendaAtiva } = useTenant();
   const { user } = useAuth();
-  const isSuperUsuario = user && (user.perfil_id === 1 || user.cargo?.toLowerCase().includes('gerente') || user.cargo?.toLowerCase().includes('super'));
+  const isSuperUsuario = user && (
+    user.is_superuser ||
+    user.perfil_id === 1 ||
+    user.cargo?.toLowerCase().includes('gerente') ||
+    user.cargo?.toLowerCase().includes('super')
+  );
 
   // Estados principais
   const [planejamentos, setPlanejamentos] = useState([]);

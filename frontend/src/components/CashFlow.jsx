@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '../context/TenantContext';
 import { relatorioService } from '../services/api';
+import { exportToCSV } from '../services/exportUtils';
 import { 
   AreaChart, 
   Area, 
@@ -185,9 +186,28 @@ export const CashFlow = () => {
 
       {/* Seção do Razão Financeiro (Tabela interativa com filtros de busca e data) */}
       <div className="mt-8 border-t border-slate-100 dark:border-slate-800/80 pt-6">
-        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4">
-          Lançamentos e Obrigações da Safra
-        </h4>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            Lançamentos e Obrigações da Safra
+          </h4>
+          <button
+            onClick={() => {
+              const headers = ['Descrição', 'Categoria', 'Vencimento', 'Status', 'Tipo', 'Valor'];
+              exportToCSV(`Fluxo_Caixa_Lancamentos`, headers, filteredLedger, item => [
+                item.descricao,
+                item.categoria,
+                item.vencimento,
+                item.status,
+                item.tipo,
+                item.valor.toFixed(2)
+              ]);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all cursor-pointer active:scale-95 shadow-sm"
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Exportar CSV</span>
+          </button>
+        </div>
 
         {/* Filters Controls Panel */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 bg-slate-50/50 dark:bg-slate-950/20 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800/55">

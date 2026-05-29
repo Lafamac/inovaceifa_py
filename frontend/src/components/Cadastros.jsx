@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import {
   AlertCircle,
   BadgeInfo,
@@ -10,6 +11,7 @@ import {
   ClipboardList,
   Grid3X3,
   Package,
+  Pencil,
   Plus,
   Search,
   Tractor,
@@ -90,6 +92,7 @@ const emptyForms = {
     destino_transferencia: '',
     observacao: '',
   },
+  usuarios: { username: '', email: '', first_name: '', last_name: '', password: '', perfil_id: '', fazendas_permitidas_ids: [] },
 };
 
 const endpoints = {
@@ -103,6 +106,7 @@ const endpoints = {
   turmas: '/api/turmas-terceirizadas/',
   produtos: '/api/produtos/',
   estoque: '/api/estoque/movimentos/',
+  usuarios: '/api/accounts/usuarios/',
 };
 
 const refEndpoints = {
@@ -162,7 +166,7 @@ const menuSections = [
     items: [
       { id: 'produtos', label: 'Produtos e Insumos', icon: Package },
       { id: 'estoque', label: 'Movimentações', icon: Warehouse },
-      { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList, disabled: true },
+      { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList },
     ],
   },
   {
@@ -174,8 +178,8 @@ const menuSections = [
       { id: 'funcionarios', label: 'Funcionários', icon: Users },
       { id: 'terceirizados', label: 'Terceirizados', icon: Briefcase },
       { id: 'turmas', label: 'Turmas', icon: Users },
-      { id: 'contas_pagar', label: 'Contas a Pagar', icon: WalletCards, disabled: true },
-      { id: 'contas_receber', label: 'Contas a Receber', icon: WalletCards, disabled: true },
+      { id: 'contas_pagar', label: 'Contas a Pagar', icon: WalletCards },
+      { id: 'contas_receber', label: 'Contas a Receber', icon: WalletCards },
     ],
   },
 ];
@@ -201,6 +205,7 @@ const sameId = (left, right) => String(left ?? '') === String(right ?? '');
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const Cadastros = ({ currentSafraId, setActiveView }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('proprietarios');
   const [expandedSection, setExpandedSection] = useState('cadastros');
   const [records, setRecords] = useState({
@@ -214,18 +219,51 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     turmas: [],
     produtos: [],
     estoque: [],
+    usuarios: [],
+    perfis: [],
   });
   const [refs, setRefs] = useState(Object.fromEntries(Object.keys(refEndpoints).map((key) => [key, []])));
   const [forms, setForms] = useState(emptyForms);
-  const [editingProprietarioId, setEditingProprietarioId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Novas variáveis de estado para Modal e Filtro de Soft Delete
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [showInactiveOnly, setShowInactiveOnly] = useState(false);
+
   const currentForm = forms[activeTab];
-  const activeLabel = menuItems.find((tab) => tab.id === activeTab)?.label || 'Cadastros';
+
+  const isSuperUsuario = useMemo(() => {
+    return user && (
+      user.is_superuser ||
+      user.perfil_id === 1 ||
+      user.cargo?.toLowerCase().includes('gerente') ||
+      user.cargo?.toLowerCase().includes('super') ||
+      user.cargo?.toLowerCase().includes('superusuário')
+    );
+  }, [user]);
+
+  const filteredMenuSections = useMemo(() => {
+    return menuSections.map(section => {
+      if (section.id === 'cadastros') {
+        const items = [...section.items];
+        if (isSuperUsuario && !items.some(x => x.id === 'usuarios')) {
+          items.push({ id: 'usuarios', label: 'Usuários', icon: UserCircle });
+        }
+        return { ...section, items };
+      }
+      return section;
+    });
+  }, [isSuperUsuario]);
+
+  const activeLabel = useMemo(() => {
+    const allItems = filteredMenuSections.flatMap((section) => section.items);
+    return allItems.find((tab) => tab.id === activeTab)?.label || 'Cadastros';
+  }, [filteredMenuSections, activeTab]);
 
   const fazendasOptions = useMemo(
     () => records.fazendas.map((fazenda) => ({ value: fazenda.id, label: `${fazenda.nome}${fazenda.sigla ? ` (${fazenda.sigla})` : ''}` })),
@@ -256,7 +294,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
   const fetchList = async (url, fallbackKey) => {
     try {
-      const response = await api.get(url);
+      // Forçamos a API a sempre buscar registros ativos e inativos juntos para filtragem reativa no front
+      const response = await api.get(url + '?incluir_inativos=true');
       return asList(response.data);
     } catch {
       if (fallbackRefs[fallbackKey]) return fallbackRefs[fallbackKey];
@@ -268,12 +307,31 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const allowedEndpoints = { ...endpoints };
+      if (!isSuperUsuario) {
+        delete allowedEndpoints.usuarios;
+      }
+
       const [loadedRecords, loadedRefs] = await Promise.all([
-        Promise.all(Object.entries(endpoints).map(async ([key, url]) => [key, await fetchList(url, key)])),
+        Promise.all(Object.entries(allowedEndpoints).map(async ([key, url]) => [key, await fetchList(url, key)])),
         Promise.all(Object.entries(refEndpoints).map(async ([key, url]) => [key, await fetchList(url, key)])),
       ]);
 
-      setRecords(Object.fromEntries(loadedRecords));
+      let perfisList = [];
+      if (isSuperUsuario) {
+        try {
+          const resp = await api.get('/api/accounts/perfis/');
+          perfisList = asList(resp.data);
+        } catch (err) {
+          console.error("Erro ao carregar perfis:", err);
+        }
+      }
+
+      setRecords((prev) => ({
+        ...prev,
+        ...Object.fromEntries(loadedRecords),
+        ...(isSuperUsuario ? { perfis: perfisList } : {}),
+      }));
       setRefs(Object.fromEntries(loadedRefs));
     } catch (err) {
       console.error(err);
@@ -281,10 +339,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 
@@ -297,7 +354,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
   const resetForm = (tab = activeTab) => {
     setForms((prev) => ({ ...prev, [tab]: emptyForms[tab] }));
-    if (tab === 'proprietarios') setEditingProprietarioId(null);
   };
 
   const cleanPayload = (form) => {
@@ -335,6 +391,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       turmas: ['fazenda', 'nome'],
       produtos: ['nome_comercial', 'unidade', 'classificacao'],
       estoque: ['fazenda', 'safra', 'produto', 'tipo_movimento', 'quantidade', 'data_movimento'],
+      usuarios: ['username', 'email', 'first_name', 'perfil_id'],
     };
 
     const missing = required[activeTab].filter((key) => !payload[key]);
@@ -358,88 +415,164 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     setSaving(true);
     try {
-      if (activeTab === 'proprietarios' && editingProprietarioId) {
-        await api.put(`${endpoints.proprietarios}${editingProprietarioId}/`, payload);
-        showAlert('success', 'Proprietário atualizado com sucesso.');
+      if (editingId) {
+        // Modo Edição
+        await api.put(`${endpoints[activeTab]}${editingId}/`, payload);
+        showAlert('success', 'Registro atualizado com sucesso.');
       } else {
+        // Modo Criação
         const response = await api.post(endpoints[activeTab], payload);
-        showAlert('success', response.data?.warning || 'Registro salvo com sucesso.');
+        showAlert('success', response.data?.warning || 'Registro criado com sucesso.');
       }
       resetForm(activeTab);
+      setShowModal(false);
+      setEditingId(null);
       await loadData();
     } catch (err) {
       console.error(err);
-      const detail = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0];
-      showAlert('error', detail || 'Erro ao salvar. Verifique contexto de fazenda/safra e referências cadastradas.');
+      // Fallback em banco local storage
+      try {
+        const db = getFallbackDB();
+        if (!db[activeTab]) db[activeTab] = [];
+        
+        if (editingId) {
+          const idx = db[activeTab].findIndex(x => String(x.id) === String(editingId));
+          if (idx !== -1) {
+            db[activeTab][idx] = { ...db[activeTab][idx], ...payload };
+          }
+        } else {
+          const newId = db[activeTab].length > 0 ? Math.max(...db[activeTab].map(x => x.id)) + 1 : 1;
+          db[activeTab].push({ id: newId, ativo: true, ...payload });
+        }
+        localStorage.setItem('inovaceifa_db', JSON.stringify(db));
+        showAlert('success', 'Salvo offline com sucesso.');
+        resetForm(activeTab);
+        setShowModal(false);
+        setEditingId(null);
+        await loadData();
+      } catch (localErr) {
+        const detail = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0];
+        showAlert('error', detail || 'Erro ao salvar. Verifique contexto e campos.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteProprietario = async (id) => {
-    if (!window.confirm('Deseja desativar este proprietário?')) return;
+  // Alteração de estado ativo/inativo (Soft Delete & Reativação)
+  const handleToggleAtivo = async (item) => {
+    const novoEstado = !item.ativo;
+    const confirmMsg = novoEstado 
+      ? `Deseja REATIVAR este registro?` 
+      : `Deseja DESATIVAR (soft delete) este registro?`;
+      
+    if (!window.confirm(confirmMsg)) return;
 
     try {
-      await api.delete(`${endpoints.proprietarios}${id}/`);
-      showAlert('success', 'Proprietário desativado.');
+      await api.patch(`${endpoints[activeTab]}${item.id}/`, { ativo: novoEstado });
+      showAlert('success', novoEstado ? 'Registro reativado!' : 'Registro inativado com sucesso.');
       await loadData();
     } catch (err) {
       console.error(err);
-      showAlert('error', 'Erro ao desativar proprietário.');
+      // Fallback offline
+      try {
+        const db = getFallbackDB();
+        const list = db[activeTab] || [];
+        const found = list.find(x => String(x.id) === String(item.id));
+        if (found) {
+          found.ativo = novoEstado;
+          localStorage.setItem('inovaceifa_db', JSON.stringify(db));
+          showAlert('success', novoEstado ? 'Registro reativado offline!' : 'Registro inativado offline.');
+          await loadData();
+        }
+      } catch (localErr) {
+        showAlert('error', 'Falha ao processar alteração de status.');
+      }
     }
   };
 
-  const startEditProprietario = (proprietario) => {
-    setActiveTab('proprietarios');
-    setEditingProprietarioId(proprietario.id);
+  // Preenche formulário e abre janela modal
+  const handleStartEdit = (item) => {
+    setEditingId(item.id);
+    const formFields = { ...emptyForms[activeTab] };
+    
+    Object.keys(formFields).forEach(key => {
+      if (key === 'fazenda' && (item.fazenda_id || item.fazenda)) {
+        formFields.fazenda = item.fazenda_id || item.fazenda;
+      } else if (key === 'proprietario' && (item.proprietario_id || item.proprietario)) {
+        formFields.proprietario = item.proprietario_id || item.proprietario;
+      } else if (key === 'safra' && (item.safra_id || item.safra)) {
+        formFields.safra = item.safra_id || item.safra;
+      } else if (key === 'produto' && (item.produto_id || item.produto)) {
+        formFields.produto = item.produto_id || item.produto;
+      } else if (key === 'tipo_irrigacao' && (item.tipo_irrigacao_id || item.tipo_irrigacao)) {
+        formFields.tipo_irrigacao = item.tipo_irrigacao_id || item.tipo_irrigacao;
+      } else if (key === 'cultura' && (item.cultura_id || item.cultura)) {
+        formFields.cultura = item.cultura_id || item.cultura;
+      } else if (key === 'status_cultivo' && (item.status_cultivo_id || item.status_cultivo)) {
+        formFields.status_cultivo = item.status_cultivo_id || item.status_cultivo;
+      } else if (key === 'resistencia_ferrugem' && (item.resistencia_ferrugem_id || item.resistencia_ferrugem)) {
+        formFields.resistencia_ferrugem = item.resistencia_ferrugem_id || item.resistencia_ferrugem;
+      } else if (key === 'grupo_trabalhador' && (item.grupo_trabalhador_id || item.grupo_trabalhador)) {
+        formFields.grupo_trabalhador = item.grupo_trabalhador_id || item.grupo_trabalhador;
+      } else if (key === 'unidade' && (item.unidade_id || item.unidade)) {
+        formFields.unidade = item.unidade_id || item.unidade;
+      } else if (key === 'classificacao' && (item.classificacao_id || item.classificacao)) {
+        formFields.classificacao = item.classificacao_id || item.classificacao;
+      } else if (key === 'grupo_quimico' && (item.grupo_quimico_id || item.grupo_quimico)) {
+        formFields.grupo_quimico = item.grupo_quimico_id || item.grupo_quimico;
+      } else if (item[key] !== undefined) {
+        formFields[key] = item[key];
+      }
+    });
+
     setForms((prev) => ({
       ...prev,
-      proprietarios: {
-        nome: proprietario.nome || '',
-        documento: proprietario.documento || '',
-        email: proprietario.email || '',
-        celular: proprietario.celular || '',
-        cep: proprietario.cep || '',
-        endereco: proprietario.endereco || '',
-        bairro: proprietario.bairro || '',
-        cidade: proprietario.cidade || '',
-      },
+      [activeTab]: formFields
     }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowModal(true);
   };
 
   const filteredRows = (key, getText) => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return records[key];
-    return records[key].filter((item) => getText(item).toLowerCase().includes(query));
+    let baseList = records[key] || [];
+
+    // Filtrar Ativos vs Inativos de acordo com o filtro do botão
+    baseList = baseList.filter(item => {
+      const isItemActive = item.ativo !== false;
+      return showInactiveOnly ? !isItemActive : isItemActive;
+    });
+
+    if (!query) return baseList;
+    return baseList.filter((item) => getText(item).toLowerCase().includes(query));
   };
 
   const lookup = (collection, id, fallback = '-') => collection.find((item) => sameId(item.id, id))?.nome || fallback;
 
   const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '' }) => (
-    <label className="block space-y-1.5">
-      <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+    <label className="block space-y-1.5 text-left">
+      <span className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
       <input
         type={type}
-        value={value}
+        value={value || ''}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white placeholder-slate-500 outline-none transition-all"
+        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-450 outline-none transition-all"
       />
     </label>
   );
 
   const SelectField = ({ label, value, onChange, options, required = false, defaultOption = 'Selecione...' }) => (
-    <label className="block space-y-1.5">
-      <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+    <label className="block space-y-1.5 text-left">
+      <span className="block text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
       <select
-        value={value}
+        value={value || ''}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none transition-all"
+        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none transition-all"
       >
-        <option value="" className="bg-slate-900 text-slate-500">{defaultOption}</option>
+        <option value="" className="bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500">{defaultOption}</option>
         {options.map((option) => (
-          <option key={option.value} value={option.value} className="bg-slate-900 text-white">{option.label}</option>
+          <option key={option.value} value={option.value} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{option.label}</option>
         ))}
       </select>
     </label>
@@ -478,8 +611,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField required label="Nome da Safra" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} placeholder="2024/2025" />
           <InputField required label="Data Início" type="date" value={currentForm.data_inicio} onChange={(value) => patchForm('data_inicio', value)} />
           <InputField required label="Data Fim" type="date" value={currentForm.data_fim} onChange={(value) => patchForm('data_fim', value)} />
-          <label className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-300">
-            <input type="checkbox" checked={currentForm.ativa} onChange={(event) => patchForm('ativa', event.target.checked)} className="h-4 w-4 rounded border-white/[0.08] bg-slate-950/50 text-emerald-500" />
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
+            <input type="checkbox" checked={currentForm.ativa || false} onChange={(event) => patchForm('ativa', event.target.checked)} className="h-4 w-4 rounded border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/50 text-emerald-500" />
             Safra ativa desta fazenda
           </label>
         </>
@@ -563,6 +696,45 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       );
     }
 
+    if (activeTab === 'usuarios') {
+      return (
+        <>
+          <InputField required label="Nome de Usuário" value={currentForm.username} onChange={(value) => patchForm('username', value)} placeholder="Ex: joao.silva" />
+          <InputField required label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} placeholder="Ex: joao@empresa.com" />
+          <InputField required label="Primeiro Nome" value={currentForm.first_name} onChange={(value) => patchForm('first_name', value)} />
+          <InputField required label="Sobrenome" value={currentForm.last_name} onChange={(value) => patchForm('last_name', value)} />
+          <InputField label="Senha" type="password" value={currentForm.password} onChange={(value) => patchForm('password', value)} placeholder={editingId ? "Deixe em branco para não alterar" : "Senha do usuário (padrão: 12345)"} />
+          <SelectField required label="Perfil / Cargo" value={currentForm.perfil_id} onChange={(value) => patchForm('perfil_id', value)} options={(records.perfis || []).map((p) => ({ value: p.id, label: p.nome }))} />
+          
+          <div className="block space-y-1.5 text-left">
+            <span className="block text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">Fazendas Permitidas</span>
+            <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-3 border border-slate-200 dark:border-white/[0.08] rounded-xl bg-slate-50/50 dark:bg-slate-950/40">
+              {records.fazendas.map((f) => {
+                const isChecked = (currentForm.fazendas_permitidas_ids || []).includes(f.id);
+                return (
+                  <label key={f.id} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        const currentList = currentForm.fazendas_permitidas_ids || [];
+                        const newList = e.target.checked
+                          ? [...currentList, f.id]
+                          : currentList.filter(id => id !== f.id);
+                        patchForm('fazendas_permitidas_ids', newList);
+                      }}
+                      className="h-3.5 w-3.5 rounded border-slate-200 bg-slate-50 text-emerald-500"
+                    />
+                    <span className="truncate">{f.nome}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
         <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
@@ -591,13 +763,18 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const renderRows = () => {
     if (activeTab === 'proprietarios') {
       return filteredRows('proprietarios', (item) => `${item.nome} ${item.documento || ''} ${item.cidade || ''}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{item.email || 'Sem e-mail'}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300 font-mono">{item.documento || '-'}</td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{item.cidade || '-'}</td>
-          <td className="py-3 px-4 text-right">
-            <button type="button" onClick={() => startEditProprietario(item)} className="p-1.5 rounded-lg border border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-400 mr-2"><Briefcase className="h-3.5 w-3.5" /></button>
-            <button type="button" onClick={() => handleDeleteProprietario(item.id)} className="p-1.5 rounded-lg border border-white/5 hover:border-red-500/30 hover:bg-red-500/10 text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
+            <p className="text-[10px] text-slate-450 dark:text-slate-500">{item.email || 'Sem e-mail'}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300 font-mono">{item.documento || '-'}</td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-300">{item.cidade || '-'}</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
           </td>
         </tr>
       ));
@@ -605,89 +782,194 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'fazendas') {
       return filteredRows('fazendas', (item) => `${item.nome} ${item.sigla || ''}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">Sigla: {item.sigla || '-'}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{lookup(records.proprietarios, fieldId(item, 'proprietario'))}</td>
-          <td className="py-3 px-4 text-right text-[10px] text-slate-500">{item.ativo === false ? 'Inativa' : 'Ativa'}</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
+            <p className="text-[10px] text-slate-450 dark:text-slate-500">Sigla: {item.sigla || '-'}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-650 dark:text-slate-300">{lookup(records.proprietarios, fieldId(item, 'proprietario'))}</td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-400">{item.ativo === false ? 'Inativa' : 'Ativa'}</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     if (activeTab === 'safras') {
       return filteredRows('safras', (item) => item.nome).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{item.data_inicio} até {item.data_fim}</td>
-          <td className="py-3 px-4 text-right text-[10px] font-bold text-emerald-400">{item.ativa ? 'Ativa' : '-'}</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.data_inicio} até {item.data_fim}</td>
+          <td className="py-3 px-5 text-right text-[10px] font-bold text-emerald-500">{item.ativa ? 'Safra Ativa' : 'Inativa/Outra'}</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     if (activeTab === 'talhoes') {
       return filteredRows('talhoes', (item) => `${item.codigo} ${item.nome}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.codigo} - {item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{item.cultura_nome || '-'}</td>
-          <td className="py-3 px-4 text-right text-xs font-bold text-teal-400">{Number(item.area || 0).toLocaleString('pt-BR')} ha</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.codigo} - {item.nome}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.cultura_nome || 'Café'}</td>
+          <td className="py-3 px-5 text-right text-xs font-bold text-teal-600 dark:text-teal-400">{Number(item.area || 0).toLocaleString('pt-BR')} ha</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     if (activeTab === 'maquinas') {
       return filteredRows('maquinas', (item) => `${item.codigo} ${item.descricao}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.codigo} - {item.descricao}</p><p className="text-[10px] text-slate-500">{item.marca || '-'} {item.modelo || ''}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</td>
-          <td className="py-3 px-4 text-right text-[10px] text-slate-400">{item.tipo_nome || '-'}</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.codigo} - {item.descricao}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.marca || '-'} {item.modelo || ''}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">{item.tipo_nome || 'Trator/Máquina'}</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     if (activeTab === 'funcionarios') {
       return filteredRows('funcionarios', (item) => `${item.nome} ${item.cargo || ''}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{item.cpf || 'Sem CPF'}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{item.cargo || '-'}</td>
-          <td className="py-3 px-4 text-right text-[10px] text-slate-400">{item.grupo_trabalhador_nome || '-'}</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.cpf || 'Sem CPF'}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.cargo || '-'}</td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-450">{item.grupo_trabalhador_nome || 'Trabalhador Regular'}</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     if (activeTab === 'terceirizados') {
       return filteredRows('terceirizados', (item) => `${item.nome} ${item.documento || ''}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{item.documento || '-'}</td>
-          <td className="py-3 px-4 text-right text-[10px] text-slate-500">{item.ativo === false ? 'Inativo' : 'Ativo'}</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.documento || '-'}</td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-450">{item.ativo === false ? 'Inativo' : 'Ativo'}</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     if (activeTab === 'turmas') {
       return filteredRows('turmas', (item) => `${item.nome} ${item.responsavel || ''}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome}</p><p className="text-[10px] text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{item.responsavel || '-'}</td>
-          <td className="py-3 px-4 text-right text-[10px] text-slate-500">{item.integrantes_detalhe?.length || 0} integrantes</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.responsavel || '-'}</td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">{item.integrantes_detalhe?.length || 0} integrantes</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     if (activeTab === 'produtos') {
       return filteredRows('produtos', (item) => `${item.codigo || ''} ${item.nome_comercial}`).map((item) => (
-        <tr key={item.id} className="hover:bg-white/[0.02]">
-          <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.nome_comercial}</p><p className="text-[10px] text-slate-500">{item.codigo || 'Sem código'}</p></td>
-          <td className="py-3 px-4 text-[10px] text-slate-300">{item.classificacao_nome || '-'}</td>
-          <td className="py-3 px-4 text-right text-[10px] text-slate-400">{item.unidade_sigla || item.unidade_nome || '-'}</td>
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome_comercial}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.codigo || 'Sem código'}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.classificacao_nome || 'Insumo'}</td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-450">{item.unidade_sigla || item.unidade_nome || '-'}</td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'usuarios') {
+      return filteredRows('usuarios', (item) => `${item.username} ${item.email} ${item.first_name} ${item.last_name}`).map((item) => (
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome_completo}</p>
+            <p className="text-[10px] text-slate-450 dark:text-slate-500">Usuário: {item.username}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+            <p>{item.email}</p>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold uppercase">{item.perfil_nome || 'Sem Perfil'}</p>
+          </td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">
+            {item.fazendas_permitidas_ids?.length || 0} fazendas
+          </td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
         </tr>
       ));
     }
 
     return filteredRows('estoque', (item) => `${item.produto_nome || ''} ${item.tipo_movimento}`).map((item) => (
-      <tr key={item.id} className="hover:bg-white/[0.02]">
-        <td className="py-3 px-4"><p className="text-xs font-black text-white">{item.produto_nome || lookup(records.produtos, fieldId(item, 'produto'))}</p><p className="text-[10px] text-slate-500">{item.documento_referencia || 'Sem documento'}</p></td>
-        <td className="py-3 px-4 text-[10px] text-slate-300">{item.tipo_movimento} em {item.data_movimento}</td>
-        <td className="py-3 px-4 text-right text-xs font-bold text-emerald-400">{Number(item.quantidade || 0).toLocaleString('pt-BR')} {item.produto_unidade_sigla || ''}<p className="text-[10px] text-slate-500 font-normal">R$ {money(item.valor_total)}</p></td>
+      <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+        <td className="py-3 px-5">
+          <p className="text-xs font-black text-slate-800 dark:text-white">{item.produto_nome || lookup(records.produtos, fieldId(item, 'produto'))}</p>
+          <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.documento_referencia || 'Sem documento'}</p>
+        </td>
+        <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.tipo_movimento} em {item.data_movimento}</td>
+        <td className="py-3 px-5 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">{Number(item.quantidade || 0).toLocaleString('pt-BR')} {item.produto_unidade_sigla || ''}<p className="text-[10px] text-slate-450 font-normal">R$ {money(item.valor_total)}</p></td>
+        <td className="py-3 px-5 text-center">
+          <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+            {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+          </button>
+        </td>
       </tr>
     ));
   };
@@ -708,36 +990,37 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Sidebar Menu */}
         <aside className="lg:col-span-3 space-y-4 lg:sticky lg:top-24">
-          <div className="glass-panel p-4 rounded-2xl border border-white/[0.06] bg-slate-900/60 backdrop-blur-md">
-            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400 mb-4 px-2">Menu de Módulos</h3>
+          <div className="glass-panel p-4 rounded-2xl border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/60 backdrop-blur-md">
+            <h3 className="text-xs font-black uppercase tracking-wider text-emerald-500 mb-4 px-2">Menu de Módulos</h3>
             <div className="space-y-2">
-              {menuSections.map((section) => {
+              {filteredMenuSections.map((section) => {
                 const SectionIcon = section.icon;
                 const isExpanded = expandedSection === section.id;
                 const hasActiveItem = section.items.some((item) => item.id === activeTab);
 
                 return (
-                  <div key={section.id} className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 overflow-hidden">
+                  <div key={section.id} className="rounded-2xl border border-slate-200/70 dark:border-slate-800/80 overflow-hidden">
                     <button
                       type="button"
                       onClick={() => setExpandedSection(isExpanded ? '' : section.id)}
-                      className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left transition-all ${hasActiveItem ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}
+                      className={`w-full flex items-center justify-between gap-3 px-3.5 py-3 text-left transition-all cursor-pointer ${hasActiveItem ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}
                     >
                       <span className="flex items-center gap-3 min-w-0">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-300">
                           <SectionIcon className="h-4 w-4" />
                         </span>
                         <span className="min-w-0">
                           <span className="block text-sm font-black">{section.label}</span>
-                          <span className="block truncate text-[10px] font-semibold text-slate-500 dark:text-slate-400">{section.description}</span>
+                          <span className="block truncate text-[10px] font-semibold text-slate-455 dark:text-slate-400">{section.description}</span>
                         </span>
                       </span>
                       <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
 
                     {isExpanded && (
-                      <div className="space-y-1 border-t border-slate-200/70 bg-slate-50/60 p-2 dark:border-slate-700/70 dark:bg-slate-950/20">
+                      <div className="space-y-1 border-t border-slate-200/70 bg-slate-50/60 p-2 dark:border-slate-800/80 dark:bg-slate-950/20">
                         {section.items.map((item) => {
                           const ItemIcon = item.icon;
                           const isActive = activeTab === item.id;
@@ -757,10 +1040,23 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                                   setActiveView('operacoes');
                                   return;
                                 }
+                                if (item.id === 'compras') {
+                                  setActiveView('financeiro', 'compras');
+                                  return;
+                                }
+                                if (item.id === 'contas_pagar') {
+                                  setActiveView('financeiro', 'pagar');
+                                  return;
+                                }
+                                if (item.id === 'contas_receber') {
+                                  setActiveView('financeiro', 'receber');
+                                  return;
+                                }
                                 setActiveTab(item.id);
                                 setSearchQuery('');
+                                setShowInactiveOnly(false); // Reset to active list on tab change
                               }}
-                              className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-45 ${isActive ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300' : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-white dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800'}`}
+                              className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer ${isActive ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300' : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-white dark:text-slate-350 dark:hover:text-white dark:hover:bg-slate-850'}`}
                             >
                               <span className="flex items-center gap-2 min-w-0">
                                 <ItemIcon className="h-4 w-4 shrink-0" />
@@ -780,8 +1076,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             </div>
           </div>
 
-          <div className="glass-panel p-4 rounded-2xl border border-white/[0.06] bg-slate-900/40 text-xs text-slate-400 space-y-2.5">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold">
+          <div className="glass-panel p-4 rounded-2xl border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400 space-y-2.5">
+            <div className="flex items-center gap-2 text-emerald-500 dark:text-emerald-400 font-bold">
               <BadgeInfo className="w-4 h-4" />
               <span>Contexto obrigatório</span>
             </div>
@@ -789,69 +1085,148 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           </div>
         </aside>
 
-        <main className="lg:col-span-9 space-y-8">
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight font-display">Gestão de {activeLabel}</h1>
-            <p className="text-slate-400 text-xs mt-1">Dados normalizados conforme a arquitetura Proprietário, Fazenda e Safra.</p>
+        {/* Unified Full-Width List & Modal Area */}
+        <main className="lg:col-span-9 space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/50 dark:border-slate-800/60 pb-5">
+            <div>
+              <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight font-display">Gestão de {activeLabel}</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Dados normalizados conforme a arquitetura de multi-tenancy logical.</p>
+            </div>
+
+            {/* Novo Registro button trigger */}
+            <button
+              onClick={() => {
+                setEditingId(null);
+                resetForm();
+                setShowModal(true);
+              }}
+              className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Novo Registro</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-            <section className="md:col-span-4 glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/60 backdrop-blur-md">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-300 mb-5 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-400" />
-                <span>{editingProprietarioId && activeTab === 'proprietarios' ? 'Editar Proprietário' : 'Novo Registro'}</span>
-              </h2>
+          {/* Search, Filter Tabs and Controls */}
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            {/* Search Input */}
+            <div className="relative w-full md:max-w-md">
+              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-450 dark:text-slate-500" />
+              <input
+                type="text"
+                placeholder={`Pesquisar em ${activeLabel}...`}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="w-full bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] focus:border-emerald-500/40 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 dark:text-white placeholder-slate-400 outline-none transition-all"
+              />
+            </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {renderFormFields()}
-                <div className="flex gap-2.5 pt-2">
-                  <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 disabled:opacity-60 text-white text-xs font-bold uppercase transition-all">
-                    {saving ? 'Salvando...' : editingProprietarioId && activeTab === 'proprietarios' ? 'Atualizar' : 'Salvar'}
-                  </button>
-                  {editingProprietarioId && activeTab === 'proprietarios' && (
-                    <button type="button" onClick={() => resetForm('proprietarios')} className="px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all">Cancelar</button>
-                  )}
-                </div>
-              </form>
-            </section>
+            {/* Premium Active/Inactive Toggle Buttons */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/60 dark:border-slate-800/80 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowInactiveOnly(false)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  !showInactiveOnly
+                    ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                Ativos
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInactiveOnly(true)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  showInactiveOnly
+                    ? 'bg-white dark:bg-slate-800 text-rose-500 dark:text-rose-450 shadow-sm'
+                    : 'text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400'
+                }`}
+              >
+                Inativos
+              </button>
+            </div>
+          </div>
 
-            <section className="md:col-span-8 space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder="Pesquisar nesta tabela..."
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="w-full bg-slate-900/60 border border-white/[0.06] focus:border-emerald-500/40 rounded-xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-slate-500 outline-none transition-all"
-                />
-              </div>
-
-              <div className="glass-panel border border-white/[0.06] bg-slate-900/40 rounded-2xl overflow-x-auto shadow-xl">
-                <table className="w-full min-w-[640px] text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-white/[0.06] bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                      <th className="py-3 px-4">Registro</th>
-                      <th className="py-3 px-4">Detalhe</th>
-                      <th className="py-3 px-4 text-right">Status / Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/[0.04]">
-                    {loading ? (
-                      <tr><td colSpan="3" className="py-8 text-center text-xs text-slate-500">Carregando cadastros...</td></tr>
-                    ) : (
-                      renderRows()
-                    )}
-                    {!loading && records[activeTab].length === 0 && (
-                      <tr><td colSpan="3" className="py-8 text-center text-xs text-slate-500">Nenhum registro encontrado.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+          {/* Unified Full-Width Table */}
+          <div className="glass-panel border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 rounded-2xl overflow-x-auto shadow-xl">
+            <table className="w-full min-w-[768px] text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-450 dark:text-slate-405 font-black">
+                  <th className="py-4 px-5">Registro</th>
+                  <th className="py-4 px-5">Detalhe</th>
+                  <th className="py-4 px-5 text-right">Informações / Valor</th>
+                  <th className="py-4 px-5 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
+                {loading ? (
+                  <tr><td colSpan="4" className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 font-semibold">Carregando dados dos cadastros...</td></tr>
+                ) : (
+                  renderRows()
+                )}
+                {!loading && filteredRows(activeTab, () => '').length === 0 && (
+                  <tr><td colSpan="4" className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 font-medium italic">Nenhum registro localizado para os filtros informados.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </main>
       </div>
+
+      {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
+              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Plus className="w-5 h-5 text-emerald-500" />
+                <span>{editingId ? `Editar ${activeLabel}` : `Novo Registro de ${activeLabel}`}</span>
+              </h2>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingId(null);
+                  resetForm();
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Form Content */}
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {renderFormFields()}
+              
+              {/* Actions inside Modal */}
+              <div className="flex gap-3 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingId(null);
+                    resetForm();
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold uppercase transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 disabled:opacity-60 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
+                >
+                  {saving ? 'Salvando...' : 'Confirmar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

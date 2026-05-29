@@ -169,3 +169,8 @@ STATIC_URL = 'static/'
 # CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Email Configuration
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@inovaceifa.com.br')
+
+

@@ -114,7 +114,26 @@ const getInitialDB = () => {
       },
       101: { grouped: [{ periodo: "Jun/24", saldo_realizado: 60000, saldo_previsto: 60000 }], ledger: [] },
       103: { grouped: [{ periodo: "Jun/26", saldo_realizado: 0, saldo_previsto: 200000 }], ledger: [] }
-    }
+    },
+    pedidos_compra: [
+      { id: 701, fazenda: 1, safra: 102, fornecedor: "Yara Fertilizantes", data_pedido: "2025-05-10", valor_total: 15400.00, status: "APROVADO" },
+      { id: 702, fazenda: 1, safra: 102, fornecedor: "Syngenta Defensivos", data_pedido: "2025-05-15", valor_total: 8200.00, status: "RASCUNHO" }
+    ],
+    itens_pedido_compra: [
+      { id: 1, pedido_compra: 701, pedido_compra_id: 701, produto: 1, quantidade: 2000.0000, valor_unitario: 5.2000, valor_total: 10400.00 },
+      { id: 2, pedido_compra: 701, pedido_compra_id: 701, produto: 2, quantidade: 5000.0000, valor_unitario: 1.0000, valor_total: 5000.00 },
+      { id: 3, pedido_compra: 702, pedido_compra_id: 702, produto: 3, quantidade: 20.0000, valor_unitario: 410.0000, valor_total: 8200.00 }
+    ],
+    contas_a_pagar: [
+      { id: 801, fazenda: 1, safra: 102, pedido_compra: 701, pedido_compra_id: 701, descricao: "Compra Yara Fertilizantes (Ref. Pedido #701)", valor: 15400.00, data_vencimento: "2025-05-30", data_pagamento: null, status: "PENDENTE" }
+    ],
+    pedidos_venda: [
+      { id: 901, fazenda: 1, safra: 102, cliente: "Cooxupé Cooperativa", data_venda: "2025-05-12", tipo_produto: "CAFE", quantidade_sacas: 100.00, preco_unitario: 950.00, valor_total: 95000.00, status: "CONFIRMADO" },
+      { id: 902, fazenda: 1, safra: 102, cliente: "Exportadora Guaxupé", data_venda: "2025-05-20", tipo_produto: "CAFE", quantidade_sacas: 50.00, preco_unitario: 980.00, valor_total: 49000.00, status: "RASCUNHO" }
+    ],
+    contas_a_receber: [
+      { id: 1001, fazenda: 1, safra: 102, pedido_venda: 901, pedido_venda_id: 901, descricao: "Venda para o cliente: Cooxupé Cooperativa (Ref. Pedido #901)", categoria_receita: "VENDA_CAFE", valor: 95000.00, data_vencimento: "2025-06-15", data_recebimento: null, status: "PENDENTE" }
+    ]
   };
 };
 
@@ -963,6 +982,262 @@ export const relatorioService = {
       return res.data;
     } catch (error) {
       return { detail: "Apontamento de funcionário salvo offline" };
+    }
+  },
+
+  // --- FINANCEIRO & COMERCIAL (FASE 6.5) ---
+  getPedidosCompra: () => {
+    return requestHandler(
+      () => api.get('/api/financeiro/pedidos-compra/'),
+      () => {
+        const db = getDB();
+        return (db.pedidos_compra || []).map(p => ({
+          ...p,
+          itens: (db.itens_pedido_compra || []).filter(item => Number(item.pedido_compra_id || item.pedido_compra) === Number(p.id))
+        }));
+      }
+    );
+  },
+
+  createPedidoCompra: async (data) => {
+    try {
+      const res = await api.post('/api/financeiro/pedidos-compra/', data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.pedidos_compra) db.pedidos_compra = [];
+      if (!db.itens_pedido_compra) db.itens_pedido_compra = [];
+      const newId = db.pedidos_compra.length > 0 ? Math.max(...db.pedidos_compra.map(p => p.id)) + 1 : 701;
+      
+      const newPedido = {
+        id: newId,
+        fazenda: Number(data.fazenda),
+        safra: Number(data.safra),
+        fornecedor: data.fornecedor,
+        data_pedido: data.data_pedido,
+        status: data.status || 'RASCUNHO',
+        valor_total: 0
+      };
+
+      let calculatedTotal = 0;
+      if (data.itens && Array.isArray(data.itens)) {
+        data.itens.forEach((item, index) => {
+          const itemTotal = Number(item.quantidade) * Number(item.valor_unitario);
+          calculatedTotal += itemTotal;
+          db.itens_pedido_compra.push({
+            id: db.itens_pedido_compra.length > 0 ? Math.max(...db.itens_pedido_compra.map(i => i.id)) + 1 + index : 1,
+            pedido_compra: newId,
+            pedido_compra_id: newId,
+            produto: Number(item.produto),
+            quantidade: Number(item.quantidade),
+            valor_unitario: Number(item.valor_unitario),
+            valor_total: itemTotal
+          });
+        });
+      }
+
+      newPedido.valor_total = calculatedTotal;
+      db.pedidos_compra.push(newPedido);
+      saveDB(db);
+      return { ...newPedido, itens: (db.itens_pedido_compra).filter(i => i.pedido_compra_id === newId) };
+    }
+  },
+
+  receberPedidoCompra: async (id) => {
+    try {
+      const res = await api.post(`/api/financeiro/pedidos-compra/${id}/receber/`);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const pedido = db.pedidos_compra?.find(p => p.id === Number(id));
+      if (!pedido) throw new Error("Pedido não encontrado");
+      
+      if (pedido.status !== 'APROVADO') {
+        throw new Error("Apenas pedidos com status 'APROVADO' podem ser recebidos.");
+      }
+
+      pedido.status = 'RECEBIDO';
+      
+      // 1. Criar Contas a Pagar
+      if (!db.contas_a_pagar) db.contas_a_pagar = [];
+      const newCPId = db.contas_a_pagar.length > 0 ? Math.max(...db.contas_a_pagar.map(c => c.id)) + 1 : 801;
+      db.contas_a_pagar.push({
+        id: newCPId,
+        fazenda: pedido.fazenda,
+        safra: pedido.safra,
+        pedido_compra: pedido.id,
+        pedido_compra_id: pedido.id,
+        descricao: `Compra do fornecedor: ${pedido.fornecedor} (Ref. Pedido #${pedido.id})`,
+        valor: pedido.valor_total,
+        data_vencimento: pedido.data_pedido,
+        status: 'PENDENTE',
+        data_pagamento: null
+      });
+
+      // 2. Movimentos de Entrada no Estoque
+      if (!db.estoque) db.estoque = [];
+      const pedidoItens = (db.itens_pedido_compra || []).filter(item => Number(item.pedido_compra_id || item.pedido_compra) === Number(pedido.id));
+      
+      pedidoItens.forEach(item => {
+        db.estoque.push({
+          id: db.estoque.length > 0 ? Math.max(...db.estoque.map(e => e.id)) + 1 : 1,
+          fazenda_id: pedido.fazenda,
+          safra_id: pedido.safra,
+          produto_id: item.produto,
+          tipo_movimento: 'ENTRADA',
+          quantidade: item.quantidade,
+          valor_unitario: item.valor_unitario,
+          valor_total: item.valor_total,
+          data_movimento: pedido.data_pedido,
+          documento_referencia: `Pedido #${pedido.id}`,
+          observacao: `Entrada automática pelo recebimento do Pedido de Compra #${pedido.id}.`
+        });
+      });
+
+      saveDB(db);
+      return { status: "Pedido recebido com sucesso. Contas a pagar e movimentos de estoque gerados.", id: pedido.id };
+    }
+  },
+
+  getContasAPagar: () => {
+    return requestHandler(
+      () => api.get('/api/financeiro/contas-pagar/'),
+      () => getDB().contas_a_pagar || []
+    );
+  },
+
+  pagarConta: async (id, dataPagamento) => {
+    try {
+      const res = await api.patch(`/api/financeiro/contas-pagar/${id}/`, {
+        status: 'PAGO',
+        data_pagamento: dataPagamento
+      });
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const db = getDB();
+      const conta = db.contas_a_pagar?.find(c => c.id === Number(id));
+      if (conta) {
+        conta.status = 'PAGO';
+        conta.data_pagamento = dataPagamento;
+        saveDB(db);
+        return conta;
+      }
+      throw error;
+    }
+  },
+
+  getPedidosVenda: () => {
+    return requestHandler(
+      () => api.get('/api/financeiro/pedidos-venda/'),
+      () => getDB().pedidos_venda || []
+    );
+  },
+
+  createPedidoVenda: async (data) => {
+    try {
+      const res = await api.post('/api/financeiro/pedidos-venda/', data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.pedidos_venda) db.pedidos_venda = [];
+      const newId = db.pedidos_venda.length > 0 ? Math.max(...db.pedidos_venda.map(p => p.id)) + 1 : 901;
+      
+      const valTotal = Number(data.quantidade_sacas) * Number(data.preco_unitario);
+      const newPedido = {
+        id: newId,
+        fazenda: Number(data.fazenda),
+        safra: Number(data.safra),
+        cliente: data.cliente,
+        data_venda: data.data_venda,
+        tipo_produto: data.tipo_produto,
+        quantidade_sacas: Number(data.quantidade_sacas),
+        preco_unitario: Number(data.preco_unitario),
+        valor_total: valTotal,
+        status: data.status || 'RASCUNHO'
+      };
+      
+      db.pedidos_venda.push(newPedido);
+      saveDB(db);
+      return newPedido;
+    }
+  },
+
+  confirmarPedidoVenda: async (id) => {
+    try {
+      const res = await api.post(`/api/financeiro/pedidos-venda/${id}/confirmar/`);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const pedido = db.pedidos_venda?.find(p => p.id === Number(id));
+      if (!pedido) throw new Error("Pedido não encontrado");
+      
+      if (pedido.status !== 'RASCUNHO') {
+        throw new Error("Apenas pedidos com status 'RASCUNHO' podem ser confirmados.");
+      }
+
+      pedido.status = 'CONFIRMADO';
+      
+      // Mapear categoria
+      const categoriaMap = {
+        'CAFE': 'VENDA_CAFE',
+        'CEREAIS': 'CEREAIS',
+        'SUCATA': 'SUCATA',
+        'OUTROS': 'OUTROS'
+      };
+      const categoria = categoriaMap[pedido.tipo_produto] || 'OUTROS';
+
+      // Criar Contas a Receber
+      if (!db.contas_a_receber) db.contas_a_receber = [];
+      const newCRId = db.contas_a_receber.length > 0 ? Math.max(...db.contas_a_receber.map(c => c.id)) + 1 : 1001;
+      db.contas_a_receber.push({
+        id: newCRId,
+        fazenda: pedido.fazenda,
+        safra: pedido.safra,
+        pedido_venda: pedido.id,
+        pedido_venda_id: pedido.id,
+        descricao: `Venda para o cliente: ${pedido.cliente} (Ref. Pedido #${pedido.id})`,
+        categoria_receita: categoria,
+        valor: pedido.valor_total,
+        data_vencimento: pedido.data_venda,
+        status: 'PENDENTE',
+        data_recebimento: null
+      });
+
+      saveDB(db);
+      return { status: "Pedido de venda confirmado com sucesso. Contas a receber gerado.", id: pedido.id };
+    }
+  },
+
+  getContasAReceber: () => {
+    return requestHandler(
+      () => api.get('/api/financeiro/contas-receber/'),
+      () => getDB().contas_a_receber || []
+    );
+  },
+
+  receberConta: async (id, dataRecebimento) => {
+    try {
+      const res = await api.patch(`/api/financeiro/contas-receber/${id}/`, {
+        status: 'RECEBIDO',
+        data_recebimento: dataRecebimento
+      });
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const db = getDB();
+      const conta = db.contas_a_receber?.find(c => c.id === Number(id));
+      if (conta) {
+        conta.status = 'RECEBIDO';
+        conta.data_recebimento = dataRecebimento;
+        saveDB(db);
+        return conta;
+      }
+      throw error;
     }
   }
 };

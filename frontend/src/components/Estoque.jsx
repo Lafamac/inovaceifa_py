@@ -10,7 +10,8 @@ import {
   AlertCircle,
   TrendingDown,
   TrendingUp,
-  Boxes
+  Boxes,
+  X
 } from 'lucide-react';
 
 export const Estoque = () => {
@@ -20,6 +21,8 @@ export const Estoque = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterNegativeOnly, setFilterNegativeOnly] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,6 +41,21 @@ export const Estoque = () => {
     };
     fetchData();
   }, [safraAtiva, fazendaAtiva]);
+
+  // Alerta de estoque baixo flutuante (Toast)
+  useEffect(() => {
+    if (data && data.estoque) {
+      const negatives = data.estoque.filter(item => item.alerta_negativo).length;
+      if (negatives > 0) {
+        setToastMessage(`Aviso de Ruptura: Existem ${negatives} insumos operando com saldo negativo no almoxarifado!`);
+        setShowToast(true);
+        const timer = setTimeout(() => {
+          setShowToast(false);
+        }, 6000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [data]);
 
   if (loading) {
     return (
@@ -228,6 +246,22 @@ export const Estoque = () => {
           </div>
         )}
       </div>
+
+      {/* Floating Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-rose-500/30 bg-rose-950/95 p-4 text-xs font-semibold text-rose-300 shadow-2xl shadow-rose-950/20 flex items-center justify-between gap-4 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 animate-bounce" />
+            <p className="leading-normal">{toastMessage}</p>
+          </div>
+          <button 
+            onClick={() => setShowToast(false)} 
+            className="p-1 hover:bg-rose-900/50 rounded-lg text-rose-400 transition-colors shrink-0 cursor-pointer active:scale-90"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
     </div>
   );

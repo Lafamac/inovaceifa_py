@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '../context/TenantContext';
 import { relatorioService } from '../services/api';
+import { exportToCSV } from '../services/exportUtils';
 import {
   TrendingUp,
   TrendingDown,
@@ -298,9 +299,31 @@ export const ProducaoTalhao = () => {
 
       {/* Spreadsheet / Table */}
       <div className="glass-panel rounded-2xl border border-slate-200/50 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/50 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <TableProperties className="w-4 h-4 text-emerald-500" />
-          <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Detalhamento Físico de Colheita</h3>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <TableProperties className="w-4 h-4 text-emerald-500" />
+            <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Detalhamento Físico de Colheita</h3>
+          </div>
+          <button
+            onClick={() => {
+              const headers = ['Talhão', 'Código', 'Área (ha)', 'Sacas Estimadas', 'Prod. Est (sc/ha)', 'Sacas Colhidas', 'Prod. Real (sc/ha)', 'Desvio Físico (sc)', 'Desvio %'];
+              exportToCSV(`Producao_Talhao_${fazendaAtiva?.nome || 'Fazenda'}`, headers, producao_por_talhao, t => [
+                t.nome,
+                t.codigo,
+                t.area.toFixed(1),
+                t.estimado.sacas.toFixed(2),
+                t.estimado.produtividade.toFixed(2),
+                t.real.sacas.toFixed(2),
+                t.real.produtividade.toFixed(2),
+                t.desvio_sacas.toFixed(2),
+                t.desvio_percentual.toFixed(2)
+              ]);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all cursor-pointer active:scale-95 shadow-sm"
+          >
+            <TableProperties className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Exportar CSV</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800/40">

@@ -33,6 +33,9 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 
+    # Rotas de Gestão de Contas (Usuários, Perfis)
+    path('api/accounts/', include('accounts.urls')),
+
     # Rotas do Core (Proprietarios, Fazendas, Safras)
     path('api/', include('core.urls')),
 

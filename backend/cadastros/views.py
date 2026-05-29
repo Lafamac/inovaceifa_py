@@ -31,7 +31,9 @@ class BaseTenantViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Por padrão, filtra por ativo=True
+        incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        if incluir_inativos:
+            return self.queryset
         return self.queryset.filter(ativo=True)
 
     def perform_destroy(self, instance):

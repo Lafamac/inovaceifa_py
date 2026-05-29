@@ -4,9 +4,14 @@ from core.models import Proprietario, Fazenda, Safra
 from core.serializers import ProprietarioSerializer, FazendaSerializer, SafraSerializer
 
 class ProprietarioViewSet(viewsets.ModelViewSet):
-    queryset = Proprietario.objects.filter(ativo=True)
     serializer_class = ProprietarioSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        if incluir_inativos:
+            return Proprietario.objects.all()
+        return Proprietario.objects.filter(ativo=True)
 
     def perform_destroy(self, instance):
         instance.ativo = False
@@ -17,8 +22,17 @@ class FazendaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Retorna apenas as fazendas que o usuário logado tem permissão
-        return self.request.fazendas_permitidas
+        incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        is_super = getattr(self.request.user, 'perfil', None) and self.request.user.perfil.nivel == 1
+        
+        if is_super or self.request.user.is_superuser:
+            if incluir_inativos:
+                return Fazenda.objects.all()
+            return Fazenda.objects.filter(ativo=True)
+        else:
+            if incluir_inativos:
+                return self.request.user.fazendas_permitidas.all()
+            return self.request.user.fazendas_permitidas.filter(ativo=True)
 
     def perform_destroy(self, instance):
         instance.ativo = False
@@ -29,9 +43,13 @@ class SafraViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Retorna as safras vinculadas às fazendas permitidas do usuário
+        incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        
+        if incluir_inativos:
+            return Safra.objects.filter(fazenda__in=self.request.fazendas_permitidas)
         return Safra.objects.filter(fazenda__in=self.request.fazendas_permitidas, ativo=True)
 
     def perform_destroy(self, instance):
         instance.ativo = False
         instance.save()
+

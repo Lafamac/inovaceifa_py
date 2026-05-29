@@ -22,7 +22,8 @@ import {
   X,
   Gauge,
   Clock,
-  ChevronDown
+  ChevronDown,
+  Printer
 } from 'lucide-react';
 
 export const OrdensServico = () => {
@@ -234,6 +235,34 @@ export const OrdensServico = () => {
 
   const handleSaveApontamentos = async (e) => {
     e.preventDefault();
+
+    // Validações estritas de consistência de dados
+    for (const maq of aptForm.maquinas) {
+      const inicial = Number(maq.horimetro_inicial || 0);
+      const final = Number(maq.horimetro_final || 0);
+      if (inicial < 0 || final < 0) {
+        showAlert('error', 'Os horímetros de máquinas não podem ser negativos.');
+        return;
+      }
+      if (final < inicial) {
+        showAlert('error', 'O horímetro final de uma máquina não pode ser menor que o horímetro inicial.');
+        return;
+      }
+    }
+
+    for (const ins of aptForm.insumos) {
+      const qtd = Number(ins.quantidade_total || 0);
+      const dose = Number(ins.dose_realizada || 0);
+      if (qtd < 0) {
+        showAlert('error', 'A quantidade de insumos aplicada não pode ser negativa.');
+        return;
+      }
+      if (dose < 0) {
+        showAlert('error', 'A dose realizada de insumos não pode ser negativa.');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       // 1. Criar o Apontamento Geral da Operação
@@ -297,6 +326,19 @@ export const OrdensServico = () => {
   // Funções helpers de adição temporária de apontamentos no formulário
   const addTempInsumoReal = () => {
     if (!tempInsumoReal.produto_id || !tempInsumoReal.quantidade_total) return;
+    
+    const qtd = Number(tempInsumoReal.quantidade_total || 0);
+    const dose = Number(tempInsumoReal.dose_realizada || 0);
+
+    if (qtd < 0) {
+      showAlert('error', 'A quantidade total de insumo não pode ser negativa.');
+      return;
+    }
+    if (dose < 0) {
+      showAlert('error', 'A dose realizada do insumo não pode ser negativa.');
+      return;
+    }
+
     setAptForm(prev => ({
       ...prev,
       insumos: [...prev.insumos, { ...tempInsumoReal }]
@@ -306,6 +348,19 @@ export const OrdensServico = () => {
 
   const addTempMaquinaReal = () => {
     if (!tempMaquinaReal.maquina_id) return;
+
+    const inicial = Number(tempMaquinaReal.horimetro_inicial || 0);
+    const final = Number(tempMaquinaReal.horimetro_final || 0);
+
+    if (inicial < 0 || final < 0) {
+      showAlert('error', 'Os horímetros não podem ser valores negativos.');
+      return;
+    }
+    if (final < inicial) {
+      showAlert('error', 'O horímetro final não pode ser menor que o horímetro inicial.');
+      return;
+    }
+
     setAptForm(prev => ({
       ...prev,
       maquinas: [...prev.maquinas, { ...tempMaquinaReal }]
@@ -315,6 +370,13 @@ export const OrdensServico = () => {
 
   const addTempFuncionarioReal = () => {
     if (!tempFuncionarioReal.funcionario_id || !tempFuncionarioReal.horas_trabalhadas) return;
+
+    const horas = Number(tempFuncionarioReal.horas_trabalhadas || 0);
+    if (horas < 0) {
+      showAlert('error', 'As horas trabalhadas não podem ser negativas.');
+      return;
+    }
+
     setAptForm(prev => ({
       ...prev,
       funcionarios: [...prev.funcionarios, { ...tempFuncionarioReal }]
@@ -379,7 +441,7 @@ export const OrdensServico = () => {
       )}
 
       {/* Cabeçalho Principal */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 no-print">
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight font-display flex items-center gap-2">
             <ClipboardList className="w-6 h-6 text-emerald-500" />
@@ -411,7 +473,7 @@ export const OrdensServico = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Coluna Esquerda: Listagem com Filtros */}
-          <section className="lg:col-span-4 space-y-4">
+          <section className="lg:col-span-4 space-y-4 no-print">
             
             {/* Abas Rápidas de Status */}
             <div className="flex flex-wrap gap-1.5 p-1 bg-slate-950/40 rounded-xl border border-white/[0.04]">
@@ -530,6 +592,14 @@ export const OrdensServico = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => window.print()}
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-350 hover:text-white font-bold px-3 py-2 text-[10px] uppercase tracking-wider cursor-pointer active:scale-95 transition-all no-print"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-slate-400" />
+                      Imprimir OS
+                    </button>
+
                     {selectedOS.status === 'APROVADA' && (
                       <button
                         onClick={() => handleIniciarOS(selectedOS.id)}
