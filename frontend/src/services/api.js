@@ -157,6 +157,10 @@ export const requestHandler = async (apiCall, fallbackDataGetter) => {
     const response = await apiCall();
     return response.data;
   } catch (error) {
+    // Se for erro de autenticação (401) ou permissão (403), propaga o erro para o sistema tratar (ex: deslogar)
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      throw error;
+    }
     // Mimic API latency
     await new Promise(resolve => setTimeout(resolve, 150));
     return fallbackDataGetter();
