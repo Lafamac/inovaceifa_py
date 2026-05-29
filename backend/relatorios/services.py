@@ -651,6 +651,64 @@ def gestao_a_vista(safra, fazenda):
     os_total = OrdemServico.objects.filter(safra=safra, fazenda=fazenda, ativo=True).count()
     os_concluidas = OrdemServico.objects.filter(safra=safra, fazenda=fazenda, status="CONCLUIDA", ativo=True).count()
 
+    # 1. Hectares cultivados
+    hectares = decimal_sum(Talhao.objects.filter(fazenda=fazenda, ativo=True), "area")
+
+    # 2. COE Planejado
+    planejamento = PlanejamentoSafra.objects.filter(safra=safra, fazenda=fazenda, ativo=True).first()
+    plan_insumos = ZERO
+    plan_mao_obra = ZERO
+    plan_outros = ZERO
+    if planejamento:
+        prices = get_average_product_prices(safra)
+        plan_insumos = planejamento_insumo_total(planejamento, prices)
+        plan_mao_obra = decimal_sum(
+            PlanejamentoMaoObraTerceiros.objects.filter(
+                ordem_servico_planejada__planejamento=planejamento,
+                ordem_servico_planejada__ativo=True,
+                ativo=True,
+            ),
+            "valor_planejado",
+        )
+        plan_outros = decimal_sum(
+            PlanejamentoRateio.objects.filter(planejamento=planejamento, ativo=True),
+            "valor_planejado",
+        )
+    coe_planejado = plan_insumos + plan_mao_obra + plan_outros
+
+    # 3. Produtividade esperada
+    produtividade = total_estimado / hectares if hectares > ZERO else ZERO
+
+    # 4. Total de horas operador
+    total_horas = decimal_sum(
+        ApontamentoFuncionario.objects.filter(
+            apontamento__ordem_servico__safra=safra,
+            apontamento__ordem_servico__fazenda=fazenda,
+            ativo=True,
+            apontamento__ativo=True,
+            apontamento__ordem_servico__ativo=True,
+        ),
+        "horas_trabalhadas",
+    )
+
+    # 5. OS status counts (incluindo cálculo on-the-fly de ATRASADA)
+    os_qs = OrdemServico.objects.filter(safra=safra, fazenda=fazenda, ativo=True)
+    today = date.today()
+    os_status = {
+        'RASCUNHO': 0,
+        'APROVADA': 0,
+        'EM_EXECUCAO': 0,
+        'CONCLUIDA': 0,
+        'CANCELADA': 0,
+        'ATRASADA': 0
+    }
+    for os_obj in os_qs:
+        status_key = os_obj.status
+        if os_obj.data_fim_planejada < today and status_key not in ('CONCLUIDA', 'CANCELADA'):
+            os_status['ATRASADA'] += 1
+        elif status_key in os_status:
+            os_status[status_key] += 1
+
     return {
         "resumo": {
             "fazenda_id": fazenda.id,
@@ -670,4 +728,14 @@ def gestao_a_vista(safra, fazenda):
         "custo_mensal": custos,
         "estoque_alertas": [item for item in estoque if item["alerta_saldo_negativo"]],
         "eficiencia": eficiencia,
+        "kpis": {
+            "hectares_cultivados": number(hectares),
+            "estimativa_producao_sacas": number(total_estimado),
+            "produtividade_esperada": number(produtividade),
+            "coe_planejado": money(coe_planejado),
+            "coe_realizado": money(total_custos),
+            "total_horas_operador": number(total_horas),
+            "eficiencia_geral": eficiencia["eficiencia_geral"],
+            "os_status": os_status
+        }
     }

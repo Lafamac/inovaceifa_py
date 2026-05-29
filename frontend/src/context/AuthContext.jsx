@@ -29,11 +29,16 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      // Normalizar email para username
-      const username = email.includes('@') ? email.split('@')[0] : email;
-      
-      // Tentar login via serviço JWT real
-      const tokenData = await relatorioService.login(username, password);
+      let tokenData;
+      try {
+        // Tentar login com o e-mail completo (username na base real)
+        tokenData = await relatorioService.login(email.trim(), password);
+      } catch (err) {
+        // Fallback para username sem o domínio do e-mail
+        const username = email.includes('@') ? email.split('@')[0] : email;
+        tokenData = await relatorioService.login(username.trim(), password);
+      }
+
       if (tokenData && tokenData.access) {
         localStorage.setItem('token', tokenData.access);
       } else {
