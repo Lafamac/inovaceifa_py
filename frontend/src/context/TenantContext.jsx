@@ -39,7 +39,7 @@ export const TenantProvider = ({ children }) => {
           localStorage.setItem('fazenda_ativa_id', selectedFazenda.id.toString());
           
           // Filtrar safras dessa fazenda
-          const safrasDaFazenda = listaSafras.filter(s => s.fazenda_id === selectedFazenda.id);
+          const safrasDaFazenda = listaSafras.filter(s => (s.fazenda_id || s.fazenda) === selectedFazenda.id);
           
           // Restaurar ou selecionar safra ativa correspondente
           const savedSafraId = localStorage.getItem('safra_ativa_id');
@@ -75,7 +75,7 @@ export const TenantProvider = ({ children }) => {
     localStorage.setItem('fazenda_ativa_id', fazenda.id.toString());
 
     // Auto-selecionar a safra ativa dessa nova fazenda
-    const safrasDaFazenda = safras.filter(s => s.fazenda_id === fazenda.id);
+    const safrasDaFazenda = safras.filter(s => (s.fazenda_id || s.fazenda) === fazenda.id);
     const safraDefault = safrasDaFazenda.find(s => s.ativa) || safrasDaFazenda[0];
     
     setSafraAtiva(safraDefault || null);
@@ -94,7 +94,7 @@ export const TenantProvider = ({ children }) => {
   };
 
   // Filtrar safras disponíveis para a fazenda atualmente selecionada
-  const safrasFiltradas = fazendaAtiva ? safras.filter(s => s.fazenda_id === fazendaAtiva.id) : [];
+  const safrasFiltradas = fazendaAtiva ? safras.filter(s => (s.fazenda_id || s.fazenda) === fazendaAtiva.id) : [];
 
   return (
     <TenantContext.Provider value={{

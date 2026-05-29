@@ -86,6 +86,8 @@ class Funcionario(BaseModel):
     cpf = models.CharField(max_length=20, null=True, blank=True)
     cargo = models.CharField(max_length=100, null=True, blank=True)
     grupo_trabalhador = models.ForeignKey(GrupoTrabalhador, on_delete=models.PROTECT)
+    email = models.EmailField(max_length=255, null=True, blank=True)
+    criar_usuario = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Funcionário"

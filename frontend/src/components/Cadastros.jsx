@@ -66,6 +66,8 @@ const emptyForms = {
     cpf: '',
     cargo: '',
     grupo_trabalhador: '',
+    email: '',
+    criar_usuario: false,
   },
   terceirizados: { fazenda: '', nome: '', documento: '' },
   turmas: { fazenda: '', nome: '', responsavel: '' },
@@ -657,6 +659,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="CPF" value={currentForm.cpf} onChange={(value) => patchForm('cpf', value)} />
           <InputField label="Cargo" value={currentForm.cargo} onChange={(value) => patchForm('cargo', value)} />
           <SelectField required label="Grupo Trabalhador" value={currentForm.grupo_trabalhador} onChange={(value) => patchForm('grupo_trabalhador', value)} options={refOptions('gruposTrabalhador')} />
+          <InputField label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} />
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
+            <input type="checkbox" checked={currentForm.criar_usuario || false} onChange={(event) => patchForm('criar_usuario', event.target.checked)} className="h-4 w-4 rounded border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/50 text-emerald-500" />
+            Criar usuário para este funcionário
+          </label>
         </>
       );
     }
@@ -861,10 +868,22 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
           <td className="py-3 px-5">
             <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
-            <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.cpf || 'Sem CPF'}</p>
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              <span className="text-[10px] text-slate-455 dark:text-slate-500">CPF: {item.cpf || 'Sem CPF'}</span>
+              {item.email && (
+                <span className="text-[10px] text-slate-450 dark:text-slate-400 font-medium">{item.email}</span>
+              )}
+            </div>
           </td>
-          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.cargo || '-'}</td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-450">{item.grupo_trabalhador_nome || 'Trabalhador Regular'}</td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+            <div>{item.cargo || '-'}</div>
+            {item.criar_usuario && (
+              <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 text-[8px] font-bold text-emerald-600 dark:text-emerald-400 mt-1 uppercase tracking-wider">
+                Usuário do Sistema
+              </span>
+            )}
+          </td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">{item.grupo_trabalhador_nome || 'Trabalhador Regular'}</td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
