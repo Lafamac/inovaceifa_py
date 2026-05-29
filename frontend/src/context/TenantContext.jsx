@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { relatorioService } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const TenantContext = createContext();
 
 export const TenantProvider = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const [fazendas, setFazendas] = useState([]);
   const [safras, setSafras] = useState([]);
   const [fazendaAtiva, setFazendaAtiva] = useState(null);
@@ -13,6 +15,7 @@ export const TenantProvider = ({ children }) => {
   // Carregar fazendas e safras
   useEffect(() => {
     const loadTenantData = async () => {
+      setLoading(true);
       try {
         const [listaFazendas, listaSafras] = await Promise.all([
           relatorioService.getFazendas(),
@@ -66,7 +69,7 @@ export const TenantProvider = ({ children }) => {
     };
 
     loadTenantData();
-  }, []);
+  }, [isAuthenticated]);
 
   // Handler para trocar de Fazenda
   const selecionarFazenda = (fazenda) => {
