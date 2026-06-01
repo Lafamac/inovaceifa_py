@@ -55,8 +55,8 @@ class AccountsConfig(AppConfig):
             
             # Executa o auto-seeding das tabelas de referências auxiliares e cadastros base
             from django.core.management import call_command
-            call_command('seed_referencias', interactive=False)
-            call_command('seed_cadastros', interactive=False)
+            call_command('seed_referencias')
+            call_command('seed_cadastros')
                 
         except Exception as e:
             # Previne erros de importação/conexão durante makemigrations iniciais

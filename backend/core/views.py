@@ -38,9 +38,15 @@ class FazendaViewSet(viewsets.ModelViewSet):
         instance.ativo = False
         instance.save()
 
+from planejamento.views import setup_tenant_context
+
 class SafraViewSet(viewsets.ModelViewSet):
     serializer_class = SafraSerializer
     permission_classes = [IsAuthenticated]
+
+    def initial(self, request, *args, **kwargs):
+        setup_tenant_context(request)
+        super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
