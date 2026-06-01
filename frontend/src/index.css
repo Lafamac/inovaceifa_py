@@ -290,6 +290,16 @@ textarea::placeholder {
   color: #475569 !important;
 }
 
+.login-input-with-left-icon {
+  padding-left: 3.75rem !important;
+  padding-right: 1rem !important;
+}
+
+.login-input-with-both-icons {
+  padding-left: 3.75rem !important;
+  padding-right: 3.75rem !important;
+}
+
 select option {
   background: #ffffff !important;
   color: #0f172a !important;

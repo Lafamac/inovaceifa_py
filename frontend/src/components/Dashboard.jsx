@@ -53,7 +53,7 @@ const CATEGORIES = [
 
 export const Dashboard = () => {
   const { user } = useAuth();
-  const { fazendaAtiva, safraAtiva, loading } = useTenant();
+  const { fazendaAtiva, safraAtiva, tenantVersion, loading } = useTenant();
   const [activeReportId, setActiveReportId] = useState('gestao-a-vista');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -70,6 +70,7 @@ export const Dashboard = () => {
 
   const activeReport = REPORTS.find(r => r.id === activeReportId) || REPORTS[0];
   const ActiveReportComponent = activeReport.component;
+  const tenantReportKey = `${activeReportId}-${fazendaAtiva?.id || 'sem-fazenda'}-${safraAtiva?.id || 'sem-safra'}-${tenantVersion}`;
 
   const selectReport = (id) => {
     setActiveReportId(id);
@@ -235,7 +236,7 @@ export const Dashboard = () => {
           {/* ACTIVE REPORT RENDER PANEL */}
           <div className="lg:col-span-3 min-w-0">
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <ActiveReportComponent />
+              <ActiveReportComponent key={tenantReportKey} />
             </div>
           </div>
 

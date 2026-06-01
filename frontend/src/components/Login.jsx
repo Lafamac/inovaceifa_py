@@ -80,14 +80,15 @@ export const Login = () => {
               E-mail de Acesso
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-3.5 h-4.5 w-4.5 text-slate-500" />
+              <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nome@empresa.com.br"
-                className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
+                style={{ paddingLeft: '3.75rem', paddingRight: '1rem' }}
+                className="login-input-with-left-icon w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
               />
             </div>
           </div>
@@ -103,19 +104,20 @@ export const Login = () => {
               </a>
             </div>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-3.5 h-4.5 w-4.5 text-slate-500" />
+              <Lock className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
               <input
                 type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-11 pr-11 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
+                style={{ paddingLeft: '3.75rem', paddingRight: '3.75rem' }}
+                className="login-input-with-both-icons w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-14 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
               >
                 {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
               </button>

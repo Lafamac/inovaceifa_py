@@ -4,12 +4,26 @@ import { useAuth } from './AuthContext';
 
 const TenantContext = createContext();
 
+const normalizeId = (value) => {
+  if (value === null || value === undefined) return null;
+  return String(value);
+};
+
+const getFazendaIdFromSafra = (safra) => {
+  const fazenda = safra?.fazenda_id ?? safra?.fazenda;
+  if (fazenda && typeof fazenda === 'object') {
+    return normalizeId(fazenda.id);
+  }
+  return normalizeId(fazenda);
+};
+
 export const TenantProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [fazendas, setFazendas] = useState([]);
   const [safras, setSafras] = useState([]);
   const [fazendaAtiva, setFazendaAtiva] = useState(null);
   const [safraAtiva, setSafraAtiva] = useState(null);
+  const [tenantVersion, setTenantVersion] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Carregar fazendas e safras
@@ -30,7 +44,7 @@ export const TenantProvider = ({ children }) => {
         let selectedFazenda = null;
 
         if (savedFazendaId) {
-          selectedFazenda = listaFazendas.find(f => f.id === parseInt(savedFazendaId));
+          selectedFazenda = listaFazendas.find(f => normalizeId(f.id) === normalizeId(savedFazendaId));
         }
         if (!selectedFazenda && listaFazendas.length > 0) {
           selectedFazenda = listaFazendas[0];
@@ -42,14 +56,15 @@ export const TenantProvider = ({ children }) => {
           localStorage.setItem('fazenda_ativa_id', selectedFazenda.id.toString());
           
           // Filtrar safras dessa fazenda
-          const safrasDaFazenda = listaSafras.filter(s => (s.fazenda_id || s.fazenda) === selectedFazenda.id);
+          const selectedFazendaId = normalizeId(selectedFazenda.id);
+          const safrasDaFazenda = listaSafras.filter(s => getFazendaIdFromSafra(s) === selectedFazendaId);
           
           // Restaurar ou selecionar safra ativa correspondente
           const savedSafraId = localStorage.getItem('safra_ativa_id');
           let selectedSafra = null;
 
           if (savedSafraId) {
-            selectedSafra = safrasDaFazenda.find(s => s.id === parseInt(savedSafraId));
+            selectedSafra = safrasDaFazenda.find(s => normalizeId(s.id) === normalizeId(savedSafraId));
           }
           if (!selectedSafra && safrasDaFazenda.length > 0) {
             // Tenta pegar a safra marcada como "ativa"
@@ -60,6 +75,7 @@ export const TenantProvider = ({ children }) => {
           if (selectedSafra) {
             localStorage.setItem('safra_ativa_id', selectedSafra.id.toString());
           }
+          setTenantVersion(version => version + 1);
         }
       } catch (error) {
         console.error("Falha ao carregar dados de tenant", error);
@@ -72,13 +88,18 @@ export const TenantProvider = ({ children }) => {
   }, [isAuthenticated]);
 
   // Handler para trocar de Fazenda
-  const selecionarFazenda = (fazenda) => {
-    if (!fazenda) return;
-    setFazendaAtiva(fazenda);
-    localStorage.setItem('fazenda_ativa_id', fazenda.id.toString());
+  const selecionarFazenda = (fazendaOrId) => {
+    const fazendaId = normalizeId(typeof fazendaOrId === 'object' ? fazendaOrId?.id : fazendaOrId);
+    if (!fazendaId) return;
+
+    const fazendaSelecionada = fazendas.find(f => normalizeId(f.id) === fazendaId) || fazendaOrId;
+    if (!fazendaSelecionada || typeof fazendaSelecionada !== 'object') return;
+
+    setFazendaAtiva(fazendaSelecionada);
+    localStorage.setItem('fazenda_ativa_id', fazendaId);
 
     // Auto-selecionar a safra ativa dessa nova fazenda
-    const safrasDaFazenda = safras.filter(s => (s.fazenda_id || s.fazenda) === fazenda.id);
+    const safrasDaFazenda = safras.filter(s => getFazendaIdFromSafra(s) === fazendaId);
     const safraDefault = safrasDaFazenda.find(s => s.ativa) || safrasDaFazenda[0];
     
     setSafraAtiva(safraDefault || null);
@@ -87,6 +108,8 @@ export const TenantProvider = ({ children }) => {
     } else {
       localStorage.removeItem('safra_ativa_id');
     }
+
+    setTenantVersion(version => version + 1);
   };
 
   // Handler para trocar de Safra
@@ -94,10 +117,13 @@ export const TenantProvider = ({ children }) => {
     if (!safra) return;
     setSafraAtiva(safra);
     localStorage.setItem('safra_ativa_id', safra.id.toString());
+    setTenantVersion(version => version + 1);
   };
 
   // Filtrar safras disponíveis para a fazenda atualmente selecionada
-  const safrasFiltradas = fazendaAtiva ? safras.filter(s => (s.fazenda_id || s.fazenda) === fazendaAtiva.id) : [];
+  const safrasFiltradas = fazendaAtiva
+    ? safras.filter(s => getFazendaIdFromSafra(s) === normalizeId(fazendaAtiva.id))
+    : [];
 
   return (
     <TenantContext.Provider value={{
@@ -105,6 +131,7 @@ export const TenantProvider = ({ children }) => {
       safras: safrasFiltradas,
       fazendaAtiva,
       safraAtiva,
+      tenantVersion,
       selecionarFazenda,
       selecionarSafra,
       loading

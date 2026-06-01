@@ -40,10 +40,14 @@ export const Header = ({ activeView, setActiveView }) => {
   const [showFazendaMenu, setShowFazendaMenu] = useState(false);
   const [showSafraMenu, setShowSafraMenu] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const isFazendaSelecionada = (fazenda) => String(fazendaAtiva?.id ?? '') === String(fazenda.id);
+  const isSafraSelecionada = (safra) => String(safraAtiva?.id ?? '') === String(safra.id);
 
   const profileRef = useRef(null);
-  const fazendaRef = useRef(null);
-  const safraRef = useRef(null);
+  const desktopFazendaRef = useRef(null);
+  const desktopSafraRef = useRef(null);
+  const mobileFazendaRef = useRef(null);
+  const mobileSafraRef = useRef(null);
 
   // Sync dark class on mount and theme switches
   useEffect(() => {
@@ -62,10 +66,17 @@ export const Header = ({ activeView, setActiveView }) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
         setShowProfileMenu(false);
       }
-      if (fazendaRef.current && !fazendaRef.current.contains(e.target)) {
+      const clickedInsideFazenda =
+        desktopFazendaRef.current?.contains(e.target) ||
+        mobileFazendaRef.current?.contains(e.target);
+      const clickedInsideSafra =
+        desktopSafraRef.current?.contains(e.target) ||
+        mobileSafraRef.current?.contains(e.target);
+
+      if (!clickedInsideFazenda) {
         setShowFazendaMenu(false);
       }
-      if (safraRef.current && !safraRef.current.contains(e.target)) {
+      if (!clickedInsideSafra) {
         setShowSafraMenu(false);
       }
     };
@@ -161,7 +172,7 @@ export const Header = ({ activeView, setActiveView }) => {
             <div className="hidden xl:flex items-center space-x-4 shrink-0">
               
               {/* Fazenda Selector */}
-              <div className="relative" ref={fazendaRef}>
+              <div className="relative" ref={desktopFazendaRef}>
                 <button
                   onClick={() => setShowFazendaMenu(!showFazendaMenu)}
                   className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all hover:border-slate-300 dark:hover:border-slate-700 focus:outline-none max-w-[160px] xl:max-w-[240px]"
@@ -180,11 +191,11 @@ export const Header = ({ activeView, setActiveView }) => {
                       <button
                         key={f.id}
                         onClick={() => {
-                          selecionarFazenda(f);
+                          selecionarFazenda(f.id);
                           setShowFazendaMenu(false);
                         }}
                         className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
-                          fazendaAtiva?.id === f.id
+                          isFazendaSelecionada(f)
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
                             : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
                         }`}
@@ -198,7 +209,7 @@ export const Header = ({ activeView, setActiveView }) => {
               </div>
 
               {/* Safra Selector */}
-              <div className="relative" ref={safraRef}>
+              <div className="relative" ref={desktopSafraRef}>
                 <button
                   onClick={() => setShowSafraMenu(!showSafraMenu)}
                   className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all hover:border-slate-300 dark:hover:border-slate-700 focus:outline-none max-w-[120px] xl:max-w-[180px]"
@@ -221,7 +232,7 @@ export const Header = ({ activeView, setActiveView }) => {
                           setShowSafraMenu(false);
                         }}
                         className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
-                          safraAtiva?.id === s.id
+                          isSafraSelecionada(s)
                             ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400'
                             : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
                         }`}
@@ -317,7 +328,7 @@ export const Header = ({ activeView, setActiveView }) => {
         <div className="xl:hidden flex items-center justify-between gap-4 border-b border-slate-200/50 bg-white/70 dark:border-slate-800/50 dark:bg-slate-900/70 px-4 py-2 backdrop-blur-md transition-colors duration-300">
           
           {/* Fazenda Selector */}
-          <div className="relative flex-1" ref={fazendaRef}>
+          <div className="relative flex-1" ref={mobileFazendaRef}>
             <button
               onClick={() => {
                 setShowFazendaMenu(!showFazendaMenu);
@@ -341,11 +352,11 @@ export const Header = ({ activeView, setActiveView }) => {
                   <button
                     key={f.id}
                     onClick={() => {
-                      selecionarFazenda(f);
+                      selecionarFazenda(f.id);
                       setShowFazendaMenu(false);
                     }}
                     className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
-                      fazendaAtiva?.id === f.id
+                      isFazendaSelecionada(f)
                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
                         : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
                     }`}
@@ -359,7 +370,7 @@ export const Header = ({ activeView, setActiveView }) => {
           </div>
 
           {/* Safra Selector */}
-          <div className="relative flex-1" ref={safraRef}>
+          <div className="relative flex-1" ref={mobileSafraRef}>
             <button
               onClick={() => {
                 setShowSafraMenu(!showSafraMenu);
@@ -387,7 +398,7 @@ export const Header = ({ activeView, setActiveView }) => {
                       setShowSafraMenu(false);
                     }}
                     className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
-                      safraAtiva?.id === s.id
+                      isSafraSelecionada(s)
                         ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400'
                         : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
                     }`}
