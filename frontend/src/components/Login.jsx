@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Sprout, Lock, Mail, Loader2, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Sprout, Lock, Mail, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const Login = () => {
   const { login } = useAuth();
@@ -27,16 +27,6 @@ export const Login = () => {
     }
   };
 
-  const handleDemoAccess = async () => {
-    setLoading(true);
-    setError('');
-    // Automático para o demo
-    const res = await login('carlos.souza@inovaceifa.com.br', 'admin123');
-    if (!res.success) {
-      setError('Erro ao carregar demonstração.');
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-[#090d16] overflow-hidden font-sans">
@@ -57,7 +47,7 @@ export const Login = () => {
             <h2 className="text-2xl font-black tracking-tight text-white font-display">
               Inova Ceifa
             </h2>
-            <p className="text-xs text-slate-400 font-medium uppercase tracking-widest mt-1">
+            <p className="text-xs text-slate-300 font-medium uppercase tracking-widest mt-1">
               Agro Analytics Platform
             </p>
           </div>
@@ -76,11 +66,11 @@ export const Login = () => {
           
           {/* Email input field */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+            <label className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
               E-mail de Acesso
             </label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
+              <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400" />
               <input
                 type="email"
                 required
@@ -88,23 +78,18 @@ export const Login = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nome@empresa.com.br"
                 style={{ paddingLeft: '3.75rem', paddingRight: '1rem' }}
-                className="login-input-with-left-icon w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
+                className="login-input-with-left-icon w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-4 text-sm text-white placeholder-slate-400 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
               />
             </div>
           </div>
 
           {/* Password input field */}
           <div className="space-y-1.5">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-                Senha de Acesso
-              </label>
-              <a href="#recuperar" className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
-                Esqueceu a senha?
-              </a>
-            </div>
+            <label className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
+              Senha de Acesso
+            </label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
+              <Lock className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400" />
               <input
                 type={showPassword ? "text" : "password"}
                 required
@@ -112,15 +97,20 @@ export const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 style={{ paddingLeft: '3.75rem', paddingRight: '3.75rem' }}
-                className="login-input-with-both-icons w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-14 text-sm text-white placeholder-slate-500 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
+                className="login-input-with-both-icons w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-14 text-sm text-white placeholder-slate-400 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors focus:outline-none"
               >
                 {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
               </button>
+            </div>
+            <div className="flex justify-end pt-0.5">
+              <a href="#recuperar" className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+                Esqueceu a senha?
+              </a>
             </div>
           </div>
 
@@ -133,7 +123,7 @@ export const Login = () => {
                 onChange={() => setRememberMe(!rememberMe)}
                 className="w-4 h-4 rounded border-white/[0.08] bg-slate-950/50 text-emerald-500 focus:ring-emerald-500/30"
               />
-              <span className="text-xs text-slate-400 font-semibold">Lembrar-me neste aparelho</span>
+              <span className="text-xs text-slate-300 font-semibold">Lembrar-me neste aparelho</span>
             </label>
           </div>
 
@@ -157,25 +147,6 @@ export const Login = () => {
           </button>
         </form>
 
-        {/* Quick Demo Access Divider */}
-        <div className="relative my-6 text-center">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/[0.05]"></div>
-          </div>
-          <span className="relative bg-[#111827] px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Ou teste agora
-          </span>
-        </div>
-
-        {/* Fast Demo Access Button */}
-        <button
-          onClick={handleDemoAccess}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] hover:border-emerald-500/40 hover:bg-emerald-950/15 text-slate-300 hover:text-white font-bold text-xs py-3 px-4 transition-all focus:outline-none"
-        >
-          <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
-          <span>Acesso Rápido (Demonstração)</span>
-        </button>
 
       </div>
     </div>

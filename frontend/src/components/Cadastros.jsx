@@ -34,7 +34,7 @@ const emptyForms = {
     bairro: '',
     cidade: '',
   },
-  fazendas: { proprietario: '', nome: '', sigla: '' },
+  fazendas: { proprietario: '', nome: '', sigla: '', cnpj_ou_produtor: '', endereco: '', telefone: '', cidade: '', estado: '' },
   safras: { fazenda: '', nome: '', data_inicio: '', data_fim: '', ativa: false },
   talhoes: {
     fazenda: '',
@@ -602,6 +602,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <SelectField required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
           <InputField required label="Nome da Fazenda" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField required label="Sigla" value={currentForm.sigla} onChange={(value) => patchForm('sigla', value.toUpperCase())} placeholder="BR" />
+          <InputField label="CNPJ / Código Produtor Rural" value={currentForm.cnpj_ou_produtor} onChange={(value) => patchForm('cnpj_ou_produtor', value)} />
+          <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
+          <InputField label="Telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} />
+          <InputField label="Cidade" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
+          <InputField label="Estado" value={currentForm.estado} onChange={(value) => patchForm('estado', value)} placeholder="Ex: MG" />
         </>
       );
     }
@@ -788,14 +793,25 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     }
 
     if (activeTab === 'fazendas') {
-      return filteredRows('fazendas', (item) => `${item.nome} ${item.sigla || ''}`).map((item) => (
+      return filteredRows('fazendas', (item) => `${item.nome} ${item.sigla || ''} ${item.cnpj_ou_produtor || ''} ${item.cidade || ''}`).map((item) => (
         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
           <td className="py-3 px-5">
             <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
-            <p className="text-[10px] text-slate-450 dark:text-slate-500">Sigla: {item.sigla || '-'}</p>
+            <div className="flex flex-wrap gap-x-2 text-[10px] text-slate-455 dark:text-slate-500">
+              <span>Sigla: {item.sigla || '-'}</span>
+              {item.cnpj_ou_produtor && <span>• CNPJ/Produtor: {item.cnpj_ou_produtor}</span>}
+            </div>
           </td>
-          <td className="py-3 px-5 text-[10px] text-slate-650 dark:text-slate-300">{lookup(records.proprietarios, fieldId(item, 'proprietario'))}</td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-400">{item.ativo === false ? 'Inativa' : 'Ativa'}</td>
+          <td className="py-3 px-5 text-[10px] text-slate-650 dark:text-slate-300">
+            <p className="font-semibold">{lookup(records.proprietarios, fieldId(item, 'proprietario'))}</p>
+            {(item.cidade || item.estado) && (
+              <p className="text-[9px] text-slate-450 dark:text-slate-400 mt-0.5">{[item.cidade, item.estado].filter(Boolean).join(' - ')}</p>
+            )}
+          </td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-400">
+            <p className="font-medium text-slate-700 dark:text-slate-300">{item.telefone || 'Sem telefone'}</p>
+            {item.endereco && <p className="text-[9px] text-slate-450 dark:text-slate-500 mt-0.5">{item.endereco}</p>}
+          </td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
