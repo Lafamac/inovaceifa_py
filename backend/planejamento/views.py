@@ -60,6 +60,10 @@ class BaseTenantPlanejamentoViewSet(viewsets.ModelViewSet):
         super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
+        incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
+        if incluir_inativos or is_detail:
+            return self.queryset
         return self.queryset.filter(ativo=True)
 
     def perform_destroy(self, instance):

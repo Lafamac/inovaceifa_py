@@ -32,7 +32,8 @@ class BaseTenantViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
-        if incluir_inativos:
+        is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
+        if incluir_inativos or is_detail:
             return self.queryset
         return self.queryset.filter(ativo=True)
 

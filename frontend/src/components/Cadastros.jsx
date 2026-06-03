@@ -749,24 +749,24 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'fazendas') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
-          <InputField label="CNPJ / Código Produtor Rural" value={currentForm.cnpj_ou_produtor} onChange={(value) => patchForm('cnpj_ou_produtor', value)} />
+          <SelectField key="proprietario" required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
+          <InputField key="cnpj_ou_produtor" label="CNPJ / Código Produtor Rural" value={currentForm.cnpj_ou_produtor} onChange={(value) => patchForm('cnpj_ou_produtor', value)} />
           
-          <InputField required label="Nome da Fazenda" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
-          <InputField required label="Sigla" value={currentForm.sigla} onChange={(value) => patchForm('sigla', value.toUpperCase())} placeholder="BR" />
+          <InputField key="nome" required label="Nome da Fazenda" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField key="sigla" required label="Sigla" value={currentForm.sigla} onChange={(value) => patchForm('sigla', value.toUpperCase())} placeholder="BR" />
           
-          <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
-          <InputField label="Cidade" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
+          <InputField key="endereco" label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
+          <InputField key="cidade" label="Cidade" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
           
           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-12 gap-4">
             <div className="md:col-span-4">
-              <InputField label="CEP" value={currentForm.cep} onChange={(value) => patchForm('cep', value)} mask="cep" placeholder="00000-000" />
+              <InputField key="cep" label="CEP" value={currentForm.cep} onChange={(value) => patchForm('cep', value)} mask="cep" maxLength={9} placeholder="00000-000" />
             </div>
             <div className="md:col-span-2">
-              <InputField label="Estado" value={currentForm.estado} onChange={(value) => patchForm('estado', value)} maxLength={2} placeholder="MG" />
+              <InputField key="estado" label="Estado" value={currentForm.estado} onChange={(value) => patchForm('estado', value)} maxLength={2} placeholder="MG" />
             </div>
             <div className="md:col-span-6">
-              <InputField label="Telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} mask="telefone" placeholder="(00) 00000-0000" />
+              <InputField key="telefone" label="Telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} mask="telefone" maxLength={15} placeholder="(00) 00000-0000" />
             </div>
           </div>
         </div>

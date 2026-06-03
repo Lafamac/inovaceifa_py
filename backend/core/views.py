@@ -9,7 +9,8 @@ class ProprietarioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
-        if incluir_inativos:
+        is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
+        if incluir_inativos or is_detail:
             return Proprietario.objects.all()
         return Proprietario.objects.filter(ativo=True)
 
@@ -23,14 +24,15 @@ class FazendaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
         is_super = getattr(self.request.user, 'perfil', None) and self.request.user.perfil.nivel == 1
         
         if is_super or self.request.user.is_superuser:
-            if incluir_inativos:
+            if incluir_inativos or is_detail:
                 return Fazenda.objects.all()
             return Fazenda.objects.filter(ativo=True)
         else:
-            if incluir_inativos:
+            if incluir_inativos or is_detail:
                 return self.request.user.fazendas_permitidas.all()
             return self.request.user.fazendas_permitidas.filter(ativo=True)
 
@@ -50,8 +52,9 @@ class SafraViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
         
-        if incluir_inativos:
+        if incluir_inativos or is_detail:
             return Safra.objects.filter(fazenda__in=self.request.fazendas_permitidas)
         return Safra.objects.filter(fazenda__in=self.request.fazendas_permitidas, ativo=True)
 
