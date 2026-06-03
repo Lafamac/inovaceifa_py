@@ -216,6 +216,11 @@
 5. **Cálculos Centralizados**: Todas as regras e fórmulas agrícolas/financeiras (COE, valor hora máquina, rateios) devem ficar em services ou selectors no backend.
 6. **Controle de Perfil**: Respeitar estritamente as regras de perfil: `1` (Superusuário), `2` (Proprietário), `3` (Operador).
 
+### Padrões de Interface (Formulários):
+1. **Navegação Fluida (Enter/Tab)**: Todos os formulários devem permitir alternar de campo usando as teclas **Enter** e **Tab**, pulando automaticamente botões secundários de ação (como Cancelar) e focando o próximo input ou o botão de confirmação final.
+2. **Letras Maiúsculas (Uppercase)**: Todos os campos de edição de texto comuns (excluindo e-mail, senha e datas) devem converter e armazenar o texto em **letras maiúsculas** (`value.toUpperCase()`), tanto no estado do React quanto visualmente por CSS.
+3. **Layout em Duas Colunas**: Os formulários em modais ou páginas inteiras devem adotar uma estrutura de **duas colunas** (usando `grid grid-cols-1 md:grid-cols-2 gap-4`) para melhor ergonomia visual em telas maiores, mantendo a responsividade mobile.
+
 ### Cuidados Importantes (Anti-patterns a Evitar):
 1. **Não duplicar tabelas por fazenda**: A base PostgreSQL deve ser unificada e usar multi-tenancy lógico (`fazenda_id`).
 2. **Evitar Colunas por Mês**: Não criar colunas temporais fixas (ex: `set`, `out`, `nov`) em tabelas transacionais. Usar um campo `mes` e `ano`.

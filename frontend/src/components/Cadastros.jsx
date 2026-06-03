@@ -206,6 +206,80 @@ const fieldId = (item, base) => item?.[base] ?? item?.[`${base}_id`];
 const sameId = (left, right) => String(left ?? '') === String(right ?? '');
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '' }) => (
+  <label className="block space-y-1.5 text-left">
+    <span className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+    <input
+      type={type}
+      value={value || ''}
+      onChange={(event) => onChange(type === 'text' ? event.target.value.toUpperCase() : event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const form = event.target.form;
+          if (form) {
+            const index = Array.prototype.indexOf.call(form, event.target);
+            if (index > -1) {
+              let nextIndex = index + 1;
+              while (nextIndex < form.elements.length) {
+                const nextEl = form.elements[nextIndex];
+                if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                    nextEl.focus();
+                    if (nextEl.select) nextEl.select();
+                    break;
+                  }
+                }
+                nextIndex++;
+              }
+            }
+          }
+        }
+      }}
+      placeholder={placeholder}
+      className={`w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-450 outline-none transition-all ${type === 'text' ? 'uppercase' : ''}`}
+    />
+  </label>
+);
+
+const SelectField = ({ label, value, onChange, options, required = false, defaultOption = 'Selecione...' }) => (
+  <label className="block space-y-1.5 text-left">
+    <span className="block text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+    <select
+      value={value || ''}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          const form = event.target.form;
+          if (form) {
+            const index = Array.prototype.indexOf.call(form, event.target);
+            if (index > -1) {
+              let nextIndex = index + 1;
+              while (nextIndex < form.elements.length) {
+                const nextEl = form.elements[nextIndex];
+                if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                    nextEl.focus();
+                    break;
+                  }
+                }
+                nextIndex++;
+              }
+            }
+          }
+        }
+      }}
+      className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none transition-all"
+    >
+      <option value="" className="bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500">{defaultOption}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{option.label}</option>
+      ))}
+    </select>
+  </label>
+);
+
 export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('proprietarios');
@@ -416,6 +490,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (!validatePayload(payload)) return;
 
     setSaving(true);
+    let createdFarmId = null;
     try {
       if (editingId) {
         // Modo Edição
@@ -424,12 +499,32 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       } else {
         // Modo Criação
         const response = await api.post(endpoints[activeTab], payload);
+        if (activeTab === 'fazendas') {
+          createdFarmId = response.data?.id;
+        }
         showAlert('success', response.data?.warning || 'Registro criado com sucesso.');
       }
-      resetForm(activeTab);
-      setShowModal(false);
-      setEditingId(null);
+      
       await loadData();
+      
+      if (createdFarmId) {
+        setActiveTab('safras');
+        setForms((prev) => ({
+          ...prev,
+          safras: {
+            ...emptyForms.safras,
+            fazenda: createdFarmId,
+            ativa: true,
+          },
+        }));
+        setEditingId(null);
+        setShowModal(true);
+        showAlert('success', 'Fazenda cadastrada! Defina agora a safra inicial ativa para esta fazenda.');
+      } else {
+        resetForm(activeTab);
+        setShowModal(false);
+        setEditingId(null);
+      }
     } catch (err) {
       console.error(err);
       // Fallback em banco local storage
@@ -437,21 +532,42 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         const db = getFallbackDB();
         if (!db[activeTab]) db[activeTab] = [];
         
+        let localNewId = null;
         if (editingId) {
           const idx = db[activeTab].findIndex(x => String(x.id) === String(editingId));
           if (idx !== -1) {
             db[activeTab][idx] = { ...db[activeTab][idx], ...payload };
           }
         } else {
-          const newId = db[activeTab].length > 0 ? Math.max(...db[activeTab].map(x => x.id)) + 1 : 1;
-          db[activeTab].push({ id: newId, ativo: true, ...payload });
+          localNewId = db[activeTab].length > 0 ? Math.max(...db[activeTab].map(x => x.id)) + 1 : 1;
+          db[activeTab].push({ id: localNewId, ativo: true, ...payload });
+          if (activeTab === 'fazendas') {
+            createdFarmId = localNewId;
+          }
         }
         localStorage.setItem('inovaceifa_db', JSON.stringify(db));
         showAlert('success', 'Salvo offline com sucesso.');
-        resetForm(activeTab);
-        setShowModal(false);
-        setEditingId(null);
+        
         await loadData();
+
+        if (createdFarmId) {
+          setActiveTab('safras');
+          setForms((prev) => ({
+            ...prev,
+            safras: {
+              ...emptyForms.safras,
+              fazenda: createdFarmId,
+              ativa: true,
+            },
+          }));
+          setEditingId(null);
+          setShowModal(true);
+          showAlert('success', 'Fazenda cadastrada offline! Defina agora a safra inicial ativa para esta fazenda.');
+        } else {
+          resetForm(activeTab);
+          setShowModal(false);
+          setEditingId(null);
+        }
       } catch (localErr) {
         const detail = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0];
         showAlert('error', detail || 'Erro ao salvar. Verifique contexto e campos.');
@@ -551,35 +667,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
   const lookup = (collection, id, fallback = '-') => collection.find((item) => sameId(item.id, id))?.nome || fallback;
 
-  const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '' }) => (
-    <label className="block space-y-1.5 text-left">
-      <span className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
-      <input
-        type={type}
-        value={value || ''}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-450 outline-none transition-all"
-      />
-    </label>
-  );
-
-  const SelectField = ({ label, value, onChange, options, required = false, defaultOption = 'Selecione...' }) => (
-    <label className="block space-y-1.5 text-left">
-      <span className="block text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
-      <select
-        value={value || ''}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none transition-all"
-      >
-        <option value="" className="bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500">{defaultOption}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{option.label}</option>
-        ))}
-      </select>
-    </label>
-  );
-
   const renderFormFields = () => {
     if (activeTab === 'proprietarios') {
       return (
@@ -598,16 +685,19 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'fazendas') {
       return (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
+          <InputField label="CNPJ / Código Produtor Rural" value={currentForm.cnpj_ou_produtor} onChange={(value) => patchForm('cnpj_ou_produtor', value)} />
+          
           <InputField required label="Nome da Fazenda" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField required label="Sigla" value={currentForm.sigla} onChange={(value) => patchForm('sigla', value.toUpperCase())} placeholder="BR" />
-          <InputField label="CNPJ / Código Produtor Rural" value={currentForm.cnpj_ou_produtor} onChange={(value) => patchForm('cnpj_ou_produtor', value)} />
+          
           <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
-          <InputField label="Telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} />
           <InputField label="Cidade" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
+          
           <InputField label="Estado" value={currentForm.estado} onChange={(value) => patchForm('estado', value)} placeholder="Ex: MG" />
-        </>
+          <InputField label="Telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} />
+        </div>
       );
     }
 
@@ -1133,6 +1223,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               onClick={() => {
                 setEditingId(null);
                 resetForm();
+                setError('');
+                setSuccess('');
                 setShowModal(true);
               }}
               className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
@@ -1212,7 +1304,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200">
+          <div className={`w-full ${activeTab === 'fazendas' ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
@@ -1225,6 +1317,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                   setShowModal(false);
                   setEditingId(null);
                   resetForm();
+                  setError('');
+                  setSuccess('');
                 }}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black cursor-pointer"
               >
@@ -1234,6 +1328,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
             {/* Modal Form Content */}
             <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+              {error && (
+                <div className="p-3 rounded-xl border border-rose-950/20 bg-rose-950/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <p>{error}</p>
+                </div>
+              )}
               {renderFormFields()}
               
               {/* Actions inside Modal */}
@@ -1244,6 +1344,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                     setShowModal(false);
                     setEditingId(null);
                     resetForm();
+                    setError('');
+                    setSuccess('');
                   }}
                   className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold uppercase transition-all cursor-pointer"
                 >
