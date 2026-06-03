@@ -28,6 +28,7 @@ class Fazenda(BaseModel):
     sigla = models.CharField(max_length=10, help_text="Ex: BR, CG, SF, ST")
     cnpj_ou_produtor = models.CharField(max_length=50, null=True, blank=True)
     endereco = models.CharField(max_length=255, null=True, blank=True)
+    cep = models.CharField(max_length=10, null=True, blank=True)
     telefone = models.CharField(max_length=20, null=True, blank=True)
     cidade = models.CharField(max_length=100, null=True, blank=True)
     estado = models.CharField(max_length=50, null=True, blank=True)

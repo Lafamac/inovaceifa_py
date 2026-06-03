@@ -35,7 +35,7 @@ const emptyForms = {
     bairro: '',
     cidade: '',
   },
-  fazendas: { proprietario: '', nome: '', sigla: '', cnpj_ou_produtor: '', endereco: '', telefone: '', cidade: '', estado: '' },
+  fazendas: { proprietario: '', nome: '', sigla: '', cnpj_ou_produtor: '', endereco: '', cep: '', telefone: '', cidade: '', estado: '' },
   safras: { fazenda: '', nome: '', data_inicio: '', data_fim: '', ativa: false },
   talhoes: {
     fazenda: '',
@@ -207,41 +207,77 @@ const fieldId = (item, base) => item?.[base] ?? item?.[`${base}_id`];
 const sameId = (left, right) => String(left ?? '') === String(right ?? '');
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '' }) => (
-  <label className="block space-y-1.5 text-left">
-    <span className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
-    <input
-      type={type}
-      value={value || ''}
-      onChange={(event) => onChange(type === 'text' ? event.target.value.toUpperCase() : event.target.value)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          const form = event.target.form;
-          if (form) {
-            const index = Array.prototype.indexOf.call(form, event.target);
-            if (index > -1) {
-              let nextIndex = index + 1;
-              while (nextIndex < form.elements.length) {
-                const nextEl = form.elements[nextIndex];
-                if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
-                  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
-                    nextEl.focus();
-                    if (nextEl.select) nextEl.select();
-                    break;
+const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '', mask, ...props }) => {
+  const formatValue = (val) => {
+    if (!val) return '';
+    if (mask === 'telefone') {
+      const digits = val.replace(/\D/g, '').slice(0, 11);
+      if (digits.length <= 2) {
+        return digits.length > 0 ? `(${digits}` : '';
+      } else if (digits.length <= 6) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+      } else if (digits.length <= 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+      } else {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+      }
+    }
+    if (mask === 'cep') {
+      const digits = val.replace(/\D/g, '').slice(0, 8);
+      if (digits.length <= 5) {
+        return digits;
+      } else {
+        return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+      }
+    }
+    return val;
+  };
+
+  const formattedValue = formatValue(value);
+
+  return (
+    <label className="block space-y-1.5 text-left">
+      <span className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+      <input
+        type={type}
+        value={formattedValue}
+        onChange={(event) => {
+          let rawVal = event.target.value;
+          if (type === 'text') {
+            rawVal = rawVal.toUpperCase();
+          }
+          onChange(formatValue(rawVal));
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            const form = event.target.form;
+            if (form) {
+              const index = Array.prototype.indexOf.call(form, event.target);
+              if (index > -1) {
+                let nextIndex = index + 1;
+                while (nextIndex < form.elements.length) {
+                  const nextEl = form.elements[nextIndex];
+                  if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                      nextEl.focus();
+                      if (nextEl.select) nextEl.select();
+                      break;
+                    }
                   }
+                  nextIndex++;
                 }
-                nextIndex++;
               }
             }
           }
-        }
-      }}
-      placeholder={placeholder}
-      className={`w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-450 outline-none transition-all ${type === 'text' ? 'uppercase' : ''}`}
-    />
-  </label>
-);
+        }}
+        placeholder={placeholder}
+        {...props}
+        className={`w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-450 outline-none transition-all ${type === 'text' && !mask ? 'uppercase' : ''}`}
+      />
+    </label>
+  );
+};
 
 const SelectField = ({ label, value, onChange, options, required = false, defaultOption = 'Selecione...' }) => (
   <label className="block space-y-1.5 text-left">
@@ -715,8 +751,17 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
           <InputField label="Cidade" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
           
-          <InputField label="Estado" value={currentForm.estado} onChange={(value) => patchForm('estado', value)} placeholder="Ex: MG" />
-          <InputField label="Telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} />
+          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-4">
+              <InputField label="CEP" value={currentForm.cep} onChange={(value) => patchForm('cep', value)} mask="cep" placeholder="00000-000" />
+            </div>
+            <div className="md:col-span-2">
+              <InputField label="Estado" value={currentForm.estado} onChange={(value) => patchForm('estado', value)} maxLength={2} placeholder="MG" />
+            </div>
+            <div className="md:col-span-6">
+              <InputField label="Telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} mask="telefone" placeholder="(00) 00000-0000" />
+            </div>
+          </div>
         </div>
       );
     }
@@ -920,7 +965,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           </td>
           <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-400">
             <p className="font-medium text-slate-700 dark:text-slate-300">{item.telefone || 'Sem telefone'}</p>
-            {item.endereco && <p className="text-[9px] text-slate-450 dark:text-slate-500 mt-0.5">{item.endereco}</p>}
+            {(item.endereco || item.cep) && (
+              <p className="text-[9px] text-slate-455 dark:text-slate-500 mt-0.5">
+                {[item.endereco, item.cep ? `CEP: ${item.cep}` : ''].filter(Boolean).join(' - ')}
+              </p>
+            )}
           </td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
