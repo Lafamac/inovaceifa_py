@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from core.models import Fazenda, Safra, Proprietario
-from referencias.models import TipoOperacao, UnidadeMedida, ClassificacaoProduto
+from referencias.models import TipoOperacao, UnidadeMedida, ClassificacaoProduto, TipoItem, GrupoTrabalhador
 from cadastros.models import Produto, Talhao, Maquina, Funcionario
 from planejamento.models import PlanejamentoSafra, OrdemServicoPlanejada
 from operacoes.models import OrdemServico, ApontamentoOperacao, AuditoriaOrdemServico
@@ -139,3 +139,61 @@ class OperacoesAPITests(APITestCase):
         auditorias = AuditoriaOrdemServico.objects.filter(ordem_servico=self.os_real)
         self.assertEqual(auditorias.count(), 1)
         self.assertEqual(auditorias.first().tipo_desvio, 'SUPERDOSE')
+
+    def test_sharing_resources_same_owner(self):
+        # Create a second farm for the same owner
+        self.fazenda_b = Fazenda.objects.create(nome="Fazenda B", proprietario=self.proprietario, sigla="FZB")
+        self.admin_user.fazendas_permitidas.add(self.fazenda_b)
+        
+        # Create TipoItem and GrupoTrabalhador references
+        tipo_maq = TipoItem.objects.create(nome="Trator")
+        grupo_func = GrupoTrabalhador.objects.create(nome="Tratoristas")
+
+        # Create a machine and employee under Fazenda B
+        self.maquina_b = Maquina.objects.create(
+            codigo="MAQ-B",
+            descricao="Trator John Deere",
+            fazenda=self.fazenda_b,
+            ano_fabricacao=2020,
+            tipo=tipo_maq
+        )
+        self.funcionario_b = Funcionario.objects.create(
+            nome="Funcionario B",
+            fazenda=self.fazenda_b,
+            cargo="Operador",
+            grupo_trabalhador=grupo_func
+        )
+        
+        # Iniciar OS on the first farm (self.fazenda)
+        url_iniciar = reverse('operacao-ordem-servico-iniciar', args=[self.os_real.id])
+        self.client.post(url_iniciar, format='json')
+        
+        # Create Apontamento
+        ap_id = self.client.post(reverse('operacao-apontamento-list'), {
+            "ordem_servico": self.os_real.id, "data_apontamento": "2026-06-01"
+        }, format='json').data['id']
+        
+        # Add pointing with resources from the sister farm (self.fazenda_b)
+        res_maq = self.client.post(reverse('operacao-apontamento-maquina-list'), {
+            "apontamento": ap_id,
+            "maquina": self.maquina_b.id,
+            "horimetro_inicial": "100.00",
+            "horimetro_final": "108.00"
+        }, format='json')
+        self.assertEqual(res_maq.status_code, status.HTTP_201_CREATED)
+        
+        res_func = self.client.post(reverse('operacao-apontamento-funcionario-list'), {
+            "apontamento": ap_id,
+            "funcionario": self.funcionario_b.id,
+            "horas_trabalhadas": "8.00"
+        }, format='json')
+        self.assertEqual(res_func.status_code, status.HTTP_201_CREATED)
+        
+        # Concluir OS
+        url_concluir = reverse('operacao-ordem-servico-concluir', args=[self.os_real.id])
+        response = self.client.post(url_concluir, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.os_real.refresh_from_db()
+        self.assertEqual(self.os_real.status, 'CONCLUIDA')
+

@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 export const OrdensServico = () => {
-  const { safraAtiva, fazendaAtiva } = useTenant();
+  const { safraAtiva, fazendaAtiva, fazendas } = useTenant();
   const { user } = useAuth();
 
   // Estados principais
@@ -104,14 +104,29 @@ export const OrdensServico = () => {
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
       const filterByFazenda = (list) => list.filter(item => item.fazenda_id === fazendaAtiva?.id || item.fazenda === fazendaAtiva?.id);
+      
+      const filterByProprietario = (list) => {
+        const propId = fazendaAtiva?.proprietario;
+        if (!propId) {
+          return filterByFazenda(list);
+        }
+        const fazendasPermitidasIds = (fazendas || [])
+          .filter(f => f.proprietario === propId)
+          .map(f => f.id);
+        return list.filter(item => 
+          fazendasPermitidasIds.includes(item.fazenda_id) || 
+          fazendasPermitidasIds.includes(item.fazenda)
+        );
+      };
+
       setTalhoes(filterByFazenda(resTalhoes.data?.results || resTalhoes.data || []));
-      setMaquinas(filterByFazenda(resMaquinas.data?.results || resMaquinas.data || []));
-      setFuncionarios(filterByFazenda(resFuncs.data?.results || resFuncs.data || []));
+      setMaquinas(filterByProprietario(resMaquinas.data?.results || resMaquinas.data || []));
+      setFuncionarios(filterByProprietario(resFuncs.data?.results || resFuncs.data || []));
       setProdutos(resProds.data?.results || resProds.data || []);
     } catch (err) {
       console.error("Erro ao carregar referências de OS", err);
     }
-  }, [fazendaAtiva]);
+  }, [fazendaAtiva, fazendas]);
 
   const fetchOrdensServico = useCallback(async () => {
     if (!safraAtiva || !fazendaAtiva) return;
@@ -201,19 +216,11 @@ export const OrdensServico = () => {
         data_inicio_planejada: newOSForm.data_inicio_planejada,
         data_fim_planejada: newOSForm.data_fim_planejada,
         observacao: newOSForm.observacao,
-        status: 'APROVADA'
+        status: 'APROVADA',
+        talhoes_ids: newOSForm.talhoes_selecionados.map(Number)
       };
 
-      const resOS = await api.post('/api/ordens-servico/', payload);
-      const osId = resOS.data.id;
-
-      // Cadastrar os talhões vinculados à OS Real
-      await Promise.all(newOSForm.talhoes_selecionados.map(tId => 
-        api.post('/api/ordens-servico-talhoes/', {
-          ordem_servico: osId,
-          talhao: Number(tId)
-        })
-      ));
+      await api.post('/api/ordens-servico/', payload);
 
       showAlert('success', 'Nova ordem de serviço real gerada com sucesso.');
       setShowNewOSModal(false);
@@ -408,6 +415,30 @@ export const OrdensServico = () => {
       if (statusFilter === 'ATRASADA') return statusLabel === 'ATRASADA';
       return os.status === statusFilter;
     });
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const form = event.target.form;
+      if (form) {
+        const index = Array.prototype.indexOf.call(form, event.target);
+        if (index > -1) {
+          let nextIndex = index + 1;
+          while (nextIndex < form.elements.length) {
+            const nextEl = form.elements[nextIndex];
+            if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+              if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                nextEl.focus();
+                if (nextEl.select) nextEl.select();
+                break;
+              }
+            }
+            nextIndex++;
+          }
+        }
+      }
+    }
   };
 
   const lookup = (list, id, field = 'nome') => list.find(item => item.id === Number(id))?.[field] || '-';
@@ -762,39 +793,47 @@ export const OrdensServico = () => {
               <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
 
-            <form onSubmit={handleCreateOSReal} className="space-y-4 text-left">
-              <label className="block space-y-1.5">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Operação *</span>
-                <select
-                  required
-                  value={newOSForm.tipo_operacao}
-                  onChange={(e) => setNewOSForm(prev => ({ ...prev, tipo_operacao: e.target.value }))}
-                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
-                >
-                  <option value="">Selecione...</option>
-                  {tiposOperacao.map(op => (
-                    <option key={op.id} value={op.id} className="bg-slate-900">{op.nome}</option>
-                  ))}
-                </select>
-              </label>
+            <form onSubmit={handleCreateOSReal} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+              <div className="md:col-span-2">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Operação *</span>
+                  <select
+                    required
+                    value={newOSForm.tipo_operacao}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, tipo_operacao: e.target.value }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  >
+                    <option value="">Selecione...</option>
+                    {tiposOperacao.map(op => (
+                      <option key={op.id} value={op.id} className="bg-slate-900">{op.nome}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
                 <label className="block space-y-1.5">
                   <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data Início Planejada</span>
                   <input
                     type="date"
                     required
                     value={newOSForm.data_inicio_planejada}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewOSForm(prev => ({ ...prev, data_inicio_planejada: e.target.value }))}
                     className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
                   />
                 </label>
+              </div>
+              
+              <div>
                 <label className="block space-y-1.5">
                   <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data Término Planejada</span>
                   <input
                     type="date"
                     required
                     value={newOSForm.data_fim_planejada}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewOSForm(prev => ({ ...prev, data_fim_planejada: e.target.value }))}
                     className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
                   />
@@ -802,7 +841,7 @@ export const OrdensServico = () => {
               </div>
 
               {/* Seleção de Talhões */}
-              <div className="space-y-2">
+              <div className="md:col-span-2 space-y-2">
                 <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
                 <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 bg-slate-950/40 rounded-xl border border-white/[0.04]">
                   {talhoes.map(t => {
@@ -820,7 +859,7 @@ export const OrdensServico = () => {
                               : [...prev.talhoes_selecionados, t.id]
                           }));
                         }}
-                        className={`rounded-lg px-2 py-1 text-xs font-bold transition-all ${
+                        className={`rounded-lg px-2 py-1 text-xs font-bold transition-all cursor-pointer ${
                           isSelected 
                             ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
                             : 'bg-slate-900 border border-white/5 text-slate-400 hover:text-slate-300'
@@ -833,24 +872,29 @@ export const OrdensServico = () => {
                 </div>
               </div>
 
-              <label className="block space-y-1.5">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recomendações Operacionais</span>
-                <textarea
-                  placeholder="Instruções para o tratorista/operador no campo..."
-                  value={newOSForm.observacao}
-                  onChange={(e) => setNewOSForm(prev => ({ ...prev, observacao: e.target.value }))}
-                  rows={2}
-                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
-                />
-              </label>
+              <div className="md:col-span-2">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recomendações Operacionais</span>
+                  <textarea
+                    placeholder="Instruções para o tratorista/operador no campo..."
+                    value={newOSForm.observacao}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
+                    rows={2}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                  />
+                </label>
+              </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md cursor-pointer"
-              >
-                {saving ? 'Criando...' : 'Criar OS Aprovada'}
-              </button>
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md cursor-pointer"
+                >
+                  {saving ? 'Criando...' : 'Criar OS Aprovada'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -877,6 +921,7 @@ export const OrdensServico = () => {
                     type="date"
                     required
                     value={aptForm.data_apontamento}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setAptForm(prev => ({ ...prev, data_apontamento: e.target.value }))}
                     className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
                   />
@@ -887,9 +932,10 @@ export const OrdensServico = () => {
                   <input
                     type="text"
                     value={aptForm.clima}
-                    onChange={(e) => setAptForm(prev => ({ ...prev, clima: e.target.value }))}
-                    placeholder="Bom, chuvoso, nublado..."
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setAptForm(prev => ({ ...prev, clima: e.target.value.toUpperCase() }))}
+                    placeholder="BOM, CHUVOSO, NUBLADO..."
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
                   />
                 </label>
               </div>
@@ -905,7 +951,14 @@ export const OrdensServico = () => {
                   <div className="space-y-2">
                     {aptForm.maquinas.map((maq, i) => (
                       <div key={i} className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-xl text-xs border border-white/[0.04]">
-                        <span className="text-white font-bold">{lookup(maquinas, maq.maquina_id, 'descricao')}</span>
+                        <span className="text-white font-bold">
+                          {(() => {
+                            const item = maquinas.find(x => String(x.id) === String(maq.maquina_id));
+                            if (!item) return 'Desconhecida';
+                            const fazendaOrigem = (fazendas || []).find(f => f.id === item.fazenda_id || f.id === item.fazenda);
+                            return `${item.descricao}${fazendaOrigem ? ` [${fazendaOrigem.sigla}]` : ''}`;
+                          })()}
+                        </span>
                         <div className="flex items-center gap-3 text-slate-400">
                           <span>Horímetro: {maq.horimetro_inicial}h → {maq.horimetro_final}h</span>
                           <button type="button" onClick={() => setAptForm(prev => ({ ...prev, maquinas: prev.maquinas.filter((_, idx) => idx !== i) }))} className="text-rose-400 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -921,13 +974,18 @@ export const OrdensServico = () => {
                       <span className="block text-[10px] font-bold text-slate-400 uppercase">Escolher Máquina</span>
                       <select
                         value={tempMaquinaReal.maquina_id}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempMaquinaReal(prev => ({ ...prev, maquina_id: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       >
                         <option value="">Selecione...</option>
-                        {maquinas.map(m => (
-                          <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo} - {m.descricao}</option>
-                        ))}
+                        {maquinas.map(m => {
+                          const fazendaOrigem = (fazendas || []).find(f => f.id === m.fazenda_id || f.id === m.fazenda);
+                          const tagFazenda = fazendaOrigem ? ` [${fazendaOrigem.sigla}]` : '';
+                          return (
+                            <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo} - {m.descricao}{tagFazenda}</option>
+                          );
+                        })}
                       </select>
                     </label>
                   </div>
@@ -937,6 +995,7 @@ export const OrdensServico = () => {
                       <input
                         type="number"
                         value={tempMaquinaReal.horimetro_inicial}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempMaquinaReal(prev => ({ ...prev, horimetro_inicial: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       />
@@ -948,6 +1007,7 @@ export const OrdensServico = () => {
                       <input
                         type="number"
                         value={tempMaquinaReal.horimetro_final}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempMaquinaReal(prev => ({ ...prev, horimetro_final: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       />
@@ -970,7 +1030,14 @@ export const OrdensServico = () => {
                   <div className="space-y-2">
                     {aptForm.funcionarios.map((f, i) => (
                       <div key={i} className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-xl text-xs border border-white/[0.04]">
-                        <span className="text-white font-bold">{lookup(funcionarios, f.funcionario_id, 'nome')}</span>
+                        <span className="text-white font-bold">
+                          {(() => {
+                            const item = funcionarios.find(x => String(x.id) === String(f.funcionario_id));
+                            if (!item) return 'Desconhecido';
+                            const fazendaOrigem = (fazendas || []).find(f => f.id === item.fazenda_id || f.id === item.fazenda);
+                            return `${item.nome}${fazendaOrigem ? ` [${fazendaOrigem.sigla}]` : ''}`;
+                          })()}
+                        </span>
                         <div className="flex items-center gap-3 text-slate-400">
                           <span>Horas: {f.horas_trabalhadas}h reais</span>
                           <button type="button" onClick={() => setAptForm(prev => ({ ...prev, funcionarios: prev.funcionarios.filter((_, idx) => idx !== i) }))} className="text-rose-400 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -986,13 +1053,18 @@ export const OrdensServico = () => {
                       <span className="block text-[10px] font-bold text-slate-400 uppercase">Escolher Funcionário</span>
                       <select
                         value={tempFuncionarioReal.funcionario_id}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempFuncionarioReal(prev => ({ ...prev, funcionario_id: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       >
                         <option value="">Selecione...</option>
-                        {funcionarios.map(func => (
-                          <option key={func.id} value={func.id} className="bg-slate-900">{func.nome} ({func.cargo || 'Campo'})</option>
-                        ))}
+                        {funcionarios.map(func => {
+                          const fazendaOrigem = (fazendas || []).find(f => f.id === func.fazenda_id || f.id === func.fazenda);
+                          const tagFazenda = fazendaOrigem ? ` [${fazendaOrigem.sigla}]` : '';
+                          return (
+                            <option key={func.id} value={func.id} className="bg-slate-900">{func.nome} ({func.cargo || 'Campo'}){tagFazenda}</option>
+                          );
+                        })}
                       </select>
                     </label>
                   </div>
@@ -1003,6 +1075,7 @@ export const OrdensServico = () => {
                         type="number"
                         placeholder="Ex: 8"
                         value={tempFuncionarioReal.horas_trabalhadas}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempFuncionarioReal(prev => ({ ...prev, horas_trabalhadas: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       />
@@ -1041,6 +1114,7 @@ export const OrdensServico = () => {
                       <span className="block text-[10px] font-bold text-slate-400 uppercase">Escolher Insumo</span>
                       <select
                         value={tempInsumoReal.produto_id}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumoReal(prev => ({ ...prev, produto_id: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       >
@@ -1058,6 +1132,7 @@ export const OrdensServico = () => {
                         type="number"
                         placeholder="Ex: 50"
                         value={tempInsumoReal.quantidade_total}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumoReal(prev => ({ ...prev, quantidade_total: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       />
@@ -1070,6 +1145,7 @@ export const OrdensServico = () => {
                         type="number"
                         placeholder="Ex: 1.5"
                         value={tempInsumoReal.dose_realizada}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumoReal(prev => ({ ...prev, dose_realizada: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       />
@@ -1086,9 +1162,10 @@ export const OrdensServico = () => {
                 <textarea
                   placeholder="Alguma intercorrência, quebra de máquina, chuva forte no dia..."
                   value={aptForm.observacao}
-                  onChange={(e) => setAptForm(prev => ({ ...prev, observacao: e.target.value }))}
+                  onKeyDown={handleKeyDown}
+                  onChange={(e) => setAptForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
                   rows={2}
-                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
                 />
               </label>
 

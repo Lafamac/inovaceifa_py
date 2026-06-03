@@ -10,6 +10,7 @@ import {
   ChevronDown,
   CheckCircle2,
   ClipboardList,
+  Database,
   Grid3X3,
   Package,
   Pencil,
@@ -23,6 +24,26 @@ import {
   Warehouse,
 } from 'lucide-react';
 import api from '../services/api';
+
+const ALL_REFERENCES = {
+  culturas: { label: 'Culturas', url: '/api/ref/culturas/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  tiposItem: { label: 'Tipos de Item', url: '/api/ref/tipos-item/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  statusCultivo: { label: 'Status de Cultivo', url: '/api/ref/status-cultivo/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  tiposIrrigacao: { label: 'Tipos de Irrigação', url: '/api/ref/tipos-irrigacao/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  resistenciasFerrugem: { label: 'Resistências a Ferrugem', url: '/api/ref/resistencias-ferrugem/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  statusOs: { label: 'Status de Ordem de Serviço', url: '/api/ref/status-os/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  modalidades: { label: 'Modalidades de OS', url: '/api/ref/modalidades/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  tiposRateio: { label: 'Tipos de Rateio', url: '/api/ref/tipos-rateio/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  contasGerenciais: { label: 'Contas Gerenciais', url: '/api/ref/contas-gerenciais/', fields: [{ name: 'codigo', label: 'Código', required: true }, { name: 'nome', label: 'Nome', required: true }] },
+  tiposDestinacao: { label: 'Tipos de Destinação', url: '/api/ref/tipos-destinacao/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  gruposTrabalhador: { label: 'Grupos de Trabalhadores', url: '/api/ref/grupos-trabalhador/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  classificacoesProduto: { label: 'Classificações de Produto', url: '/api/ref/classificacoes-produto/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  gruposQuimico: { label: 'Grupos Químicos', url: '/api/ref/grupos-quimico/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  unidadesMedida: { label: 'Unidades de Medida', url: '/api/ref/unidades-medida/', fields: [{ name: 'sigla', label: 'Sigla', required: true }, { name: 'nome', label: 'Nome', required: true }] },
+  atividadesEducampo: { label: 'Atividades Educampo', url: '/api/ref/atividades-educampo/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  criteriosRateio: { label: 'Critérios de Rateio', url: '/api/ref/criterios-rateio/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  tiposOperacao: { label: 'Tipos de Operação', url: '/api/ref/tipos-operacao/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+};
 
 const emptyForms = {
   proprietarios: {
@@ -71,7 +92,7 @@ const emptyForms = {
     criar_usuario: false,
   },
   terceirizados: { fazenda: '', nome: '', documento: '' },
-  turmas: { fazenda: '', nome: '', responsavel: '' },
+  turmas: { fazenda: '', nome: '', responsavel: '', qtd_pessoas: '' },
   produtos: {
     codigo: '',
     nome_comercial: '',
@@ -96,6 +117,7 @@ const emptyForms = {
     observacao: '',
   },
   usuarios: { username: '', email: '', first_name: '', last_name: '', password: '', perfil_id: '', fazendas_permitidas_ids: [] },
+  referencias: { nome: '', sigla: '', codigo: '' },
 };
 
 const endpoints = {
@@ -118,10 +140,18 @@ const refEndpoints = {
   tiposIrrigacao: '/api/ref/tipos-irrigacao/',
   resistenciasFerrugem: '/api/ref/resistencias-ferrugem/',
   statusCultivo: '/api/ref/status-cultivo/',
+  statusOs: '/api/ref/status-os/',
+  modalidades: '/api/ref/modalidades/',
+  tiposRateio: '/api/ref/tipos-rateio/',
+  contasGerenciais: '/api/ref/contas-gerenciais/',
+  tiposDestinacao: '/api/ref/tipos-destinacao/',
   gruposTrabalhador: '/api/ref/grupos-trabalhador/',
   classificacoesProduto: '/api/ref/classificacoes-produto/',
   gruposQuimico: '/api/ref/grupos-quimico/',
   unidadesMedida: '/api/ref/unidades-medida/',
+  atividadesEducampo: '/api/ref/atividades-educampo/',
+  criteriosRateio: '/api/ref/criterios-rateio/',
+  tiposOperacao: '/api/ref/tipos-operacao/',
 };
 
 const fallbackRefs = {
@@ -130,10 +160,18 @@ const fallbackRefs = {
   tiposIrrigacao: [{ id: 1, nome: 'Não Irrigado' }],
   resistenciasFerrugem: [{ id: 1, nome: 'Não Informado' }],
   statusCultivo: [{ id: 1, nome: 'Em Produção' }],
+  statusOs: [{ id: 1, nome: 'Rascunho' }],
+  modalidades: [{ id: 1, nome: 'Própria' }],
+  tiposRateio: [{ id: 1, nome: 'Por Área' }],
+  contasGerenciais: [{ id: 1, codigo: '1.01', nome: 'Insumos' }],
+  tiposDestinacao: [{ id: 1, nome: 'Produção' }],
   gruposTrabalhador: [{ id: 1, nome: 'Mão de Obra Própria' }],
   classificacoesProduto: [{ id: 1, nome: 'Outros' }],
   gruposQuimico: [{ id: 1, nome: 'Outros' }],
   unidadesMedida: [{ id: 1, sigla: 'kg', nome: 'Quilograma' }],
+  atividadesEducampo: [{ id: 1, nome: 'Outros' }],
+  criteriosRateio: [{ id: 1, nome: 'Área' }],
+  tiposOperacao: [{ id: 1, nome: 'Geral' }],
 };
 
 const menuSections = [
@@ -146,8 +184,9 @@ const menuSections = [
       { id: 'proprietarios', label: 'Proprietários', icon: UserCircle },
       { id: 'fazendas', label: 'Fazendas', icon: Building2 },
       { id: 'safras', label: 'Safras', icon: CalendarRange },
-      { id: 'talhoes', label: 'Talhões', icon: Grid3X3 },
+      { id: 'talhoes', label: 'Talões', icon: Grid3X3 },
       { id: 'maquinas', label: 'Máquinas', icon: Tractor },
+      { id: 'referencias', label: 'Tabelas de Referência', icon: Database },
     ],
   },
   {
@@ -355,6 +394,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [showInactiveOnly, setShowInactiveOnly] = useState(false);
+  const [selectedRefTab, setSelectedRefTab] = useState('culturas');
 
   const currentForm = forms[activeTab];
 
@@ -513,9 +553,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       produtos: ['nome_comercial', 'unidade', 'classificacao'],
       estoque: ['fazenda', 'safra', 'produto', 'tipo_movimento', 'quantidade', 'data_movimento'],
       usuarios: ['username', 'email', 'first_name', 'perfil_id'],
+      referencias: ALL_REFERENCES[selectedRefTab].fields.filter((f) => f.required).map((f) => f.name),
     };
 
-    const missing = required[activeTab].filter((key) => !payload[key]);
+    const targetKey = activeTab === 'referencias' ? 'referencias' : activeTab;
+    const missing = required[targetKey].filter((key) => !payload[key]);
     if (missing.length) {
       showAlert('error', `Preencha os campos obrigatórios: ${missing.join(', ')}.`);
       return false;
@@ -525,7 +567,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    let payload = fillRequiredRefs(cleanPayload(currentForm));
+    const targetKey = activeTab === 'referencias' ? 'referencias' : activeTab;
+    let payload = fillRequiredRefs(cleanPayload(forms[targetKey]));
 
     if (activeTab === 'estoque') {
       payload.safra = payload.safra || currentSafraId;
@@ -539,11 +582,17 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     try {
       if (editingId) {
         // Modo Edição
-        await api.put(`${endpoints[activeTab]}${editingId}/`, payload);
+        const url = activeTab === 'referencias'
+          ? `${refEndpoints[selectedRefTab]}${editingId}/`
+          : `${endpoints[activeTab]}${editingId}/`;
+        await api.put(url, payload);
         showAlert('success', 'Registro atualizado com sucesso.');
       } else {
         // Modo Criação
-        const response = await api.post(endpoints[activeTab], payload);
+        const url = activeTab === 'referencias'
+          ? refEndpoints[selectedRefTab]
+          : endpoints[activeTab];
+        const response = await api.post(url, payload);
         if (activeTab === 'fazendas') {
           createdFarmId = response.data?.id;
         }
@@ -575,7 +624,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         setShowModal(true);
         showAlert('success', 'Fazenda cadastrada! Defina agora a safra inicial ativa para esta fazenda.');
       } else {
-        resetForm(activeTab);
+        resetForm(targetKey);
         setShowModal(false);
         setEditingId(null);
       }
@@ -584,17 +633,18 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       // Fallback em banco local storage
       try {
         const db = getFallbackDB();
-        if (!db[activeTab]) db[activeTab] = [];
+        const fallbackKey = activeTab === 'referencias' ? selectedRefTab : activeTab;
+        if (!db[fallbackKey]) db[fallbackKey] = [];
         
         let localNewId = null;
         if (editingId) {
-          const idx = db[activeTab].findIndex(x => String(x.id) === String(editingId));
+          const idx = db[fallbackKey].findIndex(x => String(x.id) === String(editingId));
           if (idx !== -1) {
-            db[activeTab][idx] = { ...db[activeTab][idx], ...payload };
+            db[fallbackKey][idx] = { ...db[fallbackKey][idx], ...payload };
           }
         } else {
-          localNewId = db[activeTab].length > 0 ? Math.max(...db[activeTab].map(x => x.id)) + 1 : 1;
-          db[activeTab].push({ id: localNewId, ativo: true, ...payload });
+          localNewId = db[fallbackKey].length > 0 ? Math.max(...db[fallbackKey].map(x => x.id)) + 1 : 1;
+          db[fallbackKey].push({ id: localNewId, ativo: true, ...payload });
           if (activeTab === 'fazendas') {
             createdFarmId = localNewId;
           }
@@ -627,7 +677,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           setShowModal(true);
           showAlert('success', 'Fazenda cadastrada offline! Defina agora a safra inicial ativa para esta fazenda.');
         } else {
-          resetForm(activeTab);
+          resetForm(targetKey);
           setShowModal(false);
           setEditingId(null);
         }
@@ -650,7 +700,10 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      await api.patch(`${endpoints[activeTab]}${item.id}/`, { ativo: novoEstado });
+      const url = activeTab === 'referencias'
+        ? `${refEndpoints[selectedRefTab]}${item.id}/`
+        : `${endpoints[activeTab]}${item.id}/`;
+      await api.patch(url, { ativo: novoEstado });
       showAlert('success', novoEstado ? 'Registro reativado!' : 'Registro inativado com sucesso.');
       await loadData();
     } catch (err) {
@@ -658,7 +711,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       // Fallback offline
       try {
         const db = getFallbackDB();
-        const list = db[activeTab] || [];
+        const targetKey = activeTab === 'referencias' ? selectedRefTab : activeTab;
+        const list = db[targetKey] || [];
         const found = list.find(x => String(x.id) === String(item.id));
         if (found) {
           found.ativo = novoEstado;
@@ -675,7 +729,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   // Preenche formulário e abre janela modal
   const handleStartEdit = (item) => {
     setEditingId(item.id);
-    const formFields = { ...emptyForms[activeTab] };
+    const targetKey = activeTab === 'referencias' ? 'referencias' : activeTab;
+    const formFields = { ...emptyForms[targetKey] };
     
     Object.keys(formFields).forEach(key => {
       if (key === 'fazenda' && (item.fazenda_id || item.fazenda)) {
@@ -709,14 +764,14 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     setForms((prev) => ({
       ...prev,
-      [activeTab]: formFields
+      [targetKey]: formFields
     }));
     setShowModal(true);
   };
 
   const filteredRows = (key, getText) => {
     const query = searchQuery.trim().toLowerCase();
-    let baseList = records[key] || [];
+    let baseList = key === 'referencias' ? (refs[selectedRefTab] || []) : (records[key] || []);
 
     // Filtrar Ativos vs Inativos de acordo com o filtro do botão
     baseList = baseList.filter(item => {
@@ -790,7 +845,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'talhoes') {
       return (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
           <InputField required label="Nome do Talhão" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
@@ -799,22 +854,26 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <SelectField required label="Cultura" value={currentForm.cultura} onChange={(value) => patchForm('cultura', value)} options={refOptions('culturas')} />
           <SelectField label="Status Cultivo" value={currentForm.status_cultivo} onChange={(value) => patchForm('status_cultivo', value)} options={refOptions('statusCultivo')} />
           <SelectField label="Resistência Ferrugem" value={currentForm.resistencia_ferrugem} onChange={(value) => patchForm('resistencia_ferrugem', value)} options={refOptions('resistenciasFerrugem')} />
-          <InputField label="Material Genético" value={currentForm.material_genetico} onChange={(value) => patchForm('material_genetico', value)} />
-        </>
+          <div className="md:col-span-2">
+            <InputField label="Material Genético" value={currentForm.material_genetico} onChange={(value) => patchForm('material_genetico', value)} />
+          </div>
+        </div>
       );
     }
 
     if (activeTab === 'maquinas') {
       return (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Código / Frota" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
-          <InputField required label="Descrição" value={currentForm.descricao} onChange={(value) => patchForm('descricao', value)} />
+          <div className="md:col-span-2">
+            <InputField required label="Descrição" value={currentForm.descricao} onChange={(value) => patchForm('descricao', value)} />
+          </div>
           <InputField label="Marca" value={currentForm.marca} onChange={(value) => patchForm('marca', value)} />
           <InputField label="Modelo" value={currentForm.modelo} onChange={(value) => patchForm('modelo', value)} />
           <InputField label="Ano Fabricação" type="number" value={currentForm.ano_fabricacao} onChange={(value) => patchForm('ano_fabricacao', value)} />
           <SelectField required label="Tipo" value={currentForm.tipo} onChange={(value) => patchForm('tipo', value)} options={refOptions('tiposItem')} />
-        </>
+        </div>
       );
     }
 
@@ -847,11 +906,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'turmas') {
       return (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Nome da Turma" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField label="Responsável" value={currentForm.responsavel} onChange={(value) => patchForm('responsavel', value)} />
-        </>
+          <InputField label="Quantidade de Pessoas" type="number" value={currentForm.qtd_pessoas} onChange={(value) => patchForm('qtd_pessoas', value)} />
+        </div>
       );
     }
 
@@ -872,15 +932,15 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'usuarios') {
       return (
-        <>
-          <InputField required label="Nome de Usuário" value={currentForm.username} onChange={(value) => patchForm('username', value)} placeholder="Ex: joao.silva" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField required label="Nome de Usuário" value={currentForm.username} onChange={(value) => patchForm('username', value)} placeholder="Ex: JOAO.SILVA" />
           <InputField required label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} placeholder="Ex: joao@empresa.com" />
           <InputField required label="Primeiro Nome" value={currentForm.first_name} onChange={(value) => patchForm('first_name', value)} />
           <InputField required label="Sobrenome" value={currentForm.last_name} onChange={(value) => patchForm('last_name', value)} />
           <InputField label="Senha" type="password" value={currentForm.password} onChange={(value) => patchForm('password', value)} placeholder={editingId ? "Deixe em branco para não alterar" : "Senha do usuário (padrão: 12345)"} />
           <SelectField required label="Perfil / Cargo" value={currentForm.perfil_id} onChange={(value) => patchForm('perfil_id', value)} options={(records.perfis || []).map((p) => ({ value: p.id, label: p.nome }))} />
           
-          <div className="block space-y-1.5 text-left">
+          <div className="md:col-span-2 block space-y-1.5 text-left">
             <span className="block text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">Fazendas Permitidas</span>
             <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-3 border border-slate-200 dark:border-white/[0.08] rounded-xl bg-slate-50/50 dark:bg-slate-950/40">
               {records.fazendas.map((f) => {
@@ -905,7 +965,25 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               })}
             </div>
           </div>
-        </>
+        </div>
+      );
+    }
+
+    if (activeTab === 'referencias') {
+      const config = ALL_REFERENCES[selectedRefTab];
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {config.fields.map((field) => (
+            <div key={field.name} className={config.fields.length === 1 ? "md:col-span-2" : ""}>
+              <InputField
+                required={field.required}
+                label={field.label}
+                value={currentForm[field.name] || ''}
+                onChange={(value) => patchForm(field.name, value)}
+              />
+            </div>
+          ))}
+        </div>
       );
     }
 
@@ -1104,7 +1182,10 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
             <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
           </td>
-          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.responsavel || '-'}</td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+            <p>Responsável: {item.responsavel || '-'}</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-0.5">Pessoas na Panha: {item.qtd_pessoas || 0}</p>
+          </td>
           <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">{item.integrantes_detalhe?.length || 0} integrantes</td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
@@ -1154,6 +1235,46 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
               {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
             </button>
+          </td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'referencias') {
+      const list = filteredRows('referencias', (item) => {
+        if (selectedRefTab === 'unidadesMedida') {
+          return `${item.sigla} ${item.nome}`;
+        }
+        if (selectedRefTab === 'contasGerenciais') {
+          return `${item.codigo} ${item.nome}`;
+        }
+        return item.nome || '';
+      });
+
+      return list.map((item) => (
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">
+              {item.nome || ''}
+            </p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300 font-mono">
+            {selectedRefTab === 'unidadesMedida' ? `SIGLA: ${item.sigla || '-'}` : (selectedRefTab === 'contasGerenciais' ? `CÓDIGO: ${item.codigo || '-'}` : '-')}
+          </td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-300">
+            {item.ativo !== false ? 'ATIVO' : 'INATIVO'}
+          </td>
+          <td className="py-3 px-5 text-center">
+            {isSuperUsuario ? (
+              <>
+                <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+                <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+                  {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                </button>
+              </>
+            ) : (
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">Somente leitura</span>
+            )}
           </td>
         </tr>
       ));
@@ -1297,33 +1418,54 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             </div>
 
             {/* Novo Registro button trigger */}
-            <button
-              onClick={() => {
-                setEditingId(null);
-                resetForm();
-                setError('');
-                setSuccess('');
-                setShowModal(true);
-              }}
-              className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Novo Registro</span>
-            </button>
+            {((activeTab !== 'referencias') || isSuperUsuario) && (
+              <button
+                onClick={() => {
+                  setEditingId(null);
+                  resetForm();
+                  setError('');
+                  setSuccess('');
+                  setShowModal(true);
+                }}
+                className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Novo Registro</span>
+              </button>
+            )}
           </div>
 
           {/* Search, Filter Tabs and Controls */}
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            {/* Search Input */}
-            <div className="relative w-full md:max-w-md">
-              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-450 dark:text-slate-500" />
-              <input
-                type="text"
-                placeholder={`Pesquisar em ${activeLabel}...`}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                className="w-full bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] focus:border-emerald-500/40 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 dark:text-white placeholder-slate-400 outline-none transition-all"
-              />
+            <div className="flex flex-col md:flex-row gap-4 w-full md:max-w-xl">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-450 dark:text-slate-500" />
+                <input
+                  type="text"
+                  placeholder={`Pesquisar em ${activeLabel}...`}
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="w-full bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] focus:border-emerald-500/40 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 dark:text-white placeholder-slate-400 outline-none transition-all"
+                />
+              </div>
+
+              {activeTab === 'referencias' && (
+                <div className="w-full md:w-64">
+                  <select
+                    value={selectedRefTab}
+                    onChange={(e) => {
+                      setSelectedRefTab(e.target.value);
+                      setSearchQuery('');
+                    }}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-slate-800 dark:text-white outline-none transition-all font-bold cursor-pointer"
+                  >
+                    {Object.entries(ALL_REFERENCES).map(([key, val]) => (
+                      <option key={key} value={key} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{val.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Premium Active/Inactive Toggle Buttons */}
@@ -1382,7 +1524,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className={`w-full ${activeTab === 'fazendas' ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
+          <div className={`w-full ${(activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">

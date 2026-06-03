@@ -212,34 +212,21 @@ export const Planejamentos = () => {
 
     setSaving(true);
     try {
-      // 1. Criar a OS Planejada principal
+      // Criar a OS Planejada com talhões e insumos aninhados
       const osPayload = {
         planejamento: selectedPlan.id,
         tipo_operacao: Number(newOSForm.tipo_operacao),
         data_inicio_planejada: newOSForm.data_inicio_planejada,
         data_fim_planejada: newOSForm.data_fim_planejada,
-        observacao: newOSForm.observacao
-      };
-      const resOS = await api.post('/api/ordens-servico-planejadas/', osPayload);
-      const osId = resOS.data.id;
-
-      // 2. Vincular os Talhões
-      await Promise.all(newOSForm.talhoes_selecionados.map(tId => 
-        api.post('/api/ordens-servico-planejadas-talhoes/', {
-          ordem_servico_planejada: osId,
-          talhao: Number(tId)
-        })
-      ));
-
-      // 3. Vincular os Insumos Planejados
-      await Promise.all(newOSForm.insumos_selecionados.map(ins => 
-        api.post('/api/item-insumo-osplanejado/', {
-          ordem_servico_planejada: osId,
+        observacao: newOSForm.observacao,
+        talhoes_ids: newOSForm.talhoes_selecionados.map(Number),
+        insumos: newOSForm.insumos_selecionados.map(ins => ({
           produto: Number(ins.produto_id),
           dose_planejada: Number(ins.dose_planejada),
           quantidade_planejada: Number(ins.quantidade_planejada)
-        })
-      ));
+        }))
+      };
+      await api.post('/api/ordens-servico-planejadas/', osPayload);
 
       showAlert('success', 'Ordem de serviço planejada adicionada com sucesso!');
       setShowNewOSModal(false);
@@ -289,6 +276,30 @@ export const Planejamentos = () => {
           : [...prev.talhoes_selecionados, tId]
       };
     });
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const form = event.target.form;
+      if (form) {
+        const index = Array.prototype.indexOf.call(form, event.target);
+        if (index > -1) {
+          let nextIndex = index + 1;
+          while (nextIndex < form.elements.length) {
+            const nextEl = form.elements[nextIndex];
+            if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+              if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                nextEl.focus();
+                if (nextEl.select) nextEl.select();
+                break;
+              }
+            }
+            nextIndex++;
+          }
+        }
+      }
+    }
   };
 
   if (loading && planejamentos.length === 0) {
@@ -551,48 +562,59 @@ export const Planejamentos = () => {
               <button onClick={() => setShowNewPlanModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
 
-            <form onSubmit={handleCreatePlanejamento} className="space-y-4 text-left">
-              <label className="block space-y-1.5">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Descrição do Planejamento *</span>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Planejamento Agrícola e Adubação Secagem 2024/25"
-                  value={newPlanForm.descricao}
-                  onChange={(e) => setNewPlanForm(prev => ({ ...prev, descricao: e.target.value }))}
-                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
-                />
-              </label>
+            <form onSubmit={handleCreatePlanejamento} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+              <div className="md:col-span-2">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Descrição do Planejamento *</span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Planejamento Agrícola e Adubação Secagem 2024/25"
+                    value={newPlanForm.descricao}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewPlanForm(prev => ({ ...prev, descricao: e.target.value.toUpperCase() }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                  />
+                </label>
+              </div>
 
-              <label className="block space-y-1.5">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data do Planejamento *</span>
-                <input
-                  type="date"
-                  required
-                  value={newPlanForm.data_planejamento}
-                  onChange={(e) => setNewPlanForm(prev => ({ ...prev, data_planejamento: e.target.value }))}
-                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
-                />
-              </label>
+              <div className="md:col-span-2">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data do Planejamento *</span>
+                  <input
+                    type="date"
+                    required
+                    value={newPlanForm.data_planejamento}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewPlanForm(prev => ({ ...prev, data_planejamento: e.target.value }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
 
-              <label className="block space-y-1.5">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Observações / Notas</span>
-                <textarea
-                  placeholder="Notas adicionais sobre o orçamento e premissas da safra..."
-                  value={newPlanForm.observacao}
-                  onChange={(e) => setNewPlanForm(prev => ({ ...prev, observacao: e.target.value }))}
-                  rows={3}
-                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
-                />
-              </label>
+              <div className="md:col-span-2">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Observações / Notas</span>
+                  <textarea
+                    placeholder="Notas adicionais sobre o orçamento e premissas da safra..."
+                    value={newPlanForm.observacao}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewPlanForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
+                    rows={3}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                  />
+                </label>
+              </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20"
-              >
-                {saving ? 'Criando...' : 'Salvar Planejamento'}
-              </button>
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                >
+                  {saving ? 'Criando...' : 'Salvar Planejamento'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -610,14 +632,15 @@ export const Planejamentos = () => {
               <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
 
-            <form onSubmit={handleAddOSPlanejada} className="space-y-5 text-left">
+            <form onSubmit={handleAddOSPlanejada} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="block space-y-1.5">
                   <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Operação *</span>
                   <select
                     required
                     value={newOSForm.tipo_operacao}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewOSForm(prev => ({ ...prev, tipo_operacao: e.target.value }))}
                     className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
                   >
@@ -635,6 +658,7 @@ export const Planejamentos = () => {
                       type="date"
                       required
                       value={newOSForm.data_inicio_planejada}
+                      onKeyDown={handleKeyDown}
                       onChange={(e) => setNewOSForm(prev => ({ ...prev, data_inicio_planejada: e.target.value }))}
                       className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-white outline-none"
                     />
@@ -645,6 +669,7 @@ export const Planejamentos = () => {
                       type="date"
                       required
                       value={newOSForm.data_fim_planejada}
+                      onKeyDown={handleKeyDown}
                       onChange={(e) => setNewOSForm(prev => ({ ...prev, data_fim_planejada: e.target.value }))}
                       className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-white outline-none"
                     />
@@ -653,7 +678,7 @@ export const Planejamentos = () => {
               </div>
 
               {/* Seletor de Talhões */}
-              <div className="space-y-2">
+              <div className="md:col-span-2 space-y-2">
                 <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
                 {talhoes.length === 0 ? (
                   <p className="text-xs text-slate-500">Nenhum talhão cadastrado para esta fazenda.</p>
@@ -666,7 +691,7 @@ export const Planejamentos = () => {
                           key={t.id}
                           type="button"
                           onClick={() => handleToggleTalhaoSelection(t.id)}
-                          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                             isSelected 
                               ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
                               : 'bg-slate-900 border border-white/5 text-slate-400 hover:text-slate-300'
@@ -681,7 +706,7 @@ export const Planejamentos = () => {
               </div>
 
               {/* Formulário Interno de Insumos */}
-              <div className="space-y-3 border-t border-white/[0.06] pt-4">
+              <div className="md:col-span-2 space-y-3 border-t border-white/[0.06] pt-4">
                 <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Insumos Planejados</span>
                 
                 {/* Lista de insumos adicionados */}
@@ -711,6 +736,7 @@ export const Planejamentos = () => {
                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Escolher Produto</span>
                       <select
                         value={tempInsumo.produto_id}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumo(prev => ({ ...prev, produto_id: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       >
@@ -728,6 +754,7 @@ export const Planejamentos = () => {
                         type="number"
                         placeholder="Ex: 2.5"
                         value={tempInsumo.dose_planejada}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumo(prev => ({ ...prev, dose_planejada: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       />
@@ -740,6 +767,7 @@ export const Planejamentos = () => {
                         type="number"
                         placeholder="Ex: 500"
                         value={tempInsumo.quantidade_planejada}
+                        onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumo(prev => ({ ...prev, quantidade_planejada: e.target.value }))}
                         className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
                       />
@@ -757,26 +785,29 @@ export const Planejamentos = () => {
                 </div>
               </div>
 
-              <div className="space-y-1.5 border-t border-white/[0.06] pt-4">
+              <div className="md:col-span-2 space-y-1.5 border-t border-white/[0.06] pt-4">
                 <label className="block space-y-1.5">
                   <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recomendações / Instruções Técnicas</span>
                   <textarea
                     placeholder="Instruções para o operador no campo..."
                     value={newOSForm.observacao}
-                    onChange={(e) => setNewOSForm(prev => ({ ...prev, observacao: e.target.value }))}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
                     rows={2}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
                   />
                 </label>
               </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-              >
-                {saving ? 'Adicionando...' : 'Salvar Ordem Planejada'}
-              </button>
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                >
+                  {saving ? 'Adicionando...' : 'Salvar Ordem Planejada'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

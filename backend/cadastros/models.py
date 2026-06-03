@@ -133,6 +133,8 @@ class TurmaTerceirizada(BaseModel):
     nome = models.CharField(max_length=100)
     responsavel = models.CharField(max_length=255, null=True, blank=True)
     integrantes = models.ManyToManyField(Terceirizado, blank=True, related_name='turmas')
+    qtd_pessoas = models.IntegerField(default=0)
+
 
     class Meta:
         verbose_name = "Turma Terceirizada"
