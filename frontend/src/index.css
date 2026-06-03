@@ -244,50 +244,52 @@ h6 {
 /* ==========================================================================
    GLOBAL FORM & INPUT STYLING
    ========================================================================== */
-input,
-select,
-textarea {
-  background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #0f172a !important;
-  border-radius: 12px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease-in-out;
-}
+@layer base {
+  input,
+  select,
+  textarea {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    border-radius: 12px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+  }
 
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: #10b981 !important;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
-}
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: #10b981 !important;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  }
 
-.dark input,
-.dark select,
-.dark textarea {
-  background: #090d16 !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  color: #f8fafc !important;
-}
+  .dark input,
+  .dark select,
+  .dark textarea {
+    background: #090d16 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+  }
 
-.dark input:focus,
-.dark select:focus,
-.dark textarea:focus {
-  border-color: #10b981 !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
-}
+  .dark input:focus,
+  .dark select:focus,
+  .dark textarea:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+  }
 
-input::placeholder,
-textarea::placeholder {
-  color: #64748b !important;
-}
+  input::placeholder,
+  textarea::placeholder {
+    color: #64748b !important;
+  }
 
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: #475569 !important;
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #475569 !important;
+  }
 }
 
 .login-input-with-left-icon {

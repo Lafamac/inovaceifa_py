@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
-from core.models import Fazenda, Proprietario
+from core.models import Fazenda, Proprietario, Safra
 from cadastros.models import TurmaTerceirizada
 from accounts.models import Perfil
 
@@ -12,6 +12,7 @@ class TurmaTerceirizadaAPITests(APITestCase):
     def setUp(self):
         self.proprietario = Proprietario.objects.create(nome="Proprietario Teste", documento="11122233344")
         self.fazenda = Fazenda.objects.create(nome="Fazenda Teste", proprietario=self.proprietario, sigla="FZT")
+        self.safra = Safra.objects.create(nome="Safra Teste", fazenda=self.fazenda, data_inicio="2026-01-01", data_fim="2026-12-31")
         
         self.perfil_admin, _ = Perfil.objects.get_or_create(nome="Administrador", nivel=1)
         self.admin_user = User.objects.create_user(
@@ -22,10 +23,13 @@ class TurmaTerceirizadaAPITests(APITestCase):
         
         self.client.force_authenticate(user=self.admin_user)
         # Multi-tenant context headers
-        self.client.credentials(HTTP_X_FAZENDA_ID=str(self.fazenda.id))
+        self.client.credentials(
+            HTTP_X_FAZENDA_ID=str(self.fazenda.id),
+            HTTP_X_SAFRA_ID=str(self.safra.id)
+        )
 
     def test_create_and_read_turma_terceirizada_with_qtd_pessoas(self):
-        url = reverse('cadastros-turma-list')
+        url = reverse('turma-terceirizada-list')
         data = {
             "fazenda": self.fazenda.id,
             "nome": "TURMA COPA 01",
@@ -44,6 +48,5 @@ class TurmaTerceirizadaAPITests(APITestCase):
         # Read list
         response_list = self.client.get(url, format='json')
         self.assertEqual(response_list.status_code, status.HTTP_200_OK)
-        # Depending on pagination, results can be in results list
-        results = response_list.data.get('results', response_list.data)
+        results = response_list.data.get('results', response_list.data) if isinstance(response_list.data, dict) else response_list.data
         self.assertTrue(any(t['id'] == turma.id and t['qtd_pessoas'] == 15 for t in results))

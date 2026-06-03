@@ -125,6 +125,7 @@
     - [x] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo)
     - [x] Contas a Pagar (Gestão financeira integrada)
     - [x] Ordens de Serviço (Cadastro, listagem e apontamentos operacionais em campo)
+    - [x] Correção de alinhamento no campo de busca/pesquisa (jogando texto para a direita e centralizando ícone da lupa verticalmente)
   - [x] **Planejamento de Safra (Apenas perfil 1)**:
     - [x] Interface intuitiva para criação, edição e aprovação de planejamentos (talhões, adubação, insumos, mão de obra terceirizada, rateios).
     - [x] Fluxo e botão para **Geração de Ordens de Serviço Reais** (`POST /api/planejamentos/{id}/gerar-ordens-servico/`).

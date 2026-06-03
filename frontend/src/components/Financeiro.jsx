@@ -48,6 +48,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   const [showNewVendaModal, setShowNewVendaModal] = useState(false);
   const [showPagamentoModal, setShowPagamentoModal] = useState(false);
   const [showRecebimentoModal, setShowRecebimentoModal] = useState(false);
+  const [showNewPagarModal, setShowNewPagarModal] = useState(false);
+  const [showNewReceberModal, setShowNewReceberModal] = useState(false);
   
   // Selected entities for actions
   const [selectedConta, setSelectedConta] = useState(null);
@@ -70,6 +72,23 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
     tipo_produto: 'CAFE',
     quantidade_sacas: '',
     preco_unitario: ''
+  });
+
+  const [newPagar, setNewPagar] = useState({
+    descricao: '',
+    valor: '',
+    data_vencimento: new Date().toISOString().slice(0, 10),
+    status: 'PENDENTE',
+    data_pagamento: ''
+  });
+
+  const [newReceber, setNewReceber] = useState({
+    descricao: '',
+    categoria_receita: 'OUTROS',
+    valor: '',
+    data_vencimento: new Date().toISOString().slice(0, 10),
+    status: 'PENDENTE',
+    data_recebimento: ''
   });
   
   // Temporary Item state for purchase order details
@@ -318,6 +337,63 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
       loadAllData();
     } catch (err) {
       showAlert('error', 'Erro ao liquidar contas a receber.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreatePagar = async (e) => {
+    e.preventDefault();
+    if (!newPagar.descricao || !newPagar.valor || !newPagar.data_vencimento) {
+      showAlert('error', 'Preencha todos os campos obrigatórios.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        fazenda: fazendaAtiva.id,
+        safra: safraAtiva?.id,
+        descricao: newPagar.descricao.toUpperCase(),
+        valor: Number(newPagar.valor),
+        data_vencimento: newPagar.data_vencimento,
+        status: newPagar.status,
+        data_pagamento: newPagar.status === 'PAGO' ? (newPagar.data_pagamento || newPagar.data_vencimento) : null
+      };
+      await relatorioService.createContasAPagar(payload);
+      showAlert('success', 'Lançamento de Contas a Pagar realizado com sucesso!');
+      setShowNewPagarModal(false);
+      loadAllData();
+    } catch (err) {
+      showAlert('error', 'Erro ao salvar o Lançamento.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateReceber = async (e) => {
+    e.preventDefault();
+    if (!newReceber.descricao || !newReceber.valor || !newReceber.data_vencimento) {
+      showAlert('error', 'Preencha todos os campos obrigatórios.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        fazenda: fazendaAtiva.id,
+        safra: safraAtiva?.id,
+        descricao: newReceber.descricao.toUpperCase(),
+        categoria_receita: newReceber.categoria_receita,
+        valor: Number(newReceber.valor),
+        data_vencimento: newReceber.data_vencimento,
+        status: newReceber.status,
+        data_recebimento: newReceber.status === 'RECEBIDO' ? (newReceber.data_recebimento || newReceber.data_vencimento) : null
+      };
+      await relatorioService.createContasAReceber(payload);
+      showAlert('success', 'Lançamento de Contas a Receber realizado com sucesso!');
+      setShowNewReceberModal(false);
+      loadAllData();
+    } catch (err) {
+      showAlert('error', 'Erro ao salvar o Lançamento.');
     } finally {
       setSaving(false);
     }
@@ -573,6 +649,45 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             >
               <Plus className="w-4 h-4" />
               <span>Nova Venda</span>
+            </button>
+          )}
+
+          {activeSubTab === 'pagar' && (
+            <button
+              onClick={() => {
+                setNewPagar({
+                  descricao: '',
+                  valor: '',
+                  data_vencimento: new Date().toISOString().slice(0, 10),
+                  status: 'PENDENTE',
+                  data_pagamento: ''
+                });
+                setShowNewPagarModal(true);
+              }}
+              className="flex items-center gap-1.5 px-4.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 shadow-indigo-500/10 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Lançar Pagar</span>
+            </button>
+          )}
+
+          {activeSubTab === 'receber' && (
+            <button
+              onClick={() => {
+                setNewReceber({
+                  descricao: '',
+                  categoria_receita: 'OUTROS',
+                  valor: '',
+                  data_vencimento: new Date().toISOString().slice(0, 10),
+                  status: 'PENDENTE',
+                  data_recebimento: ''
+                });
+                setShowNewReceberModal(true);
+              }}
+              className="flex items-center gap-1.5 px-4.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 shadow-teal-500/10 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Lançar Receber</span>
             </button>
           )}
 
@@ -1049,6 +1164,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
               <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
                 <button
                   type="button"
+                  tabIndex="-1"
                   onClick={() => setShowNewCompraModal(false)}
                   className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
@@ -1157,6 +1273,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
               <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
                 <button
                   type="button"
+                  tabIndex="-1"
                   onClick={() => setShowNewVendaModal(false)}
                   className="px-4 px-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
@@ -1210,6 +1327,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
               <div className="flex gap-3 justify-end pt-3">
                 <button
                   type="button"
+                  tabIndex="-1"
                   onClick={() => setShowPagamentoModal(false)}
                   className="px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
@@ -1263,6 +1381,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
               <div className="flex gap-3 justify-end pt-3">
                 <button
                   type="button"
+                  tabIndex="-1"
                   onClick={() => setShowRecebimentoModal(false)}
                   className="px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
@@ -1278,6 +1397,450 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL: LANÇAR CONTAS A PAGAR MANUAL --- */}
+      {showNewPagarModal && (
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-lg bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <WalletCards className="w-5 h-5 text-emerald-500" />
+                <span>Lançar Contas a Pagar Manual</span>
+              </h3>
+              <button onClick={() => setShowNewPagarModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
+            </div>
+            
+            <form onSubmit={handleCreatePagar} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Descrição / Motivo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="EX: PAGAMENTO ENERGIA ELÉTRICA SUMATRA"
+                    value={newPagar.descricao}
+                    onChange={(e) => setNewPagar(prev => ({ ...prev, descricao: e.target.value.toUpperCase() }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Valor (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="Ex: 1500.00"
+                    value={newPagar.valor}
+                    onChange={(e) => setNewPagar(prev => ({ ...prev, valor: e.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Data de Vencimento *</label>
+                  <input
+                    type="date"
+                    required
+                    value={newPagar.data_vencimento}
+                    onChange={(e) => setNewPagar(prev => ({ ...prev, data_vencimento: e.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Status *</label>
+                  <select
+                    value={newPagar.status}
+                    onChange={(e) => setNewPagar(prev => ({ ...prev, status: e.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-semibold animate-in fade-in"
+                  >
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="PAGO">Pago</option>
+                  </select>
+                </div>
+                {newPagar.status === 'PAGO' && (
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Data de Pagamento *</label>
+                    <input
+                      type="date"
+                      required
+                      value={newPagar.data_pagamento || newPagar.data_vencimento}
+                      onChange={(e) => setNewPagar(prev => ({ ...prev, data_pagamento: e.target.value }))}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          const form = event.target.form;
+                          if (form) {
+                            const index = Array.prototype.indexOf.call(form, event.target);
+                            if (index > -1) {
+                              let nextIndex = index + 1;
+                              while (nextIndex < form.elements.length) {
+                                const nextEl = form.elements[nextIndex];
+                                if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                    nextEl.focus();
+                                    break;
+                                  }
+                                }
+                                nextIndex++;
+                              }
+                            }
+                          }
+                        }
+                      }}
+                      className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
+                <button
+                  type="button"
+                  tabIndex="-1"
+                  onClick={() => setShowNewPagarModal(false)}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
+                >
+                  {saving ? 'Salvando...' : 'Confirmar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL: LANÇAR CONTAS A RECEBER MANUAL --- */}
+      {showNewReceberModal && (
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-lg bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <WalletCards className="w-5 h-5 text-emerald-500" />
+                <span>Lançar Contas a Receber Manual</span>
+              </h3>
+              <button onClick={() => setShowNewReceberModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
+            </div>
+            
+            <form onSubmit={handleCreateReceber} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Descrição / Origem *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="EX: RECEBIMENTO VENDA CAFÉ LOTE 42"
+                    value={newReceber.descricao}
+                    onChange={(e) => setNewReceber(prev => ({ ...prev, descricao: e.target.value.toUpperCase() }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Categoria de Receita *</label>
+                  <select
+                    value={newReceber.categoria_receita}
+                    onChange={(e) => setNewReceber(prev => ({ ...prev, categoria_receita: e.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-semibold"
+                  >
+                    <option value="VENDA_CAFE">Venda Café</option>
+                    <option value="CEREAIS">Cereais</option>
+                    <option value="SUCATA">Sucata</option>
+                    <option value="CUSTEIO_AGRICOLA">Custeio Agrícola</option>
+                    <option value="OUTROS">Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Valor (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="Ex: 50000.00"
+                    value={newReceber.valor}
+                    onChange={(e) => setNewReceber(prev => ({ ...prev, valor: e.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Data de Vencimento *</label>
+                  <input
+                    type="date"
+                    required
+                    value={newReceber.data_vencimento}
+                    onChange={(e) => setNewReceber(prev => ({ ...prev, data_vencimento: e.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Status *</label>
+                  <select
+                    value={newReceber.status}
+                    onChange={(e) => setNewReceber(prev => ({ ...prev, status: e.target.value }))}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const form = event.target.form;
+                        if (form) {
+                          const index = Array.prototype.indexOf.call(form, event.target);
+                          if (index > -1) {
+                            let nextIndex = index + 1;
+                            while (nextIndex < form.elements.length) {
+                              const nextEl = form.elements[nextIndex];
+                              if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                  nextEl.focus();
+                                  break;
+                                }
+                              }
+                              nextIndex++;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-semibold"
+                  >
+                    <option value="PENDENTE">Pendente</option>
+                    <option value="RECEBIDO">Recebido</option>
+                  </select>
+                </div>
+                {newReceber.status === 'RECEBIDO' && (
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 font-bold">Data de Recebimento *</label>
+                    <input
+                      type="date"
+                      required
+                      value={newReceber.data_recebimento || newReceber.data_vencimento}
+                      onChange={(e) => setNewReceber(prev => ({ ...prev, data_recebimento: e.target.value }))}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          const form = event.target.form;
+                          if (form) {
+                            const index = Array.prototype.indexOf.call(form, event.target);
+                            if (index > -1) {
+                              let nextIndex = index + 1;
+                              while (nextIndex < form.elements.length) {
+                                const nextEl = form.elements[nextIndex];
+                                if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+                                  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName) || nextEl.type === 'submit') {
+                                    nextEl.focus();
+                                    break;
+                                  }
+                                }
+                                nextIndex++;
+                              }
+                            }
+                          }
+                        }
+                      }}
+                      className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
+                <button
+                  type="button"
+                  tabIndex="-1"
+                  onClick={() => setShowNewReceberModal(false)}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
+                >
+                  {saving ? 'Salvando...' : 'Confirmar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

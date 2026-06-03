@@ -67,24 +67,24 @@ export const OperationalEfficiency = () => {
   }
 
   const {
-    total_horas_trabalhadas_proprias,
-    total_area_talhoes_concluidos,
-    eficiencia_global_ha_hora,
-    breakdown_operacoes,
-    ordens_servico_concluidas
-  } = data;
+    total_horas_trabalhadas_proprias = 0,
+    total_area_talhoes_concluidos = 0,
+    eficiencia_global_ha_hora = 0,
+    breakdown_operacoes = [],
+    ordens_servico_concluidas = []
+  } = data || {};
 
   // Formatar números
   const formatHa = (val) => {
-    return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(val)} ha`;
+    return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(val || 0)} ha`;
   };
 
   const formatHrs = (val) => {
-    return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(val)} h`;
+    return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(val || 0)} h`;
   };
 
   const formatEficiencia = (val) => {
-    return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(val)} ha/h`;
+    return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(val || 0)} ha/h`;
   };
 
   return (
@@ -215,7 +215,7 @@ export const OperationalEfficiency = () => {
                   <div className="space-y-0.5">
                     <div className="font-bold text-slate-800 dark:text-slate-200">OS #{os.id} — {os.tipo}</div>
                     <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                      Talhões: {os.talhoes.join(', ')}
+                      Talhões: {(os.talhoes || []).join(', ')}
                     </div>
                   </div>
                   <div className="text-right">

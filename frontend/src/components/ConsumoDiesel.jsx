@@ -68,10 +68,14 @@ export const ConsumoDiesel = () => {
     );
   }
 
-  const { consolidado, consumo_mensal_estoque, maquinas_abastecimento } = data;
+  const {
+    consolidado = { total_litros: 0, total_valor: 0, preco_medio: 0 },
+    consumo_mensal_estoque = [],
+    maquinas_abastecimento = []
+  } = data || {};
 
   const formatCurrency = (val) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(val);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(val || 0);
   };
 
   return (
@@ -95,7 +99,7 @@ export const ConsumoDiesel = () => {
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Consumido (L)</span>
           <div className="mt-3 flex items-baseline gap-2">
             <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">
-              {consolidado.total_litros.toLocaleString('pt-BR')} L
+              {(consolidado?.total_litros || 0).toLocaleString('pt-BR')} L
             </h3>
             <span className="text-[10px] text-slate-400">litros retirados</span>
           </div>

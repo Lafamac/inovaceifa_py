@@ -67,15 +67,18 @@ export const AnaliseMOF = () => {
     );
   }
 
-  const { folha_mensal, funcionarios_totais } = data;
+  const {
+    folha_mensal = [],
+    funcionarios_totais = []
+  } = data || {};
 
   const formatCurrency = (val) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(val);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 }).format(val || 0);
   };
 
-  const totalBase = folha_mensal.reduce((sum, curr) => sum + curr.salario_base, 0);
-  const totalEncargos = folha_mensal.reduce((sum, curr) => sum + curr.encargos, 0);
-  const totalBeneficios = folha_mensal.reduce((sum, curr) => sum + curr.beneficios, 0);
+  const totalBase = folha_mensal.reduce((sum, curr) => sum + (curr.salario_base || 0), 0);
+  const totalEncargos = folha_mensal.reduce((sum, curr) => sum + (curr.encargos || 0), 0);
+  const totalBeneficios = folha_mensal.reduce((sum, curr) => sum + (curr.beneficios || 0), 0);
   const totalGeral = totalBase + totalEncargos + totalBeneficios;
 
   return (

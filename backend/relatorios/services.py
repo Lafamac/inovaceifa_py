@@ -575,6 +575,7 @@ def mao_obra_fixa(safra, fazenda):
             {
                 "funcionario_id": item.funcionario_id,
                 "funcionario_nome": item.funcionario.nome,
+                "cargo": item.funcionario.cargo,
                 "grupo": item.funcionario.grupo_trabalhador.nome,
                 "mes": f"{item.ano:04d}-{item.mes:02d}",
                 "salario_base": money(item.salario_base),

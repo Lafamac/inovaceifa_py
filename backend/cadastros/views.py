@@ -30,6 +30,11 @@ class BaseTenantViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [IsAuthenticated]
 
+    def initial(self, request, *args, **kwargs):
+        from planejamento.views import setup_tenant_context
+        setup_tenant_context(request)
+        super().initial(request, *args, **kwargs)
+
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
         is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']

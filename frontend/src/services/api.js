@@ -494,7 +494,38 @@ export const relatorioService = {
 
   getEficienciaOperacional: (safraId) => {
     return requestHandler(
-      () => api.get(`/api/relatorios/eficiencia-operacional/?safra_id=${safraId}`),
+      async () => {
+        const res = await api.get(`/api/relatorios/eficiencia-operacional/?safra_id=${safraId}`);
+        const apiData = res.data;
+        
+        let completedOS = [];
+        try {
+          const osRes = await api.get('/api/ordens-servico/');
+          const allOS = osRes.data?.results || osRes.data || [];
+          completedOS = allOS.filter(o => String(o.safra) === String(safraId) && o.status === 'CONCLUIDA').map(o => ({
+            id: o.id,
+            tipo: o.tipo_operacao_nome || o.tipo_operacao || 'Operação',
+            area_total: (o.talhoes_detalhe || []).reduce((sum, t) => sum + Number(t.area || 0), 0),
+            talhoes: (o.talhoes_detalhe || []).map(t => t.nome || t.codigo || '')
+          }));
+        } catch (e) {
+          console.error("Erro ao carregar OS concluídas para eficiência:", e);
+        }
+
+        return {
+          total_horas_trabalhadas_proprias: apiData.total_horas_trabalhadas || 0,
+          total_area_talhoes_concluidos: apiData.total_hectares_trabalhados || 0,
+          eficiencia_global_ha_hora: apiData.eficiencia_geral || 0,
+          breakdown_operacoes: (apiData.breakdown || []).map((b, idx) => ({
+            id: b.tipo_operacao_id || (idx + 1),
+            nome: b.tipo_operacao_name || b.tipo_operacao_nome || 'Operação',
+            horas: b.horas_trabalhadas || 0,
+            area: b.area_trabalhada || 0,
+            eficiencia: b.eficiencia || 0
+          })),
+          ordens_servico_concluidas: completedOS
+        };
+      },
       () => {
         const db = getDB();
         
@@ -603,7 +634,55 @@ export const relatorioService = {
 
   getConsumoDiesel: (safraId, fazendaId) => {
     return requestHandler(
-      () => api.get(`/api/relatorios/consumo-diesel/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      async () => {
+        const res = await api.get(`/api/relatorios/consumo-diesel/?safra_id=${safraId}&fazenda_id=${fazendaId}`);
+        const apiData = res.data;
+        
+        if (apiData && apiData.consumo_mensal_estoque) {
+          return apiData;
+        }
+
+        const consumoList = apiData?.consumo || [];
+        const mensal = consumoList.map(item => ({
+          key: item.mes,
+          mes: item.mes,
+          litros: Number(item.quantidade || 0),
+          valor_total: Number(item.valor || 0),
+          preco_medio: Number(item.quantidade > 0 ? (item.valor / item.quantidade) : 0)
+        }));
+
+        const total_litros = mensal.reduce((sum, curr) => sum + curr.litros, 0);
+        const total_valor = mensal.reduce((sum, curr) => sum + curr.valor_total, 0);
+
+        let maquinas_abastecimento = [];
+        try {
+          const maqRes = await api.get('/api/maquinas/');
+          const maqs = maqRes.data?.results || maqRes.data || [];
+          maquinas_abastecimento = maqs.map(m => ({
+            maquina_id: m.id,
+            codigo: m.codigo,
+            maquina_codigo: m.codigo,
+            codigo_maquina: m.codigo,
+            maquina__codigo: m.codigo,
+            descricao: `${m.marca || ''} ${m.modelo || ''}`.trim() || m.descricao || 'Máquina',
+            custo_abastecimento_total: 0.0,
+            horas_trabalhadas_total: 0.0
+          }));
+        } catch (e) {
+          console.error("Erro ao carregar máquinas para consumo de diesel:", e);
+        }
+
+        return {
+          fazenda_id: fazendaId,
+          consolidado: {
+            total_litros: Number(total_litros.toFixed(2)),
+            total_valor: Number(total_valor.toFixed(2)),
+            preco_medio: total_litros > 0 ? Number((total_valor / total_litros).toFixed(2)) : 0.0
+          },
+          consumo_mensal_estoque: mensal,
+          maquinas_abastecimento: maquinas_abastecimento
+        };
+      },
       () => {
         const db = getDB();
         const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
@@ -643,7 +722,61 @@ export const relatorioService = {
 
   getAnaliseMOF: (safraId, fazendaId) => {
     return requestHandler(
-      () => api.get(`/api/relatorios/mof/?safra_id=${safraId}&fazenda_id=${fazendaId}`),
+      async () => {
+        const res = await api.get(`/api/relatorios/mof/?safra_id=${safraId}&fazenda_id=${fazendaId}`);
+        const apiData = res.data;
+        
+        if (apiData && apiData.folha_mensal) {
+          return apiData;
+        }
+
+        const list = apiData?.funcionarios || [];
+
+        // 1. Group by Month (folha_mensal)
+        const monthGroups = {};
+        list.forEach(item => {
+          const m = item.mes;
+          if (!monthGroups[m]) {
+            monthGroups[m] = { key: m, mes: m, salario_base: 0, encargos: 0, beneficios: 0, total: 0 };
+          }
+          monthGroups[m].salario_base += Number(item.salario_base || 0);
+          monthGroups[m].encargos += Number(item.encargos || 0);
+          monthGroups[m].beneficios += Number(item.beneficios || 0);
+          monthGroups[m].total += Number(item.custo_total || 0);
+        });
+        const folha_mensal = Object.values(monthGroups).sort((a, b) => a.key.localeCompare(b.key));
+
+        // 2. Group by Employee (funcionarios_totais)
+        const funcGroups = {};
+        list.forEach(item => {
+          const fid = item.funcionario_id;
+          if (!funcGroups[fid]) {
+            funcGroups[fid] = {
+              funcionario_id: fid,
+              nome: item.funcionario_nome || 'Colaborador',
+              cargo: item.cargo || '-',
+              grupo: item.grupo || '-',
+              salario_base: 0,
+              encargos: 0,
+              beneficios: 0,
+              meses_trabalhados: 0,
+              total: 0
+            };
+          }
+          funcGroups[fid].salario_base += Number(item.salario_base || 0);
+          funcGroups[fid].encargos += Number(item.encargos || 0);
+          funcGroups[fid].beneficios += Number(item.beneficios || 0);
+          funcGroups[fid].total += Number(item.custo_total || 0);
+          funcGroups[fid].meses_trabalhados += 1;
+        });
+        const funcionarios_totais = Object.values(funcGroups).sort((a, b) => a.nome.localeCompare(b.nome));
+
+        return {
+          fazenda_id: fazendaId,
+          folha_mensal,
+          funcionarios_totais
+        };
+      },
       () => {
         const db = getDB();
         const fz = db.fazendas.find(f => f.id === Number(fazendaId)) || { nome: "Fazenda" };
@@ -1242,6 +1375,61 @@ export const relatorioService = {
         return conta;
       }
       throw error;
+    }
+  },
+
+  createContasAPagar: async (data) => {
+    try {
+      const res = await api.post('/api/financeiro/contas-pagar/', data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.contas_a_pagar) db.contas_a_pagar = [];
+      const newId = db.contas_a_pagar.length > 0 ? Math.max(...db.contas_a_pagar.map(c => c.id)) + 1 : 801;
+      const newConta = {
+        id: newId,
+        fazenda: Number(data.fazenda),
+        safra: Number(data.safra),
+        pedido_compra: null,
+        pedido_compra_id: null,
+        descricao: data.descricao,
+        valor: Number(data.valor),
+        data_vencimento: data.data_vencimento,
+        status: data.status || 'PENDENTE',
+        data_pagamento: data.status === 'PAGO' ? (data.data_pagamento || data.data_vencimento) : null
+      };
+      db.contas_a_pagar.push(newConta);
+      saveDB(db);
+      return newConta;
+    }
+  },
+
+  createContasAReceber: async (data) => {
+    try {
+      const res = await api.post('/api/financeiro/contas-receber/', data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.contas_a_receber) db.contas_a_receber = [];
+      const newId = db.contas_a_receber.length > 0 ? Math.max(...db.contas_a_receber.map(c => c.id)) + 1 : 1001;
+      const newConta = {
+        id: newId,
+        fazenda: Number(data.fazenda),
+        safra: Number(data.safra),
+        pedido_venda: null,
+        pedido_venda_id: null,
+        descricao: data.descricao,
+        categoria_receita: data.categoria_receita || 'OUTROS',
+        valor: Number(data.valor),
+        data_vencimento: data.data_vencimento,
+        status: data.status || 'PENDENTE',
+        data_recebimento: data.status === 'RECEBIDO' ? (data.data_recebimento || data.data_vencimento) : null
+      };
+      db.contas_a_receber.push(newConta);
+      saveDB(db);
+      return newConta;
     }
   }
 };

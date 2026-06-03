@@ -62,6 +62,7 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
     insumos = ItemInsumoOSRealSerializer(many=True, read_only=True)
     apontamentos = ApontamentoOperacaoSerializer(many=True, read_only=True)
     auditorias = AuditoriaOrdemServicoSerializer(many=True, read_only=True)
+    tipo_operacao_nome = serializers.CharField(source='tipo_operacao.nome', read_only=True)
     talhoes_ids = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
@@ -70,7 +71,7 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrdemServico
         fields = [
-            'id', 'fazenda', 'safra', 'tipo_operacao', 'data_inicio_real',
+            'id', 'fazenda', 'safra', 'tipo_operacao', 'tipo_operacao_nome', 'data_inicio_real',
             'data_fim_real', 'data_inicio_planejada', 'data_fim_planejada',
             'status', 'observacao', 'origem_planejada', 'talhoes', 'insumos',
             'apontamentos', 'auditorias', 'talhoes_ids', 'talhoes_detalhe',

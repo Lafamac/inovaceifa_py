@@ -879,18 +879,20 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'funcionarios') {
       return (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Nome" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField label="CPF" value={currentForm.cpf} onChange={(value) => patchForm('cpf', value)} />
           <InputField label="Cargo" value={currentForm.cargo} onChange={(value) => patchForm('cargo', value)} />
           <SelectField required label="Grupo Trabalhador" value={currentForm.grupo_trabalhador} onChange={(value) => patchForm('grupo_trabalhador', value)} options={refOptions('gruposTrabalhador')} />
           <InputField label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} />
-          <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
-            <input type="checkbox" checked={currentForm.criar_usuario || false} onChange={(event) => patchForm('criar_usuario', event.target.checked)} className="h-4 w-4 rounded border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/50 text-emerald-500" />
-            Criar usuário para este funcionário
-          </label>
-        </>
+          <div className="md:col-span-2">
+            <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
+              <input type="checkbox" checked={currentForm.criar_usuario || false} onChange={(event) => patchForm('criar_usuario', event.target.checked)} className="h-4 w-4 rounded border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/50 text-emerald-500" />
+              Criar usuário para este funcionário
+            </label>
+          </div>
+        </div>
       );
     }
 
@@ -917,7 +919,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'produtos') {
       return (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputField label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
           <InputField required label="Nome Comercial" value={currentForm.nome_comercial} onChange={(value) => patchForm('nome_comercial', value)} />
           <SelectField required label="Unidade" value={currentForm.unidade} onChange={(value) => patchForm('unidade', value)} options={refOptions('unidadesMedida', (item) => `${item.sigla} - ${item.nome}`)} />
@@ -926,7 +928,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Concentração" value={currentForm.concentracao} onChange={(value) => patchForm('concentracao', value)} />
           <InputField label="Período de Carência (dias)" type="number" value={currentForm.periodo_carencia} onChange={(value) => patchForm('periodo_carencia', value)} />
           <InputField label="Alvo" value={currentForm.alvo} onChange={(value) => patchForm('alvo', value)} />
-        </>
+        </div>
       );
     }
 
@@ -1440,13 +1442,15 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <div className="flex flex-col md:flex-row gap-4 w-full md:max-w-xl">
               {/* Search Input */}
               <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-450 dark:text-slate-500" />
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-450 dark:text-slate-500" />
+                </span>
                 <input
                   type="text"
                   placeholder={`Pesquisar em ${activeLabel}...`}
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  className="w-full bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] focus:border-emerald-500/40 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 dark:text-white placeholder-slate-400 outline-none transition-all"
+                  className="w-full bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] focus:border-emerald-500/40 rounded-xl py-2.5 pl-11 pr-4 text-xs text-slate-800 dark:text-white placeholder-slate-400 outline-none transition-all"
                 />
               </div>
 
@@ -1560,6 +1564,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               <div className="flex gap-3 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-6">
                 <button
                   type="button"
+                  tabIndex="-1"
                   onClick={() => {
                     setShowModal(false);
                     setEditingId(null);
