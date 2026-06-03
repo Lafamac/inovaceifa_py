@@ -207,33 +207,40 @@ const fieldId = (item, base) => item?.[base] ?? item?.[`${base}_id`];
 const sameId = (left, right) => String(left ?? '') === String(right ?? '');
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '', mask, ...props }) => {
-  const formatValue = (val) => {
-    if (!val) return '';
-    if (mask === 'telefone') {
-      const digits = val.replace(/\D/g, '').slice(0, 11);
-      if (digits.length <= 2) {
-        return digits.length > 0 ? `(${digits}` : '';
-      } else if (digits.length <= 6) {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-      } else if (digits.length <= 10) {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-      } else {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-      }
+const formatMask = (val, mask) => {
+  if (!val) return '';
+  if (mask === 'telefone') {
+    let digits = val.replace(/\D/g, '');
+    if (digits.startsWith('55') && digits.length > 10) {
+      digits = digits.slice(2);
     }
-    if (mask === 'cep') {
-      const digits = val.replace(/\D/g, '').slice(0, 8);
-      if (digits.length <= 5) {
-        return digits;
-      } else {
-        return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-      }
+    if (digits.startsWith('0') && digits.length > 10) {
+      digits = digits.slice(1);
     }
-    return val;
-  };
+    digits = digits.slice(0, 11);
+    if (digits.length <= 2) {
+      return digits.length > 0 ? `(${digits}` : '';
+    } else if (digits.length <= 6) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    } else if (digits.length <= 10) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    } else {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    }
+  }
+  if (mask === 'cep') {
+    const digits = val.replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 5) {
+      return digits;
+    } else {
+      return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    }
+  }
+  return val;
+};
 
-  const formattedValue = formatValue(value);
+const InputField = ({ label, value, onChange, type = 'text', required = false, placeholder = '', mask, ...props }) => {
+  const formattedValue = formatMask(value, mask);
 
   return (
     <label className="block space-y-1.5 text-left">
@@ -246,7 +253,7 @@ const InputField = ({ label, value, onChange, type = 'text', required = false, p
           if (type === 'text') {
             rawVal = rawVal.toUpperCase();
           }
-          onChange(formatValue(rawVal));
+          onChange(formatMask(rawVal, mask));
         }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
@@ -964,7 +971,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             )}
           </td>
           <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-400">
-            <p className="font-medium text-slate-700 dark:text-slate-300">{item.telefone || 'Sem telefone'}</p>
+            <p className="font-medium text-slate-700 dark:text-slate-300">
+              {item.telefone ? formatMask(item.telefone, 'telefone') : 'Sem telefone'}
+            </p>
             {(item.endereco || item.cep) && (
               <p className="text-[9px] text-slate-455 dark:text-slate-500 mt-0.5">
                 {[item.endereco, item.cep ? `CEP: ${item.cep}` : ''].filter(Boolean).join(' - ')}
