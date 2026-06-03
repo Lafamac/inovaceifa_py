@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTenant } from '../context/TenantContext';
 import {
   AlertCircle,
   BadgeInfo,
@@ -282,6 +283,7 @@ const SelectField = ({ label, value, onChange, options, required = false, defaul
 
 export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const { user } = useAuth();
+  const { atualizarTenant } = useTenant();
   const [activeTab, setActiveTab] = useState('proprietarios');
   const [expandedSection, setExpandedSection] = useState('cadastros');
   const [records, setRecords] = useState({
@@ -506,6 +508,15 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       }
       
       await loadData();
+      if (activeTab === 'fazendas' || activeTab === 'safras') {
+        try {
+          if (atualizarTenant) {
+            await atualizarTenant();
+          }
+        } catch (e) {
+          console.error("Erro ao atualizar tenant", e);
+        }
+      }
       
       if (createdFarmId) {
         setActiveTab('safras');
@@ -549,6 +560,15 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         showAlert('success', 'Salvo offline com sucesso.');
         
         await loadData();
+        if (activeTab === 'fazendas' || activeTab === 'safras') {
+          try {
+            if (atualizarTenant) {
+              await atualizarTenant();
+            }
+          } catch (e) {
+            console.error("Erro ao atualizar tenant", e);
+          }
+        }
 
         if (createdFarmId) {
           setActiveTab('safras');
