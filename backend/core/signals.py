@@ -19,13 +19,15 @@ def create_usuario_for_proprietario(sender, instance, created, **kwargs):
         
         # Procurar por perfil do tipo PROPRIETARIO (perfil_id=2)
         try:
-            perfil_proprietario = Perfil.objects.get(nivel=PERFIL_PROPRIETARIO)
+            perfil_proprietario = Perfil.objects.get(id=PERFIL_PROPRIETARIO)
         except Perfil.DoesNotExist:
-            # Caso o perfil não exista na base, buscar ou criar
-            perfil_proprietario, _ = Perfil.objects.get_or_create(
-                nivel=PERFIL_PROPRIETARIO,
-                defaults={'nome': 'Proprietário'}
-            )
+            try:
+                perfil_proprietario = Perfil.objects.get(nivel=PERFIL_PROPRIETARIO)
+            except Perfil.DoesNotExist:
+                perfil_proprietario, _ = Perfil.objects.get_or_create(
+                    id=PERFIL_PROPRIETARIO,
+                    defaults={'nome': 'Proprietário', 'nivel': PERFIL_PROPRIETARIO}
+                )
 
         # Verificar se o usuário já existe com esse e-mail ou username
         if Usuario.objects.filter(email=email).exists() or Usuario.objects.filter(username=email).exists():

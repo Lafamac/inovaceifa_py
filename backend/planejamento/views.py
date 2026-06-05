@@ -35,8 +35,16 @@ def setup_tenant_context(request):
         request.fazendas_permitidas = Fazenda.objects.none()
         if request.user and request.user.is_authenticated:
             is_super = getattr(request.user, 'perfil', None) and request.user.perfil.nivel == 1
+            is_proprietario = getattr(request.user, 'perfil', None) and request.user.perfil.nivel == 2
             if is_super or request.user.is_superuser:
                 request.fazendas_permitidas = Fazenda.objects.filter(ativo=True)
+            elif is_proprietario:
+                try:
+                    from core.models import Proprietario
+                    prop = Proprietario.objects.get(email__iexact=request.user.email)
+                    request.fazendas_permitidas = Fazenda.objects.filter(proprietario=prop, ativo=True)
+                except Proprietario.DoesNotExist:
+                    request.fazendas_permitidas = Fazenda.objects.none()
             else:
                 request.fazendas_permitidas = request.user.fazendas_permitidas.filter(ativo=True)
 

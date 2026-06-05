@@ -57,3 +57,9 @@ class PerfilViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Perfil.objects.all().order_by('nivel')
     serializer_class = PerfilSerializer
     permission_classes = [IsAuthenticated]
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+from accounts.serializers import CustomTokenObtainPairSerializer
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer

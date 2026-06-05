@@ -66,3 +66,24 @@ class UsuarioSerializer(serializers.ModelSerializer):
             instance.fazendas_permitidas.set(fazendas_permitidas)
             
         return instance
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        user = self.user
+        if not user.is_superuser and not (user.perfil and user.perfil.nivel == 1):
+            from core.models import Proprietario
+            if Proprietario.objects.filter(email__iexact=user.email, ativo=False).exists():
+                raise serializers.ValidationError(
+                    {"detail": "Este proprietário está inativo. Entre em contato com o administrador do sistema."}
+                )
+            if user.fazendas_permitidas.exists():
+                if not user.fazendas_permitidas.filter(proprietario__ativo=True).exists():
+                    raise serializers.ValidationError(
+                        {"detail": "Sua conta está vinculada a um proprietário inativo. Entre em contato com o administrador do sistema."}
+                    )
+                    
+        return data

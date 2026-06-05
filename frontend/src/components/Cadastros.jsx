@@ -184,7 +184,7 @@ const menuSections = [
       { id: 'proprietarios', label: 'Proprietários', icon: UserCircle },
       { id: 'fazendas', label: 'Fazendas', icon: Building2 },
       { id: 'safras', label: 'Safras', icon: CalendarRange },
-      { id: 'talhoes', label: 'Talões', icon: Grid3X3 },
+      { id: 'talhoes', label: 'Talhões', icon: Grid3X3 },
       { id: 'maquinas', label: 'Máquinas', icon: Tractor },
       { id: 'referencias', label: 'Tabelas de Referência', icon: Database },
     ],
@@ -411,7 +411,10 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const filteredMenuSections = useMemo(() => {
     return menuSections.map(section => {
       if (section.id === 'cadastros') {
-        const items = [...section.items];
+        let items = [...section.items];
+        if (!isSuperUsuario) {
+          items = items.filter(x => x.id !== 'proprietarios');
+        }
         if (isSuperUsuario && !items.some(x => x.id === 'usuarios')) {
           items.push({ id: 'usuarios', label: 'Usuários', icon: UserCircle });
         }
@@ -458,7 +461,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       // Forçamos a API a sempre buscar registros ativos e inativos juntos para filtragem reativa no front
       const response = await api.get(url + '?incluir_inativos=true');
       return asList(response.data);
-    } catch {
+    } catch (error) {
+      // Se o backend respondeu com erro (error.response existe), propagamos o erro
+      // ao invés de retornar os dados locais simulados do localStorage
+      if (error.response) {
+        throw error;
+      }
       if (fallbackRefs[fallbackKey]) return fallbackRefs[fallbackKey];
       const fallbackDB = getFallbackDB();
       return asList(fallbackDB[fallbackKey]);
@@ -471,6 +479,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       const allowedEndpoints = { ...endpoints };
       if (!isSuperUsuario) {
         delete allowedEndpoints.usuarios;
+        delete allowedEndpoints.proprietarios;
       }
 
       const [loadedRecords, loadedRefs] = await Promise.all([
@@ -505,6 +514,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (user && !isSuperUsuario && activeTab === 'proprietarios') {
+      setActiveTab('fazendas');
+    }
+  }, [user, isSuperUsuario, activeTab]);
 
   const patchForm = (key, value) => {
     setForms((prev) => ({
@@ -542,8 +557,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
   const validatePayload = (payload) => {
     const required = {
-      proprietarios: ['nome'],
-      fazendas: ['proprietario', 'nome', 'sigla'],
+      proprietarios: ['nome', 'email'],
+      fazendas: isSuperUsuario ? ['proprietario', 'nome', 'sigla'] : ['nome', 'sigla'],
       safras: ['fazenda', 'nome', 'data_inicio', 'data_fim'],
       talhoes: ['fazenda', 'codigo', 'nome', 'area', 'tipo_irrigacao', 'cultura'],
       maquinas: ['fazenda', 'codigo', 'descricao', 'tipo'],
@@ -630,6 +645,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       }
     } catch (err) {
       console.error(err);
+      if (err.response) {
+        const detail = err.response.data?.detail || err.response.data?.error || JSON.stringify(err.response.data);
+        showAlert('error', `Erro ao salvar: ${detail}`);
+        setSaving(false);
+        return;
+      }
       // Fallback em banco local storage
       try {
         const db = getFallbackDB();
@@ -708,6 +729,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       await loadData();
     } catch (err) {
       console.error(err);
+      if (err.response) {
+        const detail = err.response.data?.detail || err.response.data?.error || JSON.stringify(err.response.data);
+        showAlert('error', `Erro ao alterar status: ${detail}`);
+        return;
+      }
       // Fallback offline
       try {
         const db = getFallbackDB();
@@ -788,23 +814,29 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const renderFormFields = () => {
     if (activeTab === 'proprietarios') {
       return (
-        <>
-          <InputField required label="Nome / Razão Social" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <InputField required label="Nome / Razão Social" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          </div>
           <InputField label="CPF / CNPJ" value={currentForm.documento} onChange={(value) => patchForm('documento', value)} />
-          <InputField label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} />
-          <InputField label="Celular" value={currentForm.celular} onChange={(value) => patchForm('celular', value)} />
-          <InputField label="CEP" value={currentForm.cep} onChange={(value) => patchForm('cep', value)} />
-          <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
+          <InputField required label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} />
+          <InputField label="Celular" value={currentForm.celular} onChange={(value) => patchForm('celular', value)} mask="telefone" maxLength={15} placeholder="(00) 00000-0000" />
+          <InputField label="CEP" value={currentForm.cep} onChange={(value) => patchForm('cep', value)} mask="cep" maxLength={9} placeholder="00000-000" />
+          <div className="md:col-span-2">
+            <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
+          </div>
           <InputField label="Bairro" value={currentForm.bairro} onChange={(value) => patchForm('bairro', value)} />
           <InputField label="Cidade / UF" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
-        </>
+        </div>
       );
     }
 
     if (activeTab === 'fazendas') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField key="proprietario" required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
+          {isSuperUsuario && (
+            <SelectField key="proprietario" required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
+          )}
           <InputField key="cnpj_ou_produtor" label="CNPJ / Código Produtor Rural" value={currentForm.cnpj_ou_produtor} onChange={(value) => patchForm('cnpj_ou_produtor', value)} />
           
           <InputField key="nome" required label="Nome da Fazenda" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
@@ -1528,7 +1560,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className={`w-full ${(activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
+          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">

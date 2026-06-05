@@ -12,7 +12,7 @@ class BaseModel(models.Model):
 class Proprietario(BaseModel):
     nome = models.CharField(max_length=255)
     documento = models.CharField(max_length=20, unique=True, null=True, blank=True)
-    email = models.EmailField(max_length=255, null=True, blank=True)
+    email = models.EmailField(max_length=255, unique=True)
     celular = models.CharField(max_length=20, null=True, blank=True)
     cep = models.CharField(max_length=10, null=True, blank=True)
     endereco = models.CharField(max_length=255, null=True, blank=True)

@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 5000,
+  timeout: 20000,
 });
 
 // Interceptor to add auth and tenant headers
@@ -157,8 +157,9 @@ export const requestHandler = async (apiCall, fallbackDataGetter) => {
     const response = await apiCall();
     return response.data;
   } catch (error) {
-    // Se for erro de autenticação (401) ou permissão (403), propaga o erro para o sistema tratar (ex: deslogar)
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    // Se o backend respondeu com qualquer erro (400, 401, 403, 500, etc.), propagamos o erro
+    // para que a tela exiba o erro real ao invés de usar silenciosamente os dados de simulação
+    if (error.response) {
       throw error;
     }
     // Mimic API latency
@@ -320,113 +321,137 @@ export const relatorioService = {
   },
 
   getTalhoes: () => {
-    const db = getDB();
-    return db.talhoes || [];
+    return requestHandler(
+      () => api.get('/api/talhoes/'),
+      () => getDB().talhoes || []
+    );
   },
 
   createTalhao: async (talhaoData) => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const db = getDB();
-    if (!db.talhoes) db.talhoes = [];
-    const newTalhao = {
-      id: db.talhoes.length > 0 ? Math.max(...db.talhoes.map(t => t.id)) + 1 : 501,
-      fazenda_id: Number(talhaoData.fazenda_id),
-      nome: talhaoData.nome,
-      area: Number(talhaoData.area),
-      solo: talhaoData.solo
-    };
-    db.talhoes.push(newTalhao);
-    saveDB(db);
-    return newTalhao;
+    try {
+      const res = await api.post('/api/talhoes/', talhaoData);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.talhoes) db.talhoes = [];
+      const newTalhao = {
+        id: db.talhoes.length > 0 ? Math.max(...db.talhoes.map(t => t.id)) + 1 : 501,
+        fazenda_id: Number(talhaoData.fazenda_id),
+        nome: talhaoData.nome,
+        area: Number(talhaoData.area),
+        solo: talhaoData.solo
+      };
+      db.talhoes.push(newTalhao);
+      saveDB(db);
+      return newTalhao;
+    }
   },
 
   getFuncionarios: () => {
-    const db = getDB();
-    return db.funcionarios || [];
+    return requestHandler(
+      () => api.get('/api/funcionarios/'),
+      () => getDB().funcionarios || []
+    );
   },
 
   createFuncionario: async (funcData) => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const db = getDB();
-    if (!db.funcionarios) db.funcionarios = [];
-    const newFunc = {
-      id: db.funcionarios.length > 0 ? Math.max(...db.funcionarios.map(e => e.id)) + 1 : 601,
-      nome: funcData.nome,
-      cargo: funcData.cargo,
-      taxa_horaria: Number(funcData.taxa_horaria),
-      tipo: funcData.tipo // "PROPRIO" ou "TERCEIRIZADO"
-    };
-    db.funcionarios.push(newFunc);
-    saveDB(db);
-    return newFunc;
+    try {
+      const res = await api.post('/api/funcionarios/', funcData);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.funcionarios) db.funcionarios = [];
+      const newFunc = {
+        id: db.funcionarios.length > 0 ? Math.max(...db.funcionarios.map(e => e.id)) + 1 : 601,
+        nome: funcData.nome,
+        cargo: funcData.cargo,
+        taxa_horaria: Number(funcData.taxa_horaria),
+        tipo: funcData.tipo
+      };
+      db.funcionarios.push(newFunc);
+      saveDB(db);
+      return newFunc;
+    }
   },
 
   getOrdensServico: () => {
-    const db = getDB();
-    return db.ordens_servico || [];
+    return requestHandler(
+      () => api.get('/api/ordens-servico/'),
+      () => getDB().ordens_servico || []
+    );
   },
 
   createOrdemServico: async (osData) => {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    const db = getDB();
-    if (!db.ordens_servico) db.ordens_servico = [];
-    
-    // Obter áreas dos talhões selecionados para somar
-    const talhoesInfo = db.talhoes || [];
-    let areaTotal = 0;
-    osData.talhoes.forEach(tNome => {
-      const found = talhoesInfo.find(t => t.nome === tNome);
-      if (found) {
-        areaTotal += found.area;
-      }
-    });
-
-    const newOS = {
-      id: db.ordens_servico.length > 0 ? Math.max(...db.ordens_servico.map(o => o.id)) + 1 : 401,
-      safra_id: Number(osData.safra_id),
-      tipo: osData.tipo,
-      area_total: areaTotal || Number(osData.area_total || 0),
-      talhoes: osData.talhoes,
-      funcionario_id: Number(osData.funcionario_id),
-      status: osData.status || "EM_ANDAMENTO",
-      horas_trabalhadas: Number(osData.horas_trabalhadas || 0)
-    };
-    
-    db.ordens_servico.push(newOS);
-
-    // Se estiver concluída, atualizar custos realizados no orçamentário
-    if (newOS.status === 'CONCLUIDA') {
-      const funcionario = db.funcionarios.find(e => e.id === newOS.funcionario_id);
-      const taxa = funcionario ? funcionario.taxa_horaria : 20.00;
-      const custoOS = newOS.horas_trabalhadas * taxa;
+    try {
+      const res = await api.post('/api/ordens-servico/', osData);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.ordens_servico) db.ordens_servico = [];
       
-      // Lançar despesa no livro do Fluxo de Caixa da safra
-      if (!db.fluxoCaixa[newOS.safra_id]) {
-        db.fluxoCaixa[newOS.safra_id] = { grouped: [], ledger: [] };
-      }
-      db.fluxoCaixa[newOS.safra_id].ledger.push({
-        id: `pag_os_${newOS.id}`,
-        tipo: "DESPESA",
-        categoria: "Mão de Obra",
-        descricao: `OS #${newOS.id} — ${newOS.tipo}`,
-        valor: custoOS,
-        vencimento: new Date().toISOString().split('T')[0],
-        status: "PAGO",
-        atrasado: false
+      // Obter áreas dos talhões selecionados para somar
+      const talhoesInfo = db.talhoes || [];
+      let areaTotal = 0;
+      osData.talhoes.forEach(tNome => {
+        const found = talhoesInfo.find(t => t.nome === tNome);
+        if (found) {
+          areaTotal += found.area;
+        }
       });
 
-      // Atualizar no Comparativo de Safra
-      if (db.comparativoSafra[newOS.safra_id]) {
-        db.comparativoSafra[newOS.safra_id].custo_realizado += custoOS;
-        db.comparativoSafra[newOS.safra_id].economia = db.comparativoSafra[newOS.safra_id].custo_planejado - db.comparativoSafra[newOS.safra_id].custo_realizado;
-        db.comparativoSafra[newOS.safra_id].atingimento_orcamento = db.comparativoSafra[newOS.safra_id].custo_planejado > 0 
-          ? (db.comparativoSafra[newOS.safra_id].custo_realizado / db.comparativoSafra[newOS.safra_id].custo_planejado) * 100 
-          : 0;
-      }
-    }
+      const newOS = {
+        id: db.ordens_servico.length > 0 ? Math.max(...db.ordens_servico.map(o => o.id)) + 1 : 401,
+        safra_id: Number(osData.safra_id),
+        tipo: osData.tipo,
+        area_total: areaTotal || Number(osData.area_total || 0),
+        talhoes: osData.talhoes,
+        funcionario_id: Number(osData.funcionario_id),
+        status: osData.status || "EM_ANDAMENTO",
+        horas_trabalhadas: Number(osData.horas_trabalhadas || 0)
+      };
+      
+      db.ordens_servico.push(newOS);
 
-    saveDB(db);
-    return newOS;
+      // Se estiver concluída, atualizar custos realizados no orçamentário
+      if (newOS.status === 'CONCLUIDA') {
+        const funcionario = db.funcionarios.find(e => e.id === newOS.funcionario_id);
+        const taxa = funcionario ? funcionario.taxa_horaria : 20.00;
+        const custoOS = newOS.horas_trabalhadas * taxa;
+        
+        // Lançar despesa no livro do Fluxo de Caixa da safra
+        if (!db.fluxoCaixa[newOS.safra_id]) {
+          db.fluxoCaixa[newOS.safra_id] = { grouped: [], ledger: [] };
+        }
+        db.fluxoCaixa[newOS.safra_id].ledger.push({
+          id: `pag_os_${newOS.id}`,
+          tipo: "DESPESA",
+          categoria: "Mão de Obra",
+          descricao: `OS #${newOS.id} — ${newOS.tipo}`,
+          valor: custoOS,
+          vencimento: new Date().toISOString().split('T')[0],
+          status: "PAGO",
+          atrasado: false
+        });
+
+        // Atualizar no Comparativo de Safra
+        if (db.comparativoSafra[newOS.safra_id]) {
+          db.comparativoSafra[newOS.safra_id].custo_realizado += custoOS;
+          db.comparativoSafra[newOS.safra_id].economia = db.comparativoSafra[newOS.safra_id].custo_planejado - db.comparativoSafra[newOS.safra_id].custo_realizado;
+          db.comparativoSafra[newOS.safra_id].atingimento_orcamento = db.comparativoSafra[newOS.safra_id].custo_planejado > 0 
+            ? (db.comparativoSafra[newOS.safra_id].custo_realizado / db.comparativoSafra[newOS.safra_id].custo_planejado) * 100 
+            : 0;
+        }
+      }
+
+      saveDB(db);
+      return newOS;
+    }
   },
 
   getComparativoSafra: (safraId) => {

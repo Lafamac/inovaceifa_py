@@ -3,9 +3,17 @@ from rest_framework.permissions import IsAuthenticated
 from core.models import Proprietario, Fazenda, Safra
 from core.serializers import ProprietarioSerializer, FazendaSerializer, SafraSerializer
 
+from rest_framework.exceptions import PermissionDenied
+
 class ProprietarioViewSet(viewsets.ModelViewSet):
     serializer_class = ProprietarioSerializer
     permission_classes = [IsAuthenticated]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        is_super = getattr(request.user, 'perfil', None) and request.user.perfil.nivel == 1
+        if not (is_super or request.user.is_superuser):
+            raise PermissionDenied("Apenas o perfil de Superusuário (nível 1) tem acesso ao cadastro de proprietários.")
 
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
@@ -25,16 +33,40 @@ class FazendaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
         is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
-        is_super = getattr(self.request.user, 'perfil', None) and self.request.user.perfil.nivel == 1
+        user = self.request.user
         
-        if is_super or self.request.user.is_superuser:
-            if incluir_inativos or is_detail:
-                return Fazenda.objects.all()
-            return Fazenda.objects.filter(ativo=True)
+        is_super = getattr(user, 'perfil', None) and user.perfil.nivel == 1
+        is_proprietario = getattr(user, 'perfil', None) and user.perfil.nivel == 2
+        
+        if is_super or user.is_superuser:
+            qs = Fazenda.objects.all()
+        elif is_proprietario:
+            try:
+                prop = Proprietario.objects.get(email__iexact=user.email)
+                qs = Fazenda.objects.filter(proprietario=prop)
+            except Proprietario.DoesNotExist:
+                qs = Fazenda.objects.none()
         else:
-            if incluir_inativos or is_detail:
-                return self.request.user.fazendas_permitidas.all()
-            return self.request.user.fazendas_permitidas.filter(ativo=True)
+            qs = user.fazendas_permitidas.all()
+            
+        if not (incluir_inativos or is_detail):
+            qs = qs.filter(ativo=True)
+            
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        is_super = getattr(user, 'perfil', None) and user.perfil.nivel == 1
+        
+        if is_super or user.is_superuser:
+            serializer.save()
+        else:
+            try:
+                proprietario = Proprietario.objects.get(email__iexact=user.email)
+                fazenda = serializer.save(proprietario=proprietario)
+                user.fazendas_permitidas.add(fazenda)
+            except Proprietario.DoesNotExist:
+                raise PermissionDenied("Não foi encontrado um Proprietário associado ao seu usuário. Entre em contato com o administrador.")
 
     def perform_destroy(self, instance):
         instance.ativo = False

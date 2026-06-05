@@ -53,10 +53,10 @@ class AccountsConfig(AppConfig):
                 # Caso o usuário já exista, garante que ele tenha o perfil de superusuário associado se estiver nulo
                 Usuario.objects.filter(email='admin@teste.com', perfil__isnull=True).update(perfil=perfil_admin)
             
-            # Executa o auto-seeding das tabelas de referências auxiliares e cadastros base
+            # Executa o auto-seeding das tabelas de referências auxiliares apenas
             from django.core.management import call_command
             call_command('seed_referencias')
-            call_command('seed_cadastros')
+            # call_command('seed_cadastros')
                 
         except Exception as e:
             # Previne erros de importação/conexão durante makemigrations iniciais
