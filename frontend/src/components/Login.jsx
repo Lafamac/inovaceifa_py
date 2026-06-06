@@ -7,7 +7,14 @@ export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    const savedError = localStorage.getItem('login_error');
+    if (savedError) {
+      localStorage.removeItem('login_error');
+      return savedError;
+    }
+    return '';
+  });
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 

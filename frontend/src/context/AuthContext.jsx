@@ -19,6 +19,18 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
           console.error("Falha ao recuperar sessão ativa", error);
           localStorage.removeItem('token');
+          if (error.response && error.response.status === 403) {
+            let message = error.response.data?.detail || error.response.data?.error || "";
+            if (Array.isArray(message)) {
+              message = message[0];
+            }
+            if (typeof message === 'object' && message !== null) {
+              message = message.detail || JSON.stringify(message);
+            }
+            if (typeof message === 'string' && (message.includes("inativo") || message.includes("administrador"))) {
+              localStorage.setItem('login_error', message);
+            }
+          }
         }
       }
       setLoading(false);
@@ -27,13 +39,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    setLoading(true);
     try {
       let tokenData;
       try {
         // Tentar login com o e-mail completo (username na base real)
         tokenData = await relatorioService.login(email.trim(), password);
       } catch (err) {
+        if (err.response && (err.response.status === 400 || err.response.status === 401 || err.response.status === 403)) {
+          throw err;
+        }
         // Fallback para username sem o domínio do e-mail
         const username = email.includes('@') ? email.split('@')[0] : email;
         tokenData = await relatorioService.login(username.trim(), password);
@@ -50,7 +64,22 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
-      console.error("Falha na autenticação real, tentando fallback...", error);
+      console.error("Falha na autenticação real, tratando erro...", error);
+      
+      if (error.response) {
+        let message = error.response.data?.detail || error.response.data?.error || "E-mail ou senha incorretos.";
+        if (Array.isArray(message)) {
+          message = message[0];
+        }
+        if (typeof message === 'object' && message !== null) {
+          message = message.detail || JSON.stringify(message);
+        }
+        localStorage.removeItem('token');
+        if (typeof message === 'string' && (message.includes("inativo") || message.includes("administrador"))) {
+          localStorage.setItem('login_error', message);
+        }
+        return { success: false, message: message };
+      }
       
       // Se falhar o backend, vamos manter o comportamento original (fallback) para robustez
       try {
@@ -65,8 +94,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         return { success: false, message: "E-mail ou senha incorretos." };
       }
-    } finally {
-      setLoading(false);
     }
   };
 

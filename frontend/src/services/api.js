@@ -24,6 +24,30 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Interceptor to handle responses and log out if owner is inactive (403)
+api.interceptors.response.use((response) => {
+  return response;
+}, (error) => {
+  if (error.response && error.response.status === 403) {
+    const isLoginRequest = error.config?.url?.includes('/auth/token/');
+    if (!isLoginRequest) {
+      let message = error.response.data?.detail || error.response.data?.error || "";
+      if (Array.isArray(message)) {
+        message = message[0];
+      }
+      if (typeof message === 'object' && message !== null) {
+        message = message.detail || JSON.stringify(message);
+      }
+      if (typeof message === 'string' && (message.includes("inativo") || message.includes("administrador"))) {
+        localStorage.removeItem('token');
+        localStorage.setItem('login_error', message);
+        window.location.reload();
+      }
+    }
+  }
+  return Promise.reject(error);
+});
+
 // LOCAL STORAGE PERSISTENCE ENGINE FOR DEMONSTRATION & HYBRID FALLBACK
 const DB_KEY = 'inovaceifa_db';
 
