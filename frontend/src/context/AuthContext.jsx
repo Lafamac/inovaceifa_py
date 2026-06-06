@@ -7,6 +7,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+
+  const clearAuthError = () => setAuthError('');
 
   useEffect(() => {
     const initAuth = async () => {
@@ -28,7 +31,7 @@ export const AuthProvider = ({ children }) => {
               message = message.detail || JSON.stringify(message);
             }
             if (typeof message === 'string' && (message.includes("inativo") || message.includes("administrador"))) {
-              localStorage.setItem('login_error', message);
+              setAuthError(message);
             }
           }
         }
@@ -112,7 +115,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, changePassword }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout, changePassword, authError, clearAuthError }}>
       {children}
     </AuthContext.Provider>
   );

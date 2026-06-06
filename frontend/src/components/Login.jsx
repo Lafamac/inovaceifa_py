@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Sprout, Lock, Mail, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const Login = () => {
-  const { login } = useAuth();
+  const { login, authError, clearAuthError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +17,18 @@ export const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+      if (clearAuthError) {
+        clearAuthError();
+      }
+    }
+  }, [authError, clearAuthError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,10 +91,17 @@ export const Login = () => {
             <div className="relative">
               <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400" />
               <input
+                ref={emailRef}
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    passwordRef.current?.focus();
+                  }
+                }}
                 placeholder="nome@empresa.com.br"
                 style={{ paddingLeft: '3.75rem', paddingRight: '1rem' }}
                 className="login-input-with-left-icon w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-4 text-sm text-white placeholder-slate-400 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
@@ -98,10 +117,17 @@ export const Login = () => {
             <div className="relative">
               <Lock className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400" />
               <input
+                ref={passwordRef}
                 type={showPassword ? "text" : "password"}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
                 placeholder="••••••••"
                 style={{ paddingLeft: '3.75rem', paddingRight: '3.75rem' }}
                 className="login-input-with-both-icons w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-14 text-sm text-white placeholder-slate-400 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"

@@ -41,10 +41,23 @@ class MultiTenantMiddleware(MiddlewareMixin):
             else:
                 request.fazendas_permitidas = request.user.fazendas_permitidas.filter(ativo=True)
 
-            # 2. Interceptar header X-Safra-ID
+            # 2. Verificar caminhos isentos
+            path = request.path_info
+            exempt_paths = [
+                '/admin/',
+                '/api/auth/',
+                '/api/schema/',
+                '/api/docs/',
+                '/api/proprietarios/',
+                '/api/fazendas/',
+                '/api/safras/',
+            ]
+            is_exempt = any(path.startswith(p) for p in exempt_paths)
+
+            # 3. Interceptar header X-Safra-ID (apenas para caminhos não isentos)
             safra_id = request.headers.get('X-Safra-ID')
 
-            if safra_id:
+            if safra_id and not is_exempt:
                 try:
                     safra = Safra.objects.get(id=safra_id, ativo=True)
                     # Validar acesso à safra
@@ -62,22 +75,7 @@ class MultiTenantMiddleware(MiddlewareMixin):
                         status=400
                     )
 
-            # 3. Bloquear endpoints operacionais sem safra_ativa
-            path = request.path_info
-            
-            # Caminhos isentos do cabeçalho de safra
-            exempt_paths = [
-                '/admin/',
-                '/api/auth/',
-                '/api/schema/',
-                '/api/docs/',
-                '/api/proprietarios/',
-                '/api/fazendas/',
-                '/api/safras/',
-            ]
-
-            is_exempt = any(path.startswith(p) for p in exempt_paths)
-
+            # 4. Bloquear endpoints operacionais sem safra_ativa
             if path.startswith('/api/') and not is_exempt and not request.safra_ativa:
                 return JsonResponse(
                     {"detail": "O cabeçalho X-Safra-ID é obrigatório para acessar endpoints operacionais."},
