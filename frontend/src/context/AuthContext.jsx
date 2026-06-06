@@ -62,6 +62,7 @@ export const AuthProvider = ({ children }) => {
         return { success: true };
       } catch (fallbackError) {
         console.error("Falha na autenticação geral", fallbackError);
+        localStorage.removeItem('token');
         return { success: false, message: "E-mail ou senha incorretos." };
       }
     } finally {

@@ -64,6 +64,17 @@ def create_usuario_for_proprietario(sender, instance, created, **kwargs):
             f"Atenciosamente,\n"
             f"Equipe InovaCeifa"
         )
+        # Gravar no arquivo senhas_temporarias.txt para consulta fácil do desenvolvedor
+        try:
+            import os
+            txt_path = os.path.join(settings.BASE_DIR, 'senhas_temporarias.txt')
+            with open(txt_path, 'a', encoding='utf-8') as f:
+                f.write(f"PROPRIETÁRIO: {email} | SENHA: {senha}\n")
+        except Exception as file_err:
+            pass
+
+        print(f"\n[USUÁRIO PROPRIETÁRIO CRIADO] Email: {email} | Senha Temporária: {senha}\n")
+
         try:
             send_mail(
                 subject=subject,
@@ -131,6 +142,17 @@ def create_usuario_for_funcionario(sender, instance, created, **kwargs):
             f"Atenciosamente,\n"
             f"Equipe InovaCeifa"
         )
+        # Gravar no arquivo senhas_temporarias.txt para consulta fácil do desenvolvedor
+        try:
+            import os
+            txt_path = os.path.join(settings.BASE_DIR, 'senhas_temporarias.txt')
+            with open(txt_path, 'a', encoding='utf-8') as f:
+                f.write(f"OPERADOR: {email} | SENHA: {senha}\n")
+        except Exception as file_err:
+            pass
+
+        print(f"\n[USUÁRIO OPERADOR CRIADO] Email: {email} | Senha Temporária: {senha}\n")
+
         try:
             send_mail(
                 subject=subject,
