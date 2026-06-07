@@ -1,8 +1,9 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.core import mail
 from core.models import Proprietario
 from accounts.models import Usuario, Perfil, PERFIL_PROPRIETARIO
 
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
 class ProprietarioSignalTests(TestCase):
     def setUp(self):
         # Garantir que o perfil de proprietário existe
@@ -59,6 +60,7 @@ from referencias.models import GrupoTrabalhador
 from cadastros.models import Funcionario
 from accounts.models import PERFIL_OPERADOR
 
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
 class FuncionarioSignalTests(TestCase):
     def setUp(self):
         # Garantir que o perfil de operador existe
