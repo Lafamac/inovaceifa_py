@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from smtplib import SMTPException
+from django.core.exceptions import ImproperlyConfigured
+from django.db import transaction
 from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
     Funcionario, SalarioMensal, Terceirizado, TurmaTerceirizada,
@@ -59,6 +62,24 @@ class FuncionarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Funcionario
         fields = '__all__'
+
+    @transaction.atomic
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except (ImproperlyConfigured, OSError, SMTPException) as exc:
+            raise serializers.ValidationError({
+                'email': f'Não foi possível enviar o e-mail de acesso: {exc}'
+            })
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except (ImproperlyConfigured, OSError, SMTPException) as exc:
+            raise serializers.ValidationError({
+                'email': f'Não foi possível enviar o e-mail de acesso: {exc}'
+            })
 
 
 class TerceirizadoSerializer(serializers.ModelSerializer):
