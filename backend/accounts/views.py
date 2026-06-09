@@ -39,6 +39,39 @@ def me(request):
         "fazenda_padrao": fazenda_padrao
     })
 
+@extend_schema(
+    tags=["Autenticacao"],
+    responses={200: OpenApiResponse(description="Senha alterada com sucesso.")},
+    summary="Alterar senha do usuario autenticado",
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def alterar_senha(request):
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    
+    if old_password:
+        old_password = old_password.strip()
+    if new_password:
+        new_password = new_password.strip()
+        
+    if not old_password or not new_password:
+        return Response({"detail": "Informe a senha atual e a nova senha."}, status=400)
+    
+    user = request.user
+    is_correct = user.check_password(old_password)
+    
+    if not is_correct:
+        return Response({"detail": "Senha atual incorreta."}, status=400)
+        
+    if len(new_password) < 6:
+        return Response({"detail": "A nova senha deve conter no mínimo 6 caracteres."}, status=400)
+        
+    user.set_password(new_password)
+    user.save()
+    
+    return Response({"detail": "Senha alterada com sucesso."})
+
 class UsuarioViewSet(viewsets.ModelViewSet):
     serializer_class = UsuarioSerializer
     permission_classes = [IsAuthenticated, IsSuperusuario]

@@ -611,9 +611,17 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         if (activeTab === 'fazendas') {
           createdFarmId = response.data?.id;
         }
-        showAlert('success', response.data?.warning || 'Registro criado com sucesso.');
+        
+        let successMsg = response.data?.warning || 'Registro criado com sucesso.';
+        if (activeTab === 'proprietarios') {
+          successMsg = 'Proprietário cadastrado com sucesso! O usuário correspondente foi criado e os dados de acesso foram enviados por e-mail.';
+        } else if (activeTab === 'funcionarios' && payload.criar_usuario && payload.email) {
+          successMsg = 'Funcionário cadastrado com sucesso! O usuário correspondente foi criado e os dados de acesso foram enviados por e-mail.';
+        }
+        
+        showAlert('success', successMsg);
       }
-      
+
       await loadData();
       if (activeTab === 'fazendas' || activeTab === 'safras') {
         try {
@@ -624,7 +632,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           console.error("Erro ao atualizar tenant", e);
         }
       }
-      
+
       if (createdFarmId) {
         setActiveTab('safras');
         setForms((prev) => ({
@@ -656,7 +664,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         const db = getFallbackDB();
         const fallbackKey = activeTab === 'referencias' ? selectedRefTab : activeTab;
         if (!db[fallbackKey]) db[fallbackKey] = [];
-        
+
         let localNewId = null;
         if (editingId) {
           const idx = db[fallbackKey].findIndex(x => String(x.id) === String(editingId));
@@ -672,7 +680,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         }
         localStorage.setItem('inovaceifa_db', JSON.stringify(db));
         showAlert('success', 'Salvo offline com sucesso.');
-        
+
         await loadData();
         if (activeTab === 'fazendas' || activeTab === 'safras') {
           try {
@@ -714,10 +722,10 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   // Alteração de estado ativo/inativo (Soft Delete & Reativação)
   const handleToggleAtivo = async (item) => {
     const novoEstado = !item.ativo;
-    const confirmMsg = novoEstado 
-      ? `Deseja REATIVAR este registro?` 
+    const confirmMsg = novoEstado
+      ? `Deseja REATIVAR este registro?`
       : `Deseja DESATIVAR (soft delete) este registro?`;
-      
+
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -757,7 +765,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     setEditingId(item.id);
     const targetKey = activeTab === 'referencias' ? 'referencias' : activeTab;
     const formFields = { ...emptyForms[targetKey] };
-    
+
     Object.keys(formFields).forEach(key => {
       if (key === 'fazenda' && (item.fazenda_id || item.fazenda)) {
         formFields.fazenda = item.fazenda_id || item.fazenda;
@@ -838,13 +846,13 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <SelectField key="proprietario" required label="Proprietário" value={currentForm.proprietario} onChange={(value) => patchForm('proprietario', value)} options={records.proprietarios.map((item) => ({ value: item.id, label: item.nome }))} />
           )}
           <InputField key="cnpj_ou_produtor" label="CNPJ / Código Produtor Rural" value={currentForm.cnpj_ou_produtor} onChange={(value) => patchForm('cnpj_ou_produtor', value)} />
-          
+
           <InputField key="nome" required label="Nome da Fazenda" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField key="sigla" required label="Sigla" value={currentForm.sigla} onChange={(value) => patchForm('sigla', value.toUpperCase())} placeholder="BR" />
-          
+
           <InputField key="endereco" label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
           <InputField key="cidade" label="Cidade" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
-          
+
           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-12 gap-4">
             <div className="md:col-span-4">
               <InputField key="cep" label="CEP" value={currentForm.cep} onChange={(value) => patchForm('cep', value)} mask="cep" maxLength={9} placeholder="00000-000" />
@@ -973,7 +981,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField required label="Sobrenome" value={currentForm.last_name} onChange={(value) => patchForm('last_name', value)} />
           <InputField label="Senha" type="password" value={currentForm.password} onChange={(value) => patchForm('password', value)} placeholder={editingId ? "Deixe em branco para não alterar" : "Senha do usuário (padrão: 12345)"} />
           <SelectField required label="Perfil / Cargo" value={currentForm.perfil_id} onChange={(value) => patchForm('perfil_id', value)} options={(records.perfis || []).map((p) => ({ value: p.id, label: p.nome }))} />
-          
+
           <div className="md:col-span-2 block space-y-1.5 text-left">
             <span className="block text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">Fazendas Permitidas</span>
             <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-3 border border-slate-200 dark:border-white/[0.08] rounded-xl bg-slate-50/50 dark:bg-slate-950/40">
@@ -1448,7 +1456,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/50 dark:border-slate-800/60 pb-5">
             <div>
               <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight font-display">Gestão de {activeLabel}</h1>
-              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Dados normalizados conforme a arquitetura de multi-tenancy logical.</p>
             </div>
 
             {/* Novo Registro button trigger */}
@@ -1509,22 +1516,20 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               <button
                 type="button"
                 onClick={() => setShowInactiveOnly(false)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  !showInactiveOnly
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${!showInactiveOnly
                     ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
-                }`}
+                  }`}
               >
                 Ativos
               </button>
               <button
                 type="button"
                 onClick={() => setShowInactiveOnly(true)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  showInactiveOnly
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${showInactiveOnly
                     ? 'bg-white dark:bg-slate-800 text-rose-500 dark:text-rose-450 shadow-sm'
                     : 'text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400'
-                }`}
+                  }`}
               >
                 Inativos
               </button>
@@ -1561,7 +1566,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
-            
+
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
               <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
@@ -1591,7 +1596,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 </div>
               )}
               {renderFormFields()}
-              
+
               {/* Actions inside Modal */}
               <div className="flex gap-3 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-6">
                 <button
@@ -1608,7 +1613,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 >
                   Cancelar
                 </button>
-                
+
                 <button
                   type="submit"
                   disabled={saving}

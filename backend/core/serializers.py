@@ -19,9 +19,24 @@ class ProprietarioSerializer(serializers.ModelSerializer):
             })
 
 class FazendaSerializer(serializers.ModelSerializer):
+    proprietario = serializers.PrimaryKeyRelatedField(
+        queryset=Proprietario.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
     class Meta:
         model = Fazenda
         fields = '__all__'
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and request.user:
+            user = request.user
+            is_super = getattr(user, 'perfil', None) and user.perfil.nivel == 1
+            if (is_super or user.is_superuser) and not attrs.get('proprietario'):
+                raise serializers.ValidationError({"proprietario": ["Este campo é obrigatório."]})
+        return attrs
 
 class SafraSerializer(serializers.ModelSerializer):
     class Meta:

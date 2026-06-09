@@ -199,6 +199,14 @@ export const relatorioService = {
     return res.data;
   },
 
+  alterarSenha: async (oldPassword, newPassword) => {
+    const res = await api.post('/api/auth/alterar-senha/', {
+      old_password: oldPassword,
+      new_password: newPassword,
+    });
+    return res.data;
+  },
+
   getUsuario: () => {
     return requestHandler(
       () => api.get('/api/auth/me/'),

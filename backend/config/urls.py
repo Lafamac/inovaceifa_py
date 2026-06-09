@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from accounts.views import me, CustomTokenObtainPairView
+from accounts.views import me, CustomTokenObtainPairView, alterar_senha
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('api/auth/me/', me, name='auth_me'),
+    path('api/auth/alterar-senha/', alterar_senha, name='auth_alterar_senha'),
 
     # Swagger OpenAPI
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

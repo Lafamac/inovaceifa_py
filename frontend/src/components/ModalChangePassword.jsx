@@ -39,7 +39,7 @@ export const ModalChangePassword = ({ isOpen, onClose }) => {
         onClose();
       }, 1500);
     } catch (err) {
-      setError('Ocorreu um erro ao alterar a senha. Verifique os dados digitados.');
+      setError(err.message || 'Ocorreu um erro ao alterar a senha. Verifique os dados digitados.');
     } finally {
       setLoading(false);
     }

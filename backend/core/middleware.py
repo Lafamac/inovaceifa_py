@@ -64,6 +64,13 @@ class MultiTenantMiddleware(MiddlewareMixin):
                     if safra.fazenda in request.fazendas_permitidas:
                         request.safra_ativa = safra
                         request.fazenda_ativa = safra.fazenda
+                        
+                        # Se for superusuário, restringir fazendas permitidas ao proprietário da fazenda ativa
+                        if is_super or request.user.is_superuser:
+                            request.fazendas_permitidas = Fazenda.objects.filter(
+                                proprietario=safra.fazenda.proprietario,
+                                ativo=True
+                            )
                     else:
                         return JsonResponse(
                             {"detail": "Você não tem permissão para acessar esta Safra/Fazenda."},

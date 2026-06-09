@@ -102,6 +102,7 @@ class FuncionarioSignalTests(TestCase):
         self.assertTrue(Usuario.objects.filter(email="marcio@teste.com").exists())
         
         usuario = Usuario.objects.get(email="marcio@teste.com")
+
         self.assertEqual(usuario.username, "marcio@teste.com")
         self.assertEqual(usuario.first_name, "Marcio")
         self.assertEqual(usuario.last_name, "Souza")
@@ -134,3 +135,102 @@ class FuncionarioSignalTests(TestCase):
         # Verificar se nenhum usuário foi criado
         self.assertFalse(Usuario.objects.filter(email="pedro@teste.com").exists())
         self.assertEqual(len(mail.outbox), 0)
+
+
+from django.test import RequestFactory
+from core.models import Safra
+from core.middleware import MultiTenantMiddleware
+from planejamento.views import setup_tenant_context
+
+class SuperuserTenantIsolationTests(TestCase):
+    def setUp(self):
+        # 1. Criar perfis necessários
+        self.perfil_super, _ = Perfil.objects.get_or_create(nivel=1, defaults={'nome': 'Superusuário'})
+        
+        # 2. Criar superusuário
+        self.superuser = Usuario.objects.create_superuser(
+            username="super_admin",
+            email="super@teste.com",
+            password="password123",
+            first_name="Super",
+            last_name="Admin"
+        )
+        self.superuser.perfil = self.perfil_super
+        self.superuser.save()
+
+        # 3. Criar proprietários
+        self.prop_a = Proprietario.objects.create(nome="Proprietário A", email="propa@teste.com")
+        self.prop_b = Proprietario.objects.create(nome="Proprietário B", email="propb@teste.com")
+
+        # 4. Criar fazendas para o Proprietário A
+        self.fazenda_a1 = Fazenda.objects.create(nome="Fazenda A1", sigla="FA1", proprietario=self.prop_a)
+        self.fazenda_a2 = Fazenda.objects.create(nome="Fazenda A2", sigla="FA2", proprietario=self.prop_a)
+
+        # 5. Criar fazenda para o Proprietário B
+        self.fazenda_b = Fazenda.objects.create(nome="Fazenda B", sigla="FB", proprietario=self.prop_b)
+
+        # 6. Criar safras
+        self.safra_a1 = Safra.objects.create(
+            fazenda=self.fazenda_a1, nome="Safra A1", 
+            data_inicio="2026-01-01", data_fim="2026-12-31", ativa=True
+        )
+        self.safra_b = Safra.objects.create(
+            fazenda=self.fazenda_b, nome="Safra B", 
+            data_inicio="2026-01-01", data_fim="2026-12-31", ativa=True
+        )
+
+        self.factory = RequestFactory()
+
+    def test_middleware_restricts_farms_to_active_owner_for_superuser(self):
+        # Criar requisição com header X-Safra-ID correspondente a Safra A1 (Proprietário A)
+        request = self.factory.get('/api/talhoes/', HTTP_X_SAFRA_ID=str(self.safra_a1.id))
+        request.user = self.superuser
+
+        # Processar pelo middleware
+        middleware = MultiTenantMiddleware(get_response=lambda req: None)
+        middleware.process_request(request)
+
+        # Verificar se as fazendas ativas e safra ativas foram atribuídas
+        self.assertEqual(request.safra_ativa, self.safra_a1)
+        self.assertEqual(request.fazenda_ativa, self.fazenda_a1)
+
+        # As fazendas permitidas para o superusuário devem conter APENAS as fazendas do Proprietário A
+        permitidas = list(request.fazendas_permitidas)
+        self.assertIn(self.fazenda_a1, permitidas)
+        self.assertIn(self.fazenda_a2, permitidas)
+        self.assertNotIn(self.fazenda_b, permitidas)
+
+    def test_setup_tenant_context_restricts_farms_to_active_owner_for_superuser(self):
+        # Criar requisição simulada
+        request = self.factory.get('/api/talhoes/', HTTP_X_SAFRA_ID=str(self.safra_a1.id))
+        request.user = self.superuser
+
+        # Processar pela função setup_tenant_context
+        setup_tenant_context(request)
+
+        # Verificar se a safra e fazenda ativas foram atribuídas
+        self.assertEqual(request.safra_ativa, self.safra_a1)
+        self.assertEqual(request.fazenda_ativa, self.fazenda_a1)
+
+        # As fazendas permitidas devem conter apenas as fazendas do Proprietário A
+        permitidas = list(request.fazendas_permitidas)
+        self.assertIn(self.fazenda_a1, permitidas)
+        self.assertIn(self.fazenda_a2, permitidas)
+        self.assertNotIn(self.fazenda_b, permitidas)
+
+    def test_unfiltered_when_no_context_is_selected(self):
+        # Sem header X-Safra-ID
+        request = self.factory.get('/api/talhoes/')
+        request.user = self.superuser
+
+        # Processar
+        setup_tenant_context(request)
+
+        # Nenhuma fazenda ou safra deve estar ativa, mas todas as fazendas devem ser permitidas
+        self.assertIsNone(request.safra_ativa)
+        self.assertIsNone(request.fazenda_ativa)
+        
+        permitidas = list(request.fazendas_permitidas)
+        self.assertIn(self.fazenda_a1, permitidas)
+        self.assertIn(self.fazenda_a2, permitidas)
+        self.assertIn(self.fazenda_b, permitidas)

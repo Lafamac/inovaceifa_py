@@ -109,9 +109,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const changePassword = async (oldPassword, newPassword) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    console.log("Senha alterada com sucesso!");
-    return true;
+    try {
+      await relatorioService.alterarSenha(oldPassword ? oldPassword.trim() : '', newPassword ? newPassword.trim() : '');
+      return true;
+    } catch (error) {
+      console.error("Erro ao alterar senha no backend:", error);
+      let message = "Ocorreu um erro ao alterar a senha.";
+      if (error.response && error.response.data) {
+        message = error.response.data.detail || error.response.data.error || message;
+      }
+      throw new Error(message);
+    }
   };
 
   return (

@@ -31,6 +31,11 @@ def setup_tenant_context(request):
     Garante que as propriedades de tenant estejam populadas no request
     caso o middleware tenha sido executado antes da autenticação (como no DRF/JWT/testes).
     """
+    if not hasattr(request, 'safra_ativa'):
+        request.safra_ativa = None
+    if not hasattr(request, 'fazenda_ativa'):
+        request.fazenda_ativa = None
+
     if not getattr(request, 'fazendas_permitidas', None) or not request.fazendas_permitidas.exists():
         request.fazendas_permitidas = Fazenda.objects.none()
         if request.user and request.user.is_authenticated:
@@ -56,6 +61,15 @@ def setup_tenant_context(request):
                 if safra.fazenda in request.fazendas_permitidas:
                     request.safra_ativa = safra
                     request.fazenda_ativa = safra.fazenda
+                    
+                    # Se for superusuário, restringir fazendas permitidas ao proprietário da fazenda ativa
+                    if request.user and request.user.is_authenticated:
+                        is_super = getattr(request.user, 'perfil', None) and request.user.perfil.nivel == 1
+                        if is_super or request.user.is_superuser:
+                            request.fazendas_permitidas = Fazenda.objects.filter(
+                                proprietario=safra.fazenda.proprietario,
+                                ativo=True
+                            )
             except (Safra.DoesNotExist, ValueError):
                 pass
 
