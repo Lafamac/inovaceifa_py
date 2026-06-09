@@ -1,5 +1,8 @@
 from django.test import TestCase, override_settings
 from django.core import mail
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
 from core.models import Proprietario
 from accounts.models import Usuario, Perfil, PERFIL_PROPRIETARIO
 
@@ -234,3 +237,84 @@ class SuperuserTenantIsolationTests(TestCase):
         self.assertIn(self.fazenda_a1, permitidas)
         self.assertIn(self.fazenda_a2, permitidas)
         self.assertIn(self.fazenda_b, permitidas)
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class ProprietarioValidationTests(APITestCase):
+    def setUp(self):
+        self.perfil_super, _ = Perfil.objects.get_or_create(nivel=1, defaults={'nome': 'Superusuário'})
+        self.superuser = Usuario.objects.create_superuser(
+            username="super_admin",
+            email="super@teste.com",
+            password="password123",
+            first_name="Super",
+            last_name="Admin"
+        )
+        self.superuser.perfil = self.perfil_super
+        self.superuser.save()
+        self.client.force_authenticate(user=self.superuser)
+
+        # Criar proprietário de teste
+        self.prop_a = Proprietario.objects.create(
+            nome="Proprietario A",
+            email="propa@teste.com",
+            documento="12345678901"
+        )
+        self.prop_list_url = reverse('proprietario-list')
+
+    def test_create_proprietario_with_existing_documento_fails(self):
+        # Tenta criar com documento existente
+        payload = {
+            "nome": "Outro Proprietario",
+            "email": "outro@teste.com",
+            "documento": "12345678901"
+        }
+        response = self.client.post(self.prop_list_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('documento', response.data)
+        self.assertEqual(response.data['documento'][0], "Este CNPJ/CPF já está cadastrado.")
+
+    def test_create_proprietario_with_existing_email_fails(self):
+        # Tenta criar com e-mail existente no Proprietario
+        payload = {
+            "nome": "Outro Proprietario",
+            "email": "propa@teste.com",
+            "documento": "98765432100"
+        }
+        response = self.client.post(self.prop_list_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+        self.assertEqual(response.data['email'][0], "Este e-mail já está cadastrado para outro proprietário.")
+
+    def test_create_proprietario_with_existing_user_email_fails(self):
+        # Tenta criar com e-mail existente em Usuario
+        payload = {
+            "nome": "Outro Proprietario",
+            "email": "super@teste.com",
+            "documento": "98765432100"
+        }
+        response = self.client.post(self.prop_list_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+        self.assertEqual(response.data['email'][0], "Já existe um usuário cadastrado com este e-mail.")
+
+    def test_create_fazenda_with_existing_cnpj_ou_produtor_fails(self):
+        # Criar fazenda inicial
+        fazenda_list_url = reverse('fazenda-list')
+        fazenda_a = Fazenda.objects.create(
+            proprietario=self.prop_a,
+            nome="Fazenda A",
+            sigla="FZA",
+            cnpj_ou_produtor="12.345.678/0001-99"
+        )
+        # Tenta criar fazenda com o mesmo cnpj_ou_produtor
+        payload = {
+            "proprietario": self.prop_a.id,
+            "nome": "Fazenda Duplicada",
+            "sigla": "FZD",
+            "cnpj_ou_produtor": "12.345.678/0001-99"
+        }
+        response = self.client.post(fazenda_list_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('cnpj_ou_produtor', response.data)
+        self.assertEqual(response.data['cnpj_ou_produtor'][0], "Este CNPJ / Código Produtor Rural já está cadastrado.")

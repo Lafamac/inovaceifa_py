@@ -35,6 +35,16 @@ class UsuarioSerializer(serializers.ModelSerializer):
     def get_nome_completo(self, obj):
         return obj.get_full_name() or obj.username
 
+    def validate_email(self, value):
+        if value:
+            email_clean = value.lower().strip()
+            qs = Usuario.objects.filter(email__iexact=email_clean)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError("Já existe um usuário cadastrado com este e-mail.")
+        return value
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         fazendas_permitidas = validated_data.pop('fazendas_permitidas', [])

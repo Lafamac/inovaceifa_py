@@ -76,3 +76,19 @@ class UserManagementTests(APITestCase):
         response = self.client.get(self.perfil_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
+
+    def test_create_user_with_existing_email_fails(self):
+        self.client.force_authenticate(user=self.superuser)
+        # Tenta criar usuário com o e-mail do proprietário (prop@teste.com)
+        payload = {
+            'username': 'outro_usuario',
+            'email': 'prop@teste.com',
+            'first_name': 'Outro',
+            'last_name': 'User',
+            'perfil_id': self.perfil_oper.id,
+            'password': 'password123'
+        }
+        response = self.client.post(self.user_list_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+        self.assertEqual(response.data['email'][0], "Já existe um usuário cadastrado com este e-mail.")
