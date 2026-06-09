@@ -32,6 +32,7 @@
 - [x] Configurado envio de e-mail real via SMTP por variáveis de ambiente (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`).
 - [x] Ao cadastrar um `Proprietario`, o backend cria automaticamente um `Usuario` com perfil `2` (Proprietário), gera senha temporária e envia os dados de acesso por e-mail.
 - [x] O cadastro de proprietário falha com erro claro caso o SMTP real não esteja configurado ou o envio do e-mail não seja concluído, evitando criar usuário sem entregar senha.
+- [x] Ao entrar como superusuário, o acesso a dados de fazendas, safras, talhões, máquinas, funcionários e transações é restrito ao proprietário da fazenda selecionada no cabeçalho (top bar).
 
 ### 🚀 Fase 1: Fundação do Backend e Autenticação (`accounts`)
 - [x] Inicializar repositório e configurar Django, PostgreSQL e variáveis de ambiente.
