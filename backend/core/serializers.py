@@ -86,8 +86,12 @@ class FazendaSerializer(serializers.ModelSerializer):
         if request and request.user:
             user = request.user
             is_super = getattr(user, 'perfil', None) and user.perfil.nivel == 1
-            if (is_super or user.is_superuser) and not attrs.get('proprietario'):
-                raise serializers.ValidationError({"proprietario": ["Este campo é obrigatório."]})
+            if is_super or user.is_superuser:
+                proprietario = attrs.get('proprietario')
+                if not proprietario and self.instance:
+                    proprietario = self.instance.proprietario
+                if not proprietario:
+                    raise serializers.ValidationError({"proprietario": ["Este campo é obrigatório."]})
         return attrs
 
 class SafraSerializer(serializers.ModelSerializer):

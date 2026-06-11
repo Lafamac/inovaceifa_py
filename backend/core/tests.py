@@ -318,3 +318,16 @@ class ProprietarioValidationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('cnpj_ou_produtor', response.data)
         self.assertEqual(response.data['cnpj_ou_produtor'][0], "Este CNPJ / Código Produtor Rural já está cadastrado.")
+
+    def test_partial_update_fazenda_status_as_superuser(self):
+        fazenda_a = Fazenda.objects.create(
+            proprietario=self.prop_a,
+            nome="Fazenda A",
+            sigla="FZA"
+        )
+        url = reverse('fazenda-detail', kwargs={'pk': fazenda_a.pk})
+        response = self.client.patch(url, {'ativo': False})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        fazenda_a.refresh_from_db()
+        self.assertFalse(fazenda_a.ativo)
+

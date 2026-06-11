@@ -190,17 +190,6 @@ const menuSections = [
     ],
   },
   {
-    id: 'operacional',
-    label: 'Operacional',
-    icon: Tractor,
-    description: 'Planejamento e execução',
-    items: [
-      { id: 'planejamentos', label: 'Planejamentos', icon: CalendarRange },
-      { id: 'ordens_servico', label: 'Ordens de Serviço', icon: ClipboardList },
-      { id: 'apontamentos', label: 'Apontamentos', icon: Grid3X3 },
-    ],
-  },
-  {
     id: 'suprimentos',
     label: 'Suprimentos',
     icon: Warehouse,
@@ -222,6 +211,17 @@ const menuSections = [
       { id: 'turmas', label: 'Turmas', icon: Users },
       { id: 'contas_pagar', label: 'Contas a Pagar', icon: WalletCards },
       { id: 'contas_receber', label: 'Contas a Receber', icon: WalletCards },
+    ],
+  },
+  {
+    id: 'operacional',
+    label: 'Operacional',
+    icon: Tractor,
+    description: 'Planejamento e execução',
+    items: [
+      { id: 'planejamentos', label: 'Planejamentos', icon: CalendarRange },
+      { id: 'ordens_servico', label: 'Ordens de Serviço', icon: ClipboardList },
+      { id: 'apontamentos', label: 'Apontamentos', icon: Grid3X3 },
     ],
   },
 ];
