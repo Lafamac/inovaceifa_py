@@ -3,7 +3,7 @@ from referencias.models import (
     Cultura, TipoItem, StatusCultivo, TipoIrrigacao, ResistenciaFerrugem,
     StatusOrdemServico, Modalidade, TipoRateio, ContaGerencial, TipoDestinacao,
     GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida,
-    AtividadeEducampo, CriterioRateio, TipoOperacao
+    AtividadeEducampo, CriterioRateio, TipoOperacao, TipoMaquina
 )
 from referencias.serializers import (
     CulturaSerializer, TipoItemSerializer, StatusCultivoSerializer,
@@ -12,7 +12,7 @@ from referencias.serializers import (
     ContaGerencialSerializer, TipoDestinacaoSerializer,
     GrupoTrabalhadorSerializer, ClassificacaoProdutoSerializer,
     GrupoQuimicoSerializer, UnidadeMedidaSerializer,
-    AtividadeEducampoSerializer, CriterioRateioSerializer, TipoOperacaoSerializer
+    AtividadeEducampoSerializer, CriterioRateioSerializer, TipoOperacaoSerializer, TipoMaquinaSerializer
 )
 from referencias.permissions import IsSuperUsuarioOrReadOnly
 
@@ -99,4 +99,9 @@ class CriterioRateioViewSet(viewsets.ModelViewSet):
 class TipoOperacaoViewSet(viewsets.ModelViewSet):
     queryset = TipoOperacao.objects.filter(ativo=True)
     serializer_class = TipoOperacaoSerializer
+    permission_classes = [IsSuperUsuarioOrReadOnly]
+
+class TipoMaquinaViewSet(viewsets.ModelViewSet):
+    queryset = TipoMaquina.objects.filter(ativo=True)
+    serializer_class = TipoMaquinaSerializer
     permission_classes = [IsSuperUsuarioOrReadOnly]

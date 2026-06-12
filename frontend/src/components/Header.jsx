@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
 import { ModalChangePassword } from './ModalChangePassword';
@@ -30,6 +30,10 @@ export const Header = ({ activeView, setActiveView }) => {
     selecionarFazenda, 
     selecionarSafra 
   } = useTenant();
+
+  const sortedFazendas = useMemo(() => {
+    return [...fazendas].sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [fazendas]);
 
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark' || 
@@ -187,7 +191,7 @@ export const Header = ({ activeView, setActiveView }) => {
                     <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                       Selecionar Fazenda
                     </div>
-                    {fazendas.map((f) => (
+                    {sortedFazendas.map((f) => (
                       <button
                         key={f.id}
                         onClick={() => {
@@ -348,7 +352,7 @@ export const Header = ({ activeView, setActiveView }) => {
                 <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   Selecionar Fazenda
                 </div>
-                {fazendas.map((f) => (
+                {sortedFazendas.map((f) => (
                   <button
                     key={f.id}
                     onClick={() => {

@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
           console.error("Falha ao recuperar sessão ativa", error);
           localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
           if (error.response && error.response.status === 403) {
             let message = error.response.data?.detail || error.response.data?.error || "";
             if (Array.isArray(message)) {
@@ -58,6 +59,9 @@ export const AuthProvider = ({ children }) => {
 
       if (tokenData && tokenData.access) {
         localStorage.setItem('token', tokenData.access);
+        if (tokenData.refresh) {
+          localStorage.setItem('refresh_token', tokenData.refresh);
+        }
       } else {
         throw new Error("Token não recebido do servidor.");
       }
@@ -78,6 +82,7 @@ export const AuthProvider = ({ children }) => {
           message = message.detail || JSON.stringify(message);
         }
         localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
         if (typeof message === 'string' && (message.includes("inativo") || message.includes("administrador"))) {
           localStorage.setItem('login_error', message);
         }
@@ -95,6 +100,7 @@ export const AuthProvider = ({ children }) => {
       } catch (fallbackError) {
         console.error("Falha na autenticação geral", fallbackError);
         localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
         return { success: false, message: "E-mail ou senha incorretos." };
       }
     }
@@ -102,6 +108,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('safra_ativa_id');
     localStorage.removeItem('fazenda_ativa_id');
     setUser(null);

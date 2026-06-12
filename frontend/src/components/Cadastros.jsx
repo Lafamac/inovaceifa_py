@@ -28,6 +28,7 @@ import api from '../services/api';
 const ALL_REFERENCES = {
   culturas: { label: 'Culturas', url: '/api/ref/culturas/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
   tiposItem: { label: 'Tipos de Item', url: '/api/ref/tipos-item/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  tiposMaquina: { label: 'Tipos de Máquina', url: '/api/ref/tipos-maquina/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
   statusCultivo: { label: 'Status de Cultivo', url: '/api/ref/status-cultivo/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
   tiposIrrigacao: { label: 'Tipos de Irrigação', url: '/api/ref/tipos-irrigacao/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
   resistenciasFerrugem: { label: 'Resistências a Ferrugem', url: '/api/ref/resistencias-ferrugem/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
@@ -137,6 +138,7 @@ const endpoints = {
 const refEndpoints = {
   culturas: '/api/ref/culturas/',
   tiposItem: '/api/ref/tipos-item/',
+  tiposMaquina: '/api/ref/tipos-maquina/',
   tiposIrrigacao: '/api/ref/tipos-irrigacao/',
   resistenciasFerrugem: '/api/ref/resistencias-ferrugem/',
   statusCultivo: '/api/ref/status-cultivo/',
@@ -157,6 +159,7 @@ const refEndpoints = {
 const fallbackRefs = {
   culturas: [{ id: 1, nome: 'Café' }],
   tiposItem: [{ id: 1, nome: 'Máquina' }],
+  tiposMaquina: [{ id: 1, nome: 'Trator' }],
   tiposIrrigacao: [{ id: 1, nome: 'Não Irrigado' }],
   resistenciasFerrugem: [{ id: 1, nome: 'Não Informado' }],
   statusCultivo: [{ id: 1, nome: 'Em Produção' }],
@@ -365,7 +368,7 @@ const SelectField = ({ label, value, onChange, options, required = false, defaul
 
 export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const { user } = useAuth();
-  const { atualizarTenant } = useTenant();
+  const { atualizarTenant, fazendaAtiva } = useTenant();
   const [activeTab, setActiveTab] = useState('proprietarios');
   const [expandedSection, setExpandedSection] = useState('cadastros');
   const [records, setRecords] = useState({
@@ -429,10 +432,13 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     return allItems.find((tab) => tab.id === activeTab)?.label || 'Cadastros';
   }, [filteredMenuSections, activeTab]);
 
-  const fazendasOptions = useMemo(
-    () => records.fazendas.map((fazenda) => ({ value: fazenda.id, label: `${fazenda.nome}${fazenda.sigla ? ` (${fazenda.sigla})` : ''}` })),
-    [records.fazendas],
-  );
+  const fazendasOptions = useMemo(() => {
+    const list = [...records.fazendas];
+    if (user?.perfil_id === 1) {
+      list.sort((a, b) => a.nome.localeCompare(b.nome));
+    }
+    return list.map((fazenda) => ({ value: fazenda.id, label: `${fazenda.nome}${fazenda.sigla ? ` (${fazenda.sigla})` : ''}` }));
+  }, [records.fazendas, user]);
 
   const safrasOptions = useMemo(
     () => records.safras.map((safra) => ({ value: safra.id, label: `${safra.nome}${safra.ativa ? ' - ativa' : ''}` })),
@@ -529,7 +535,13 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   };
 
   const resetForm = (tab = activeTab) => {
-    setForms((prev) => ({ ...prev, [tab]: emptyForms[tab] }));
+    setForms((prev) => {
+      const defaultForm = { ...emptyForms[tab] };
+      if (fazendaAtiva && 'fazenda' in defaultForm) {
+        defaultForm.fazenda = fazendaAtiva.id;
+      }
+      return { ...prev, [tab]: defaultForm };
+    });
   };
 
   const cleanPayload = (form) => {
@@ -546,7 +558,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       payload.tipo_irrigacao ||= refs.tiposIrrigacao[0]?.id;
       payload.cultura ||= refs.culturas[0]?.id;
     }
-    if (activeTab === 'maquinas') payload.tipo ||= refs.tiposItem.find((item) => item.nome?.toLowerCase().includes('máquina'))?.id || refs.tiposItem[0]?.id;
+    if (activeTab === 'maquinas') payload.tipo ||= refs.tiposMaquina.find((item) => item.nome?.toLowerCase().includes('trator'))?.id || refs.tiposMaquina[0]?.id;
     if (activeTab === 'funcionarios') payload.grupo_trabalhador ||= refs.gruposTrabalhador[0]?.id;
     if (activeTab === 'produtos') {
       payload.unidade ||= refs.unidadesMedida[0]?.id;
@@ -813,6 +825,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       return showInactiveOnly ? !isItemActive : isItemActive;
     });
 
+    // Se for a aba de safras, talhões ou máquinas, filtrar apenas registros da fazenda selecionada (tenant)
+    if ((key === 'safras' || key === 'talhoes' || key === 'maquinas') && fazendaAtiva) {
+      baseList = baseList.filter(item => sameId(fieldId(item, 'fazenda'), fazendaAtiva.id));
+    }
+
     if (!query) return baseList;
     return baseList.filter((item) => getText(item).toLowerCase().includes(query));
   };
@@ -886,7 +903,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'talhoes') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          {user?.perfil_id === 1 && (
+            <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
+          )}
           <InputField required label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
           <InputField required label="Nome do Talhão" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField required label="Área (ha)" type="number" value={currentForm.area} onChange={(value) => patchForm('area', value)} />
@@ -912,7 +931,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Marca" value={currentForm.marca} onChange={(value) => patchForm('marca', value)} />
           <InputField label="Modelo" value={currentForm.modelo} onChange={(value) => patchForm('modelo', value)} />
           <InputField label="Ano Fabricação" type="number" value={currentForm.ano_fabricacao} onChange={(value) => patchForm('ano_fabricacao', value)} />
-          <SelectField required label="Tipo" value={currentForm.tipo} onChange={(value) => patchForm('tipo', value)} options={refOptions('tiposItem')} />
+          <SelectField required label="Tipo" value={currentForm.tipo} onChange={(value) => patchForm('tipo', value)} options={refOptions('tiposMaquina')} />
         </div>
       );
     }
@@ -1503,9 +1522,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                     }}
                     className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-slate-800 dark:text-white outline-none transition-all font-bold cursor-pointer"
                   >
-                    {Object.entries(ALL_REFERENCES).map(([key, val]) => (
-                      <option key={key} value={key} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{val.label}</option>
-                    ))}
+                    {Object.entries(ALL_REFERENCES)
+                      .sort((a, b) => a[1].label.localeCompare(b[1].label))
+                      .map(([key, val]) => (
+                        <option key={key} value={key} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{val.label}</option>
+                      ))}
                   </select>
                 </div>
               )}

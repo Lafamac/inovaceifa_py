@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from core.models import Proprietario, Fazenda, Safra
 from referencias.models import (
     Cultura, TipoIrrigacao, StatusCultivo, ResistenciaFerrugem,
-    TipoItem, GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida
+    TipoMaquina, GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida
 )
 from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
@@ -150,9 +150,9 @@ class Command(BaseCommand):
         )
 
         # 6. Máquinas
-        tipo_maq = TipoItem.objects.filter(nome="Máquina").first()
+        tipo_maq = TipoMaquina.objects.filter(nome="Trator").first()
         if not tipo_maq:
-            tipo_maq = TipoItem.objects.create(nome="Máquina")
+            tipo_maq = TipoMaquina.objects.create(nome="Trator")
 
         maq1, _ = Maquina.objects.get_or_create(
             fazenda=fazendas["BR"],

@@ -104,3 +104,9 @@ class TipoOperacao(BaseModel):
 
     def __str__(self):
         return self.nome
+
+class TipoMaquina(BaseModel):
+    nome = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.nome

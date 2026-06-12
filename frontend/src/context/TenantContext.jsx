@@ -28,6 +28,10 @@ export const TenantProvider = ({ children }) => {
 
   // Carregar fazendas e safras
   const loadTenantData = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [listaFazendas, listaSafras] = await Promise.all([

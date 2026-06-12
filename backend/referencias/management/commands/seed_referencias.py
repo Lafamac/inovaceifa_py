@@ -3,8 +3,9 @@ from referencias.models import (
     Cultura, TipoItem, StatusCultivo, TipoIrrigacao, ResistenciaFerrugem,
     StatusOrdemServico, Modalidade, TipoRateio, ContaGerencial, TipoDestinacao,
     GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida,
-    AtividadeEducampo, CriterioRateio, TipoOperacao
+    AtividadeEducampo, CriterioRateio, TipoOperacao, TipoMaquina
 )
+
 
 class Command(BaseCommand):
     help = "Popula as tabelas auxiliares de referências com dados padrão do ERP Agrícola e da planilha."
@@ -190,5 +191,10 @@ class Command(BaseCommand):
         ]
         for nome in operacoes:
             TipoOperacao.objects.get_or_create(nome=nome)
+
+        # 18. TipoMaquina
+        tipos_maquina = ["Trator", "Colhetadeira", "Caminhao"]
+        for nome in tipos_maquina:
+            TipoMaquina.objects.get_or_create(nome=nome)
 
         self.stdout.write(self.style.SUCCESS("Referências semeadas com sucesso!"))

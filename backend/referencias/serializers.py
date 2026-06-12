@@ -3,7 +3,7 @@ from referencias.models import (
     Cultura, TipoItem, StatusCultivo, TipoIrrigacao, ResistenciaFerrugem,
     StatusOrdemServico, Modalidade, TipoRateio, ContaGerencial, TipoDestinacao,
     GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida,
-    AtividadeEducampo, CriterioRateio, TipoOperacao
+    AtividadeEducampo, CriterioRateio, TipoOperacao, TipoMaquina
 )
 
 class CulturaSerializer(serializers.ModelSerializer):
@@ -89,4 +89,9 @@ class CriterioRateioSerializer(serializers.ModelSerializer):
 class TipoOperacaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = TipoOperacao
+        fields = '__all__'
+
+class TipoMaquinaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoMaquina
         fields = '__all__'

@@ -2,7 +2,7 @@ from django.db import models
 from core.models import BaseModel, Fazenda, Safra
 from referencias.models import (
     Cultura, TipoIrrigacao, StatusCultivo, ResistenciaFerrugem,
-    TipoItem, GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida
+    TipoMaquina, GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida
 )
 
 class Talhao(BaseModel):
@@ -51,7 +51,7 @@ class Maquina(BaseModel):
     marca = models.CharField(max_length=100, null=True, blank=True)
     modelo = models.CharField(max_length=100, null=True, blank=True)
     ano_fabricacao = models.IntegerField(null=True, blank=True)
-    tipo = models.ForeignKey(TipoItem, on_delete=models.PROTECT) # Maquina, Implemento, etc.
+    tipo = models.ForeignKey(TipoMaquina, on_delete=models.PROTECT) # Trator, Colhedora, Caminhão, etc.
 
     class Meta:
         verbose_name = "Máquina"

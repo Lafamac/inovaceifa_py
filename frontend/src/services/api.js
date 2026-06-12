@@ -24,12 +24,82 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Interceptor to handle responses and log out if owner is inactive (403)
+// Interceptor to handle responses, automatic token refresh on 401, and 403 logouts
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use((response) => {
   return response;
-}, (error) => {
+}, async (error) => {
+  const originalRequest = error.config;
+
+  if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    const isLoginRequest = originalRequest.url?.includes('/auth/token/');
+    const hasToken = !!localStorage.getItem('token');
+
+    if (!isLoginRequest && hasToken) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const res = await axios.post(`${API_BASE_URL}/api/auth/token/refresh/`, {
+            refresh: refreshToken,
+          });
+          const newAccessToken = res.data?.access;
+          if (newAccessToken) {
+            localStorage.setItem('token', newAccessToken);
+            api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            processQueue(null, newAccessToken);
+            isRefreshing = false;
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          isRefreshing = false;
+          // Se falhar o refresh, limpa tudo e recarrega
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          window.location.reload();
+          return Promise.reject(refreshError);
+        }
+      } else {
+        isRefreshing = false;
+        // Sem refresh token, limpa acesso e recarrega
+        localStorage.removeItem('token');
+        window.location.reload();
+      }
+    }
+  }
+
   if (error.response && error.response.status === 403) {
-    const isLoginRequest = error.config?.url?.includes('/auth/token/');
+    const isLoginRequest = originalRequest.url?.includes('/auth/token/');
     if (!isLoginRequest) {
       let message = error.response.data?.detail || error.response.data?.error || "";
       if (Array.isArray(message)) {
@@ -40,6 +110,7 @@ api.interceptors.response.use((response) => {
       }
       if (typeof message === 'string' && (message.includes("inativo") || message.includes("administrador"))) {
         localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
         localStorage.setItem('login_error', message);
         window.location.reload();
       }

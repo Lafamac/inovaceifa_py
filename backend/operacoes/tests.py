@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from core.models import Fazenda, Safra, Proprietario
-from referencias.models import TipoOperacao, UnidadeMedida, ClassificacaoProduto, TipoItem, GrupoTrabalhador
+from referencias.models import TipoOperacao, UnidadeMedida, ClassificacaoProduto, TipoMaquina, GrupoTrabalhador
 from cadastros.models import Produto, Talhao, Maquina, Funcionario
 from planejamento.models import PlanejamentoSafra, OrdemServicoPlanejada
 from operacoes.models import OrdemServico, ApontamentoOperacao, AuditoriaOrdemServico
@@ -145,8 +145,8 @@ class OperacoesAPITests(APITestCase):
         self.fazenda_b = Fazenda.objects.create(nome="Fazenda B", proprietario=self.proprietario, sigla="FZB")
         self.admin_user.fazendas_permitidas.add(self.fazenda_b)
         
-        # Create TipoItem and GrupoTrabalhador references
-        tipo_maq = TipoItem.objects.create(nome="Trator")
+        # Create TipoMaquina and GrupoTrabalhador references
+        tipo_maq = TipoMaquina.objects.create(nome="Trator")
         grupo_func = GrupoTrabalhador.objects.create(nome="Tratoristas")
 
         # Create a machine and employee under Fazenda B
