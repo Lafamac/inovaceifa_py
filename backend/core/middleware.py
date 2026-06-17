@@ -51,6 +51,7 @@ class MultiTenantMiddleware(MiddlewareMixin):
                 '/api/proprietarios/',
                 '/api/fazendas/',
                 '/api/safras/',
+                '/api/ref/',
             ]
             is_exempt = any(path.startswith(p) for p in exempt_paths)
 

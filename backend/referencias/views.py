@@ -16,92 +16,90 @@ from referencias.serializers import (
 )
 from referencias.permissions import IsSuperUsuarioOrReadOnly
 
-class CulturaViewSet(viewsets.ModelViewSet):
-    queryset = Cultura.objects.filter(ativo=True)
+class BaseReferenciaViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsSuperUsuarioOrReadOnly]
+
+    def get_queryset(self):
+        incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
+        is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
+        
+        queryset = self.queryset
+        if not (incluir_inativos or is_detail):
+            queryset = queryset.filter(ativo=True)
+        return queryset
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save()
+
+class CulturaViewSet(BaseReferenciaViewSet):
+    queryset = Cultura.objects.all()
     serializer_class = CulturaSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class TipoItemViewSet(viewsets.ModelViewSet):
-    queryset = TipoItem.objects.filter(ativo=True)
+class TipoItemViewSet(BaseReferenciaViewSet):
+    queryset = TipoItem.objects.all()
     serializer_class = TipoItemSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class StatusCultivoViewSet(viewsets.ModelViewSet):
-    queryset = StatusCultivo.objects.filter(ativo=True)
+class StatusCultivoViewSet(BaseReferenciaViewSet):
+    queryset = StatusCultivo.objects.all()
     serializer_class = StatusCultivoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class TipoIrrigacaoViewSet(viewsets.ModelViewSet):
-    queryset = TipoIrrigacao.objects.filter(ativo=True)
+class TipoIrrigacaoViewSet(BaseReferenciaViewSet):
+    queryset = TipoIrrigacao.objects.all()
     serializer_class = TipoIrrigacaoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class ResistenciaFerrugemViewSet(viewsets.ModelViewSet):
-    queryset = ResistenciaFerrugem.objects.filter(ativo=True)
+class ResistenciaFerrugemViewSet(BaseReferenciaViewSet):
+    queryset = ResistenciaFerrugem.objects.all()
     serializer_class = ResistenciaFerrugemSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class StatusOrdemServicoViewSet(viewsets.ModelViewSet):
-    queryset = StatusOrdemServico.objects.filter(ativo=True)
+class StatusOrdemServicoViewSet(BaseReferenciaViewSet):
+    queryset = StatusOrdemServico.objects.all()
     serializer_class = StatusOrdemServicoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class ModalidadeViewSet(viewsets.ModelViewSet):
-    queryset = Modalidade.objects.filter(ativo=True)
+class ModalidadeViewSet(BaseReferenciaViewSet):
+    queryset = Modalidade.objects.all()
     serializer_class = ModalidadeSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class TipoRateioViewSet(viewsets.ModelViewSet):
-    queryset = TipoRateio.objects.filter(ativo=True)
+class TipoRateioViewSet(BaseReferenciaViewSet):
+    queryset = TipoRateio.objects.all()
     serializer_class = TipoRateioSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class ContaGerencialViewSet(viewsets.ModelViewSet):
-    queryset = ContaGerencial.objects.filter(ativo=True)
+class ContaGerencialViewSet(BaseReferenciaViewSet):
+    queryset = ContaGerencial.objects.all()
     serializer_class = ContaGerencialSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class TipoDestinacaoViewSet(viewsets.ModelViewSet):
-    queryset = TipoDestinacao.objects.filter(ativo=True)
+class TipoDestinacaoViewSet(BaseReferenciaViewSet):
+    queryset = TipoDestinacao.objects.all()
     serializer_class = TipoDestinacaoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class GrupoTrabalhadorViewSet(viewsets.ModelViewSet):
-    queryset = GrupoTrabalhador.objects.filter(ativo=True)
+class GrupoTrabalhadorViewSet(BaseReferenciaViewSet):
+    queryset = GrupoTrabalhador.objects.all()
     serializer_class = GrupoTrabalhadorSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class ClassificacaoProdutoViewSet(viewsets.ModelViewSet):
-    queryset = ClassificacaoProduto.objects.filter(ativo=True)
+class ClassificacaoProdutoViewSet(BaseReferenciaViewSet):
+    queryset = ClassificacaoProduto.objects.all()
     serializer_class = ClassificacaoProdutoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class GrupoQuimicoViewSet(viewsets.ModelViewSet):
-    queryset = GrupoQuimico.objects.filter(ativo=True)
+class GrupoQuimicoViewSet(BaseReferenciaViewSet):
+    queryset = GrupoQuimico.objects.all()
     serializer_class = GrupoQuimicoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class UnidadeMedidaViewSet(viewsets.ModelViewSet):
-    queryset = UnidadeMedida.objects.filter(ativo=True)
+class UnidadeMedidaViewSet(BaseReferenciaViewSet):
+    queryset = UnidadeMedida.objects.all()
     serializer_class = UnidadeMedidaSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class AtividadeEducampoViewSet(viewsets.ModelViewSet):
-    queryset = AtividadeEducampo.objects.filter(ativo=True)
+class AtividadeEducampoViewSet(BaseReferenciaViewSet):
+    queryset = AtividadeEducampo.objects.all()
     serializer_class = AtividadeEducampoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class CriterioRateioViewSet(viewsets.ModelViewSet):
-    queryset = CriterioRateio.objects.filter(ativo=True)
+class CriterioRateioViewSet(BaseReferenciaViewSet):
+    queryset = CriterioRateio.objects.all()
     serializer_class = CriterioRateioSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class TipoOperacaoViewSet(viewsets.ModelViewSet):
-    queryset = TipoOperacao.objects.filter(ativo=True)
+class TipoOperacaoViewSet(BaseReferenciaViewSet):
+    queryset = TipoOperacao.objects.all()
     serializer_class = TipoOperacaoSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]
 
-class TipoMaquinaViewSet(viewsets.ModelViewSet):
-    queryset = TipoMaquina.objects.filter(ativo=True)
+class TipoMaquinaViewSet(BaseReferenciaViewSet):
+    queryset = TipoMaquina.objects.all()
     serializer_class = TipoMaquinaSerializer
-    permission_classes = [IsSuperUsuarioOrReadOnly]

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider, useTenant } from './context/TenantContext';
 import { Header } from './components/Header';
@@ -9,9 +9,10 @@ import { OrdensServico } from './components/OrdensServico';
 import { Financeiro } from './components/Financeiro';
 import { Login } from './components/Login';
 import { Footer } from './components/Footer';
+import { relatorioService } from './services/api';
 
 function AppContent() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const { safraAtiva } = useTenant();
   const [activeView, setActiveView] = useState('dashboard');
   const [financeiroSubTab, setFinanceiroSubTab] = useState('compras');
@@ -22,6 +23,20 @@ function AppContent() {
       setFinanceiroSubTab(subTab);
     }
   };
+
+  useEffect(() => {
+    if (isAuthenticated && user?.perfil_id === 1) {
+      relatorioService.getProprietarios()
+        .then((proprietarios) => {
+          if (proprietarios && proprietarios.length === 0) {
+            setActiveView('cadastros');
+          }
+        })
+        .catch((err) => {
+          console.error("Erro ao carregar proprietarios na inicializacao:", err);
+        });
+    }
+  }, [isAuthenticated, user]);
 
   if (loading) {
     return (
