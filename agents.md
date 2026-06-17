@@ -99,6 +99,15 @@
   - [x] Lançamentos de **'ENTRADA'** automáticos gerados a partir do recebimento dos Pedidos de Compra (Fase 6.5).
 
 
+### 🔄 Fase 6.6: Entrada de Dados de Rateios Operacionais ("Aba Rateios")
+- [ ] Criar o modelo `RateioOperacional` no app `operacoes` contendo todos os campos de planejado e realizado (horas homem, horas máquina, diesel, e outros custos) herdando de `BaseModel`.
+- [ ] Implementar a lógica de propagação de custos em `operacoes/services.py` distribuindo os custos proporcionalmente à área física (ha) dos talhões ativos (da fazenda especificada ou compartilhada globalmente caso nula).
+- [ ] Implementar a baixa automática de estoque de diesel (`EstoqueMovimento` de saída) ao registrar combustível realizado no rateio.
+- [ ] Criar endpoints `/api/rateios-operacionais/` com serializers e views associados.
+- [ ] Integrar o rateio operacional nos relatórios analíticos (`custo-talhao`, `custo-mensal` e `mof`).
+- [ ] Desenvolver no frontend a aba **Rateios Operacionais** dentro do módulo de ordens de serviço, contendo listagem e modal de cadastro de duas colunas, com caixa alta e navegação otimizada por Enter/Tab.
+
+
 ### 📊 Fase 7: Relatórios (`relatorios`)
 - [x] Criar app `relatorios` apenas com views analíticas (somente leitura - cálculos via query/service).
 - [x] Implementar endpoints analíticos:
@@ -192,6 +201,7 @@
 - [x] `POST /api/ordens-servico/{id}/concluir/`
 - [x] `GET/POST /api/gastos-rateio/`
 - [x] `GET/POST /api/abastecimentos/`
+- [ ] `GET/POST /api/rateios-operacionais/`
 
 ### Compras, Vendas & Financeiro (Fase 6.5)
 - [x] `GET/POST /api/financeiro/pedidos-compra/`
