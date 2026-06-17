@@ -4,7 +4,8 @@ from .views import (
     OrdemServicoViewSet, ApontamentoOperacaoViewSet,
     ApontamentoInsumoViewSet, ApontamentoMaquinaViewSet,
     ApontamentoFuncionarioViewSet, AuditoriaOrdemServicoViewSet,
-    GastoRateioRealizadoViewSet, AbastecimentoMaquinaViewSet
+    GastoRateioRealizadoViewSet, AbastecimentoMaquinaViewSet,
+    RateioOperacionalViewSet
 )
 
 router = DefaultRouter()
@@ -16,6 +17,7 @@ router.register(r'apontamentos-funcionario', ApontamentoFuncionarioViewSet, base
 router.register(r'auditorias', AuditoriaOrdemServicoViewSet, basename='operacao-auditoria')
 router.register(r'gastos-rateio', GastoRateioRealizadoViewSet, basename='operacao-gasto-rateio')
 router.register(r'abastecimentos', AbastecimentoMaquinaViewSet, basename='operacao-abastecimento')
+router.register(r'rateios-operacionais', RateioOperacionalViewSet, basename='operacao-rateio-operacional')
 
 urlpatterns = [
     path('', include(router.urls)),

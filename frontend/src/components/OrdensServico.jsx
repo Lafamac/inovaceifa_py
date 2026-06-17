@@ -50,6 +50,53 @@ export const OrdensServico = () => {
   const [criteriosRateio, setCriteriosRateio] = useState([]);
   const [contasGerenciais, setContasGerenciais] = useState([]);
 
+  // Estados de Rateio Operacional (Phase 6.6)
+  const [rateiosOperacionais, setRateiosOperacionais] = useState([]);
+  const [atividadesEducampo, setAtividadesEducampo] = useState([]);
+  const [showNewRateioOperacionalModal, setShowNewRateioOperacionalModal] = useState(false);
+  const [rateioOperacionalForm, setRateioOperacionalForm] = useState({
+    data: new Date().toISOString().slice(0, 10),
+    fazenda_rateio: '',
+    atividade_educampo: '',
+    descricao_plan: '',
+    funcionario_plan: '',
+    horas_homem_plan: '',
+    valor_hora_homem_plan: '',
+    trator_plan: '',
+    implemento_plan: '',
+    horas_maq_plan: '',
+    valor_hora_maq_plan: '',
+    combustivel_plan: '',
+    diesel_gasto_plan: '',
+    valor_diesel_plan: '',
+    qtd_plan: '',
+    valor_unitario_plan: '',
+    descricao_real: '',
+    funcionario_real: '',
+    horas_homem_real: '',
+    valor_hora_homem_real: '',
+    trator_real: '',
+    implemento_real: '',
+    horas_maq_real: '',
+    valor_hora_trator_real: '',
+    valor_hora_implemento_real: '',
+    combustivel_real: '',
+    diesel_gasto_real: '',
+    valor_diesel_real: '',
+    qtd_real: '',
+    valor_unitario_real: ''
+  });
+
+  const getManualTotals = () => {
+    let totalVal = 0;
+    let totalPct = 0;
+    Object.values(rateioForm.talhoes_dados || {}).forEach(item => {
+      totalVal += Number(item.valor || 0);
+      totalPct += Number(item.percentual || 0);
+    });
+    return { totalVal, totalPct };
+  };
+
   const [showNewAbtModal, setShowNewAbtModal] = useState(false);
   const [showNewRateioModal, setShowNewRateioModal] = useState(false);
 
@@ -156,16 +203,31 @@ export const OrdensServico = () => {
     }
   }, [safraAtiva, fazendaAtiva]);
 
+  const fetchRateiosOperacionais = useCallback(async () => {
+    if (!safraAtiva) return;
+    try {
+      const list = await relatorioService.getRateiosOperacionais();
+      const filtrados = list.filter(r => 
+        (r.safra_id === safraAtiva.id || r.safra === safraAtiva.id) &&
+        r.ativo !== false
+      );
+      setRateiosOperacionais(filtrados);
+    } catch (err) {
+      console.error("Erro ao carregar rateios operacionais", err);
+    }
+  }, [safraAtiva]);
+
   const loadReferences = useCallback(async () => {
     try {
-      const [resOps, resTalhoes, resProds, resMaquinas, resFuncs, resCriterios, resContas] = await Promise.all([
+      const [resOps, resTalhoes, resProds, resMaquinas, resFuncs, resCriterios, resContas, resEducampo] = await Promise.all([
         api.get('/api/ref/tipos-operacao/'),
         api.get('/api/talhoes/'),
         api.get('/api/produtos/'),
         api.get('/api/maquinas/'),
         api.get('/api/funcionarios/'),
         api.get('/api/ref/criterios-rateio/'),
-        api.get('/api/ref/contas-gerenciais/')
+        api.get('/api/ref/contas-gerenciais/'),
+        api.get('/api/ref/atividades-educampo/')
       ]);
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
@@ -191,6 +253,7 @@ export const OrdensServico = () => {
       setProdutos(resProds.data?.results || resProds.data || []);
       setCriteriosRateio(resCriterios.data?.results || resCriterios.data || []);
       setContasGerenciais(resContas.data?.results || resContas.data || []);
+      setAtividadesEducampo(resEducampo.data?.results || resEducampo.data || []);
     } catch (err) {
       console.error("Erro ao carregar referências de OS", err);
     }
@@ -235,8 +298,9 @@ export const OrdensServico = () => {
     fetchOrdensServico();
     fetchAbastecimentos();
     fetchGastosRateio();
+    fetchRateiosOperacionais();
     loadReferences();
-  }, [fetchOrdensServico, fetchAbastecimentos, fetchGastosRateio, loadReferences]);
+  }, [fetchOrdensServico, fetchAbastecimentos, fetchGastosRateio, fetchRateiosOperacionais, loadReferences]);
 
   const handleIniciarOS = async (id) => {
     setSaving(true);
@@ -683,6 +747,113 @@ export const OrdensServico = () => {
     }
   };
 
+
+  const handleCreateRateioOperacional = async (e) => {
+    e.preventDefault();
+    if (!rateioOperacionalForm.data || !rateioOperacionalForm.atividade_educampo) {
+      showAlert('error', 'Por favor, preencha a data e a atividade educampo.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const cleanNumber = (val) => (val === '' || val === null || val === undefined) ? null : Number(val);
+      const cleanString = (val) => (val === '' || val === null || val === undefined) ? null : String(val).toUpperCase();
+
+      const payload = {
+        safra: safraAtiva.id,
+        data: rateioOperacionalForm.data,
+        fazenda_rateio: rateioOperacionalForm.fazenda_rateio ? Number(rateioOperacionalForm.fazenda_rateio) : null,
+        atividade_educampo: Number(rateioOperacionalForm.atividade_educampo),
+        
+        // Planejado
+        descricao_plan: cleanString(rateioOperacionalForm.descricao_plan),
+        funcionario_plan: rateioOperacionalForm.funcionario_plan ? Number(rateioOperacionalForm.funcionario_plan) : null,
+        horas_homem_plan: cleanNumber(rateioOperacionalForm.horas_homem_plan),
+        valor_hora_homem_plan: cleanNumber(rateioOperacionalForm.valor_hora_homem_plan),
+        trator_plan: rateioOperacionalForm.trator_plan ? Number(rateioOperacionalForm.trator_plan) : null,
+        implemento_plan: rateioOperacionalForm.implemento_plan ? Number(rateioOperacionalForm.implemento_plan) : null,
+        horas_maq_plan: cleanNumber(rateioOperacionalForm.horas_maq_plan),
+        valor_hora_maq_plan: cleanNumber(rateioOperacionalForm.valor_hora_maq_plan),
+        combustivel_plan: rateioOperacionalForm.combustivel_plan ? Number(rateioOperacionalForm.combustivel_plan) : null,
+        diesel_gasto_plan: cleanNumber(rateioOperacionalForm.diesel_gasto_plan),
+        valor_diesel_plan: cleanNumber(rateioOperacionalForm.valor_diesel_plan),
+        qtd_plan: cleanNumber(rateioOperacionalForm.qtd_plan),
+        valor_unitario_plan: cleanNumber(rateioOperacionalForm.valor_unitario_plan),
+
+        // Realizado
+        descricao_real: cleanString(rateioOperacionalForm.descricao_real),
+        funcionario_real: rateioOperacionalForm.funcionario_real ? Number(rateioOperacionalForm.funcionario_real) : null,
+        horas_homem_real: cleanNumber(rateioOperacionalForm.horas_homem_real),
+        valor_hora_homem_real: cleanNumber(rateioOperacionalForm.valor_hora_homem_real),
+        trator_real: rateioOperacionalForm.trator_real ? Number(rateioOperacionalForm.trator_real) : null,
+        implemento_real: rateioOperacionalForm.implemento_real ? Number(rateioOperacionalForm.implemento_real) : null,
+        horas_maq_real: cleanNumber(rateioOperacionalForm.horas_maq_real),
+        valor_hora_trator_real: cleanNumber(rateioOperacionalForm.valor_hora_trator_real),
+        valor_hora_implemento_real: cleanNumber(rateioOperacionalForm.valor_hora_implemento_real),
+        combustivel_real: rateioOperacionalForm.combustivel_real ? Number(rateioOperacionalForm.combustivel_real) : null,
+        diesel_gasto_real: cleanNumber(rateioOperacionalForm.diesel_gasto_real),
+        valor_diesel_real: cleanNumber(rateioOperacionalForm.valor_diesel_real),
+        qtd_real: cleanNumber(rateioOperacionalForm.qtd_real),
+        valor_unitario_real: cleanNumber(rateioOperacionalForm.valor_unitario_real),
+      };
+
+      await relatorioService.createRateioOperacional(payload);
+      showAlert('success', 'Rateio operacional registrado com sucesso.');
+      setShowNewRateioOperacionalModal(false);
+      setRateioOperacionalForm({
+        data: new Date().toISOString().slice(0, 10),
+        fazenda_rateio: '',
+        atividade_educampo: '',
+        descricao_plan: '',
+        funcionario_plan: '',
+        horas_homem_plan: '',
+        valor_hora_homem_plan: '',
+        trator_plan: '',
+        implemento_plan: '',
+        horas_maq_plan: '',
+        valor_hora_maq_plan: '',
+        combustivel_plan: '',
+        diesel_gasto_plan: '',
+        valor_diesel_plan: '',
+        qtd_plan: '',
+        valor_unitario_plan: '',
+        descricao_real: '',
+        funcionario_real: '',
+        horas_homem_real: '',
+        valor_hora_homem_real: '',
+        trator_real: '',
+        implemento_real: '',
+        horas_maq_real: '',
+        valor_hora_trator_real: '',
+        valor_hora_implemento_real: '',
+        combustivel_real: '',
+        diesel_gasto_real: '',
+        valor_diesel_real: '',
+        qtd_real: '',
+        valor_unitario_real: ''
+      });
+      await fetchRateiosOperacionais();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao salvar o rateio operacional.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteRateioOperacional = async (id) => {
+    if (!window.confirm("Deseja realmente excluir este rateio operacional?")) return;
+    try {
+      await relatorioService.deleteRateioOperacional(id);
+      showAlert('success', 'Rateio operacional excluído.');
+      await fetchRateiosOperacionais();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao excluir o rateio operacional.');
+    }
+  };
+
   const getRateioPreview = (valorGasto, criterioId) => {
     const val = Number(valorGasto || 0);
     if (val <= 0 || !criterioId) return [];
@@ -803,6 +974,16 @@ export const OrdensServico = () => {
             Lançar Gasto / Rateio
           </button>
         )}
+
+        {safraAtiva && activeSubTab === 'rateio_operacional' && (
+          <button
+            onClick={() => setShowNewRateioOperacionalModal(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-bold py-2.5 px-5 text-xs uppercase shadow-md cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Lançar Rateio Operacional
+          </button>
+        )}
       </div>
 
       {/* Sub-abas de Navegação */}
@@ -839,6 +1020,17 @@ export const OrdensServico = () => {
         >
           <Coins className="w-4 h-4" />
           Rateio Realizado
+        </button>
+        <button
+          onClick={() => setActiveSubTab('rateio_operacional')}
+          className={`flex items-center gap-2 py-3 px-4 text-xs font-black uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+            activeSubTab === 'rateio_operacional'
+              ? 'border-emerald-500 text-emerald-400 font-bold bg-white/[0.02]'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          Rateios Operacionais
         </button>
       </div>
 
@@ -1188,7 +1380,7 @@ export const OrdensServico = () => {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeSubTab === 'rateio' ? (
         <div className="glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/40 space-y-6 text-left">
           <div className="flex items-center justify-between">
             <div>
@@ -1273,6 +1465,131 @@ export const OrdensServico = () => {
 
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/40 space-y-6 text-left">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-black text-white font-display flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-500" />
+                Rateios Operacionais
+              </h3>
+              <p className="text-slate-400 text-xs mt-1">Lançamento de rateios operacionais de atividades agrícolas de campo (Mão de Obra, Máquinas, Diesel e outros insumos).</p>
+            </div>
+          </div>
+
+          {rateiosOperacionais.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/5 bg-slate-950/15 p-12 text-center text-slate-500 text-xs">
+              Nenhum rateio operacional registrado nesta safra.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-slate-950/20 animate-in fade-in duration-300">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/[0.06] bg-slate-950/60 text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="p-4">Data</th>
+                    <th className="p-4">Fazenda Alvo</th>
+                    <th className="p-4">Educampo</th>
+                    <th className="p-4">Mão de Obra Real</th>
+                    <th className="p-4">Trator / Implemento Real</th>
+                    <th className="p-4">Diesel Real</th>
+                    <th className="p-4">Outros Custos Real</th>
+                    <th className="p-4 text-right">Total Plan</th>
+                    <th className="p-4 text-right">Total Real</th>
+                    <th className="p-4 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04] text-slate-350">
+                  {rateiosOperacionais.map(r => {
+                    const moTotal = Number(r.horas_homem_real || 0) * Number(r.valor_hora_homem_real || 0);
+                    const maqTotal = Number(r.horas_maq_real || 0) * (Number(r.valor_hora_trator_real || 0) + Number(r.valor_hora_implemento_real || 0));
+                    const dslTotal = Number(r.diesel_gasto_real || 0) * Number(r.valor_diesel_real || 0);
+                    const outTotal = Number(r.qtd_real || 0) * Number(r.valor_unitario_real || 0);
+
+                    const moPlanTotal = Number(r.horas_homem_plan || 0) * Number(r.valor_hora_homem_plan || 0);
+                    const maqPlanTotal = Number(r.horas_maq_plan || 0) * Number(r.valor_hora_maq_plan || 0);
+                    const dslPlanTotal = Number(r.diesel_gasto_plan || 0) * Number(r.valor_diesel_plan || 0);
+                    const outPlanTotal = Number(r.qtd_plan || 0) * Number(r.valor_unitario_plan || 0);
+
+                    const totalReal = Number(r.valor_total_homem_real || moTotal) +
+                      Number(r.valor_total_maq_real || maqTotal) +
+                      Number(r.valor_total_diesel_real || dslTotal) +
+                      Number(r.valor_total_real || outTotal);
+
+                    const totalPlan = Number(r.valor_total_homem_plan || moPlanTotal) +
+                      Number(r.valor_total_maq_plan || maqPlanTotal) +
+                      Number(r.valor_total_diesel_plan || dslPlanTotal) +
+                      Number(r.valor_total_plan || outPlanTotal);
+
+                    return (
+                      <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="p-4 whitespace-nowrap">
+                          {new Date(r.data).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="p-4 font-bold text-white">
+                          {r.fazenda_rateio_nome || 'GLOBAL / COMPARTILHADO'}
+                        </td>
+                        <td className="p-4 font-semibold text-emerald-400">
+                          {r.atividade_educampo_nome}
+                        </td>
+                        <td className="p-4">
+                          {r.funcionario_real_nome ? (
+                            <div>
+                              <span className="font-bold text-white block">{r.funcionario_real_nome}</span>
+                              <span className="text-slate-500 text-[10px]">{Number(r.horas_homem_real)}h x R$ {Number(r.valor_hora_homem_real).toFixed(2)}</span>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="p-4">
+                          {r.trator_real_codigo || r.implemento_real_codigo ? (
+                            <div>
+                              <span className="font-bold text-white block">
+                                {r.trator_real_codigo || ''} {r.implemento_real_codigo ? `+ ${r.implemento_real_codigo}` : ''}
+                              </span>
+                              <span className="text-slate-500 text-[10px]">
+                                {Number(r.horas_maq_real)}h x R$ {(Number(r.valor_hora_trator_real || 0) + Number(r.valor_hora_implemento_real || 0)).toFixed(2)}
+                              </span>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="p-4">
+                          {r.combustivel_real_nome ? (
+                            <div>
+                              <span className="font-bold text-white block">{r.combustivel_real_nome}</span>
+                              <span className="text-slate-500 text-[10px]">{Number(r.diesel_gasto_real)}L x R$ {Number(r.valor_diesel_real).toFixed(2)}</span>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="p-4">
+                          {r.descricao_real ? (
+                            <div>
+                              <span className="font-bold text-white block truncate max-w-[120px]">{r.descricao_real}</span>
+                              <span className="text-slate-500 text-[10px]">{Number(r.qtd_real)} x R$ {Number(r.valor_unitario_real).toFixed(2)}</span>
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="p-4 text-right font-mono text-slate-500 font-semibold">
+                          R$ {totalPlan.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-4 text-right font-mono font-black text-emerald-400">
+                          R$ {totalReal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="p-4 text-center">
+                          <button
+                            onClick={() => handleDeleteRateioOperacional(r.id)}
+                            className="p-2 text-rose-500 hover:text-rose-450 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
+                            title="Excluir rateio operacional"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -2112,6 +2429,556 @@ export const OrdensServico = () => {
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/25 cursor-pointer"
                 >
                   {saving ? 'Gravando...' : 'Salvar Rateio'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Novo Rateio Operacional */}
+      {showNewRateioOperacionalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-5xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-500" />
+                <span>Lançar Rateio Operacional</span>
+              </h3>
+              <button 
+                onClick={() => setShowNewRateioOperacionalModal(false)} 
+                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateRateioOperacional} className="space-y-6">
+              
+              {/* Seção 1: Dados Gerais */}
+              <div className="bg-slate-950/30 p-4 rounded-xl border border-white/[0.04] grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data *</span>
+                    <input
+                      type="date"
+                      required
+                      value={rateioOperacionalForm.data}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, data: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-sm text-white outline-none"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Fazenda Alvo</span>
+                    <select
+                      value={rateioOperacionalForm.fazenda_rateio}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, fazenda_rateio: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-sm text-white outline-none"
+                    >
+                      <option value="">GLOBAL / COMPARTILHADO (TODAS AS FAZENDAS)</option>
+                      {fazendas?.map(f => (
+                        <option key={f.id} value={f.id} className="bg-slate-900">{f.nome}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Atividade Educampo *</span>
+                    <select
+                      required
+                      value={rateioOperacionalForm.atividade_educampo}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, atividade_educampo: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-sm text-white outline-none"
+                    >
+                      <option value="">Selecione a atividade...</option>
+                      {atividadesEducampo?.map(a => (
+                        <option key={a.id} value={a.id} className="bg-slate-900">{a.nome}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              {/* Seção 2: Planejado vs Realizado (Duas Colunas) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
+                
+                {/* Coluna Esquerda: PLANEJADO */}
+                <div className="space-y-6 bg-slate-950/15 p-5 rounded-2xl border border-white/[0.04]">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-white/[0.06] pb-2 flex items-center justify-between">
+                    <span>1. Custo Planejado</span>
+                    <span className="text-[10px] text-slate-500 font-bold">Orçamento Estimado</span>
+                  </h4>
+
+                  {/* Mão de Obra Planejado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Mão de Obra</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="md:col-span-2">
+                        <select
+                          value={rateioOperacionalForm.funcionario_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, funcionario_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Selecione o funcionário...</option>
+                          {funcionarios?.map(f => (
+                            <option key={f.id} value={f.id} className="bg-slate-900">{f.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Horas plan"
+                          value={rateioOperacionalForm.horas_homem_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, horas_homem_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Valor/Hora plan"
+                          value={rateioOperacionalForm.valor_hora_homem_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_hora_homem_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.horas_homem_plan && rateioOperacionalForm.valor_hora_homem_plan && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal M.O.: R$ {(Number(rateioOperacionalForm.horas_homem_plan) * Number(rateioOperacionalForm.valor_hora_homem_plan)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Máquinas Planejado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Máquinas & Equipamentos</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <select
+                          value={rateioOperacionalForm.trator_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, trator_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Trator plan...</option>
+                          {maquinas?.filter(m => m.classificacao?.toUpperCase() !== 'IMPLEMENTO').map(m => (
+                            <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <select
+                          value={rateioOperacionalForm.implemento_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, implemento_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Implemento plan...</option>
+                          {maquinas?.map(m => (
+                            <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Horas maq plan"
+                          value={rateioOperacionalForm.horas_maq_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, horas_maq_plan: e.target.value }))}
+                          className="w-full bg-slate-955/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Valor/Hora maq plan"
+                          value={rateioOperacionalForm.valor_hora_maq_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_hora_maq_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.horas_maq_plan && rateioOperacionalForm.valor_hora_maq_plan && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal Máq.: R$ {(Number(rateioOperacionalForm.horas_maq_plan) * Number(rateioOperacionalForm.valor_hora_maq_plan)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Combustível Planejado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Combustível</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-3">
+                        <select
+                          value={rateioOperacionalForm.combustivel_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, combustivel_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Selecione o combustível...</option>
+                          {produtos?.filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL' || p.classificacao?.toUpperCase() === 'COMBUSTÍVEIS' || p.classificacao?.toUpperCase() === 'COMBUSTIVEL').map(p => (
+                            <option key={p.id} value={p.id} className="bg-slate-900">{p.nome_comercial}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Litros plan"
+                          value={rateioOperacionalForm.diesel_gasto_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, diesel_gasto_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Valor/Litro plan"
+                          value={rateioOperacionalForm.valor_diesel_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_diesel_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.diesel_gasto_plan && rateioOperacionalForm.valor_diesel_plan && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal Comb.: R$ {(Number(rateioOperacionalForm.diesel_gasto_plan) * Number(rateioOperacionalForm.valor_diesel_plan)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Outros Planejado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Outros Custos / Insumos Gerais</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-3">
+                        <input
+                          type="text"
+                          placeholder="Descrição planejado"
+                          value={rateioOperacionalForm.descricao_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, descricao_plan: e.target.value.toUpperCase() }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none uppercase"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Qtd plan"
+                          value={rateioOperacionalForm.qtd_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, qtd_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Vl. Unitário plan"
+                          value={rateioOperacionalForm.valor_unitario_plan}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_unitario_plan: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.qtd_plan && rateioOperacionalForm.valor_unitario_plan && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal Outros: R$ {(Number(rateioOperacionalForm.qtd_plan) * Number(rateioOperacionalForm.valor_unitario_plan)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Totalizador Planejado */}
+                  <div className="p-3.5 bg-slate-950/60 rounded-xl border border-white/[0.06] flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Total Planejado Estimado:</span>
+                    <span className="text-sm font-black text-slate-350 font-mono">
+                      R$ {(() => {
+                        const mo = Number(rateioOperacionalForm.horas_homem_plan || 0) * Number(rateioOperacionalForm.valor_hora_homem_plan || 0);
+                        const maq = Number(rateioOperacionalForm.horas_maq_plan || 0) * Number(rateioOperacionalForm.valor_hora_maq_plan || 0);
+                        const dsl = Number(rateioOperacionalForm.diesel_gasto_plan || 0) * Number(rateioOperacionalForm.valor_diesel_plan || 0);
+                        const out = Number(rateioOperacionalForm.qtd_plan || 0) * Number(rateioOperacionalForm.valor_unitario_plan || 0);
+                        return (mo + maq + dsl + out).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      })()}
+                    </span>
+                  </div>
+
+                </div>
+
+                {/* Coluna Direita: REALIZADO */}
+                <div className="space-y-6 bg-emerald-950/5 p-5 rounded-2xl border border-emerald-500/10">
+                  <h4 className="text-xs font-black text-emerald-450 uppercase tracking-wider border-b border-emerald-500/10 pb-2 flex items-center justify-between">
+                    <span>2. Custo Realizado</span>
+                    <span className="text-[10px] text-emerald-500/80 font-bold">Apontamento Efetivo</span>
+                  </h4>
+
+                  {/* Mão de Obra Realizado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Mão de Obra</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="md:col-span-2">
+                        <select
+                          value={rateioOperacionalForm.funcionario_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, funcionario_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Selecione o funcionário...</option>
+                          {funcionarios?.map(f => (
+                            <option key={f.id} value={f.id} className="bg-slate-900">{f.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Horas real"
+                          value={rateioOperacionalForm.horas_homem_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, horas_homem_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Valor/Hora real"
+                          value={rateioOperacionalForm.valor_hora_homem_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_hora_homem_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.horas_homem_real && rateioOperacionalForm.valor_hora_homem_real && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal M.O.: R$ {(Number(rateioOperacionalForm.horas_homem_real) * Number(rateioOperacionalForm.valor_hora_homem_real)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Máquinas Realizado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Máquinas & Equipamentos</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <select
+                          value={rateioOperacionalForm.trator_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, trator_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Trator real...</option>
+                          {maquinas?.filter(m => m.classificacao?.toUpperCase() !== 'IMPLEMENTO').map(m => (
+                            <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <select
+                          value={rateioOperacionalForm.implemento_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, implemento_real: e.target.value }))}
+                          className="w-full bg-slate-955/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Implemento real...</option>
+                          {maquinas?.map(m => (
+                            <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Horas maq real"
+                          value={rateioOperacionalForm.horas_maq_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, horas_maq_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Vl. Trator"
+                          value={rateioOperacionalForm.valor_hora_trator_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_hora_trator_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-1.5 text-[11px] text-white outline-none"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Vl. Impl"
+                          value={rateioOperacionalForm.valor_hora_implemento_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_hora_implemento_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-1.5 text-[11px] text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.horas_maq_real && (rateioOperacionalForm.valor_hora_trator_real || rateioOperacionalForm.valor_hora_implemento_real) && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal Máq.: R$ {(Number(rateioOperacionalForm.horas_maq_real) * (Number(rateioOperacionalForm.valor_hora_trator_real || 0) + Number(rateioOperacionalForm.valor_hora_implemento_real || 0))).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Combustível Realizado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Combustível</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-3">
+                        <select
+                          value={rateioOperacionalForm.combustivel_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, combustivel_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        >
+                          <option value="">Selecione o combustível...</option>
+                          {produtos?.filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL' || p.classificacao?.toUpperCase() === 'COMBUSTÍVEIS' || p.classificacao?.toUpperCase() === 'COMBUSTIVEL').map(p => (
+                            <option key={p.id} value={p.id} className="bg-slate-900">{p.nome_comercial}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Litros real"
+                          value={rateioOperacionalForm.diesel_gasto_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, diesel_gasto_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Valor/Litro real"
+                          value={rateioOperacionalForm.valor_diesel_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_diesel_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.diesel_gasto_real && rateioOperacionalForm.valor_diesel_real && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal Comb.: R$ {(Number(rateioOperacionalForm.diesel_gasto_real) * Number(rateioOperacionalForm.valor_diesel_real)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Outros Realizado */}
+                  <div className="p-3 bg-slate-900/30 rounded-xl border border-white/[0.02] space-y-3">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Outros Custos / Insumos Gerais</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-3">
+                        <input
+                          type="text"
+                          placeholder="Descrição realizado"
+                          value={rateioOperacionalForm.descricao_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, descricao_real: e.target.value.toUpperCase() }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none uppercase"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Qtd real"
+                          value={rateioOperacionalForm.qtd_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, qtd_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Vl. Unitário real"
+                          value={rateioOperacionalForm.valor_unitario_real}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, valor_unitario_real: e.target.value }))}
+                          className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
+                        />
+                      </div>
+                    </div>
+                    {rateioOperacionalForm.qtd_real && rateioOperacionalForm.valor_unitario_real && (
+                      <div className="text-[10px] text-slate-500 font-bold text-right">
+                        Subtotal Outros: R$ {(Number(rateioOperacionalForm.qtd_real) * Number(rateioOperacionalForm.valor_unitario_real)).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Totalizador Realizado */}
+                  <div className="p-3.5 bg-emerald-950/50 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+                    <span className="text-xs font-black text-emerald-450 uppercase tracking-wider">Total Realizado Efetivo:</span>
+                    <span className="text-sm font-black text-emerald-400 font-mono">
+                      R$ {(() => {
+                        const mo = Number(rateioOperacionalForm.horas_homem_real || 0) * Number(rateioOperacionalForm.valor_hora_homem_real || 0);
+                        const maq = Number(rateioOperacionalForm.horas_maq_real || 0) * (Number(rateioOperacionalForm.valor_hora_trator_real || 0) + Number(rateioOperacionalForm.valor_hora_implemento_real || 0));
+                        const dsl = Number(rateioOperacionalForm.diesel_gasto_real || 0) * Number(rateioOperacionalForm.valor_diesel_real || 0);
+                        const out = Number(rateioOperacionalForm.qtd_real || 0) * Number(rateioOperacionalForm.valor_unitario_real || 0);
+                        return (mo + maq + dsl + out).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      })()}
+                    </span>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex justify-end gap-3 border-t border-white/[0.06] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowNewRateioOperacionalModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+                  tabIndex={-1}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/25 cursor-pointer"
+                >
+                  {saving ? 'Gravando...' : 'Salvar Rateio Operacional'}
                 </button>
               </div>
 

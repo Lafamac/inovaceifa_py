@@ -5,7 +5,8 @@ from .models import (
     OrdemServico, OrdemServicoTalhao, ItemInsumoOSReal,
     ApontamentoOperacao, ApontamentoInsumo, ApontamentoMaquina,
     ApontamentoFuncionario, AuditoriaOrdemServico,
-    GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina
+    GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina,
+    RateioOperacional
 )
 
 class ApontamentoInsumoSerializer(serializers.ModelSerializer):
@@ -168,4 +169,22 @@ class AbastecimentoMaquinaSerializer(serializers.ModelSerializer):
     class Meta:
         model = AbastecimentoMaquina
         fields = '__all__'
+
+
+class RateioOperacionalSerializer(serializers.ModelSerializer):
+    fazenda_rateio_nome = serializers.CharField(source='fazenda_rateio.nome', read_only=True, allow_null=True)
+    atividade_educampo_nome = serializers.CharField(source='atividade_educampo.nome', read_only=True)
+    funcionario_plan_nome = serializers.CharField(source='funcionario_plan.nome', read_only=True, allow_null=True)
+    funcionario_real_nome = serializers.CharField(source='funcionario_real.nome', read_only=True, allow_null=True)
+    trator_plan_codigo = serializers.CharField(source='trator_plan.codigo', read_only=True, allow_null=True)
+    trator_real_codigo = serializers.CharField(source='trator_real.codigo', read_only=True, allow_null=True)
+    implemento_plan_codigo = serializers.CharField(source='implemento_plan.codigo', read_only=True, allow_null=True)
+    implemento_real_codigo = serializers.CharField(source='implemento_real.codigo', read_only=True, allow_null=True)
+    combustivel_plan_nome = serializers.CharField(source='combustivel_plan.nome_comercial', read_only=True, allow_null=True)
+    combustivel_real_nome = serializers.CharField(source='combustivel_real.nome_comercial', read_only=True, allow_null=True)
+
+    class Meta:
+        model = RateioOperacional
+        fields = '__all__'
+
 

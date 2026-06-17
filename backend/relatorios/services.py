@@ -12,6 +12,7 @@ from cadastros.models import (
     SalarioMensal,
     Talhao,
 )
+from core.models import Fazenda
 from financeiro.models import ContasAPagar, ContasAReceber, ItemPedidoCompra
 from operacoes.models import (
     ApontamentoFuncionario,
@@ -20,6 +21,7 @@ from operacoes.models import (
     OrdemServico,
     OrdemServicoTalhao,
     RateioTalhao,
+    RateioOperacional,
 )
 from planejamento.models import (
     ItemInsumoOSPlanejado,
@@ -95,6 +97,57 @@ def distribute_by_os_talhoes(ordem_servico, value):
         return {item.talhao_id: share for item in talhoes}
 
     return {item.talhao_id: value * ((item.talhao.area or ZERO) / total_area) for item in talhoes}
+
+
+def obter_talhoes_alvo_rateio(rateio, safra):
+    """
+    Retorna a lista de talhões ativos para o rateio operacional.
+    Se fazenda_rateio for especificada, retorna talhões ativos dessa fazenda.
+    Se for null, retorna talhões ativos de todas as fazendas do proprietário com safra de mesmo nome ativa.
+    """
+    if rateio.fazenda_rateio:
+        return list(Talhao.objects.filter(fazenda=rateio.fazenda_rateio, ativo=True))
+    
+    # Compartilhado globalmente
+    fazendas_alvo = Fazenda.objects.filter(
+        proprietario=safra.fazenda.proprietario,
+        safras__nome=safra.nome,
+        safras__ativa=True,
+        safras__ativo=True,
+        ativo=True
+    ).distinct()
+    return list(Talhao.objects.filter(fazenda__in=fazendas_alvo, ativo=True))
+
+
+def obter_valor_rateio_para_talhao(rateio, safra, talhao, tipo='real'):
+    """
+    Calcula a fatia do rateio operacional para um talhão específico.
+    """
+    talhoes_alvo = obter_talhoes_alvo_rateio(rateio, safra)
+    if not talhoes_alvo or talhao not in talhoes_alvo:
+        return ZERO
+        
+    total_area = sum((t.area or ZERO) for t in talhoes_alvo)
+    if total_area <= ZERO:
+        return ZERO
+        
+    proporcao = (talhao.area or ZERO) / total_area
+    if tipo == 'real':
+        valor_total = (
+            (rateio.valor_total_homem_real or ZERO) +
+            (rateio.valor_total_maq_real or ZERO) +
+            (rateio.valor_total_diesel_real or ZERO) +
+            (rateio.valor_total_real or ZERO)
+        )
+    else:
+        valor_total = (
+            (rateio.valor_total_homem_plan or ZERO) +
+            (rateio.valor_total_maq_plan or ZERO) +
+            (rateio.valor_total_diesel_plan or ZERO) +
+            (rateio.valor_total_plan or ZERO)
+        )
+        
+    return valor_total * proporcao
 
 
 def machine_hour_value(maquina, safra, when):
@@ -305,6 +358,22 @@ def custo_por_talhao(safra, fazenda):
         if rateio.talhao_id in rows:
             rows[rateio.talhao_id]["custo_real"] += rateio.valor
 
+    # Adicionar rateios operacionais (Aba Rateios)
+    rateios_operacionais = RateioOperacional.objects.filter(
+        safra__nome=safra.nome,
+        safra__fazenda__proprietario=safra.fazenda.proprietario,
+        ativo=True
+    )
+    talhoes_ativos_nossa_fazenda = {t.id: t for t in Talhao.objects.filter(id__in=rows.keys())}
+    for rateio in rateios_operacionais:
+        for t_id, t_obj in talhoes_ativos_nossa_fazenda.items():
+            # Plan
+            share_plan = obter_valor_rateio_para_talhao(rateio, safra, t_obj, tipo='plan')
+            rows[t_id]["custo_planejado"] += share_plan
+            # Real
+            share_real = obter_valor_rateio_para_talhao(rateio, safra, t_obj, tipo='real')
+            rows[t_id]["custo_real"] += share_real
+
     result = []
     for row in rows.values():
         area = Decimal(str(row["area"]))
@@ -323,7 +392,14 @@ def custo_por_talhao(safra, fazenda):
 
 
 def custo_mensal(safra, fazenda):
-    months = defaultdict(lambda: {"custos": ZERO, "receitas": ZERO, "salarios": ZERO, "maquinas": ZERO, "estoque": ZERO})
+    months = defaultdict(lambda: {
+        "custos": ZERO, 
+        "receitas": ZERO, 
+        "salarios": ZERO, 
+        "maquinas": ZERO, 
+        "estoque": ZERO,
+        "custos_rateio_operacional": ZERO
+    })
 
     for item in ContasAPagar.objects.filter(safra=safra, fazenda=fazenda, ativo=True).exclude(status="CANCELADO"):
         key = month_key(item.data_pagamento or item.data_vencimento)
@@ -347,10 +423,41 @@ def custo_mensal(safra, fazenda):
     for item in movimentos:
         months[month_key(item.data_movimento)]["estoque"] += item.valor_total or ZERO
 
+    # Rateio Operacional
+    rateios = RateioOperacional.objects.filter(
+        safra__nome=safra.nome,
+        safra__fazenda__proprietario=safra.fazenda.proprietario,
+        ativo=True
+    )
+    for rateio in rateios:
+        total_real = (
+            (rateio.valor_total_homem_real or ZERO) +
+            (rateio.valor_total_maq_real or ZERO) +
+            (rateio.valor_total_diesel_real or ZERO) +
+            (rateio.valor_total_real or ZERO)
+        )
+        if total_real <= ZERO:
+            continue
+            
+        if rateio.fazenda_rateio:
+            if rateio.fazenda_rateio_id != fazenda.id:
+                continue
+            proporcao = Decimal('1.00')
+        else:
+            talhoes_alvo = obter_talhoes_alvo_rateio(rateio, safra)
+            total_area = sum(t.area for t in talhoes_alvo)
+            nossa_area = sum(t.area for t in talhoes_alvo if t.fazenda_id == fazenda.id)
+            proporcao = nossa_area / total_area if total_area > ZERO else ZERO
+            
+        valor_fazenda = total_real * proporcao
+        if valor_fazenda > ZERO:
+            key = month_key(rateio.data)
+            months[key]["custos_rateio_operacional"] += valor_fazenda
+
     rows = []
     for key in sorted(months):
         data = months[key]
-        total_custos = data["custos"] + data["salarios"] + data["maquinas"] + data["estoque"]
+        total_custos = data["custos"] + data["salarios"] + data["maquinas"] + data["estoque"] + data["custos_rateio_operacional"]
         rows.append(
             {
                 "mes": key,
@@ -359,6 +466,7 @@ def custo_mensal(safra, fazenda):
                 "salarios": money(data["salarios"]),
                 "maquinas": money(data["maquinas"]),
                 "estoque_consumido": money(data["estoque"]),
+                "custos_rateio_operacional": money(data["custos_rateio_operacional"]),
                 "receitas": money(data["receitas"]),
                 "total_custos": money(total_custos),
                 "resultado": money(data["receitas"] - total_custos),
@@ -578,6 +686,18 @@ def mao_obra_fixa(safra, fazenda):
     )
     for row in apontamentos:
         horas[(row["funcionario_id"], row["apontamento__data_apontamento__year"], row["apontamento__data_apontamento__month"])] = row["total"] or ZERO
+
+    # Adicionar horas do rateio operacional
+    rateios_horas = RateioOperacional.objects.filter(
+        safra__nome=safra.nome,
+        safra__fazenda__proprietario=safra.fazenda.proprietario,
+        funcionario_real__isnull=False,
+        horas_homem_real__gt=0,
+        ativo=True
+    )
+    for r in rateios_horas:
+        key = (r.funcionario_real_id, r.data.year, r.data.month)
+        horas[key] += r.horas_homem_real or ZERO
 
     rows = []
     for item in salarios:

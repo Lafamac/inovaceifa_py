@@ -6,13 +6,15 @@ from rest_framework.permissions import IsAuthenticated
 from .models import (
     OrdemServico, ApontamentoOperacao, ApontamentoInsumo,
     ApontamentoMaquina, ApontamentoFuncionario, AuditoriaOrdemServico,
-    GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina
+    GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina,
+    RateioOperacional
 )
 from .serializers import (
     OrdemServicoSerializer, ApontamentoOperacaoSerializer,
     ApontamentoInsumoSerializer, ApontamentoMaquinaSerializer,
     ApontamentoFuncionarioSerializer, AuditoriaOrdemServicoSerializer,
-    GastoRateioRealizadoSerializer, RateioTalhaoSerializer, AbastecimentoMaquinaSerializer
+    GastoRateioRealizadoSerializer, RateioTalhaoSerializer, AbastecimentoMaquinaSerializer,
+    RateioOperacionalSerializer
 )
 from planejamento.views import BaseTenantPlanejamentoViewSet
 
@@ -160,4 +162,33 @@ class AbastecimentoMaquinaViewSet(BaseTenantPlanejamentoViewSet):
         instance.save()
         from .services import remover_movimento_abastecimento
         remover_movimento_abastecimento(instance)
+
+
+class RateioOperacionalViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = RateioOperacional.objects.all()
+    serializer_class = RateioOperacionalSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.safra_ativa:
+            qs = qs.filter(safra=self.request.safra_ativa)
+        return qs
+
+    def perform_create(self, serializer):
+        rateio = serializer.save()
+        from .services import gerar_movimento_rateio_diesel
+        gerar_movimento_rateio_diesel(rateio)
+
+    def perform_update(self, serializer):
+        rateio = serializer.save()
+        from .services import gerar_movimento_rateio_diesel
+        gerar_movimento_rateio_diesel(rateio)
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save()
+        from .services import remover_movimento_rateio_diesel
+        remover_movimento_rateio_diesel(instance)
+
 

@@ -6,7 +6,7 @@ from core.models import Fazenda, Safra, Proprietario
 from referencias.models import TipoOperacao, UnidadeMedida, ClassificacaoProduto, TipoMaquina, GrupoTrabalhador, CriterioRateio, ContaGerencial
 from cadastros.models import Produto, Talhao, Maquina, Funcionario, EstoqueMovimento
 from planejamento.models import PlanejamentoSafra, OrdemServicoPlanejada
-from operacoes.models import OrdemServico, ApontamentoOperacao, AuditoriaOrdemServico, GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina
+from operacoes.models import OrdemServico, ApontamentoOperacao, AuditoriaOrdemServico, GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina, RateioOperacional
 from accounts.models import Perfil
 
 User = get_user_model()
@@ -283,5 +283,103 @@ class OperacoesAPITests(APITestCase):
         self.assertEqual(float(r2.valor), 600.00)
         self.assertEqual(float(r1.percentual), 40.00)
         self.assertEqual(float(r2.percentual), 60.00)
+
+    def test_rateio_operacional_stock_and_reports(self):
+        # 1. Setup
+        from referencias.models import AtividadeEducampo, TipoIrrigacao, Cultura
+        from cadastros.models import SalarioMensal
+        ti = TipoIrrigacao.objects.create(nome="Nenhum")
+        cult = Cultura.objects.create(nome="Café")
+        t1 = Talhao.objects.create(codigo="T01", nome="Talhao 01", area=20.00, fazenda=self.fazenda, tipo_irrigacao=ti, cultura=cult)
+        t2 = Talhao.objects.create(codigo="T02", nome="Talhao 02", area=30.00, fazenda=self.fazenda, tipo_irrigacao=ti, cultura=cult)
+        
+        atividade = AtividadeEducampo.objects.create(nome="Mão de Obra Geral")
+        grupo_func = GrupoTrabalhador.objects.create(nome="Tratoristas")
+        func = Funcionario.objects.create(nome="Funcionario Teste", fazenda=self.fazenda, cargo="Operador", grupo_trabalhador=grupo_func)
+        diesel = Produto.objects.create(nome_comercial="Óleo Diesel S10", unidade=self.unidade, classificacao=self.classificacao)
+        
+        # 2. Post RateioOperacional via API
+        url = reverse('operacao-rateio-operacional-list')
+        data = {
+            "safra": self.safra.id,
+            "data": "2026-06-01",
+            "fazenda_rateio": self.fazenda.id,
+            "atividade_educampo": atividade.id,
+            
+            # Planejado
+            "horas_homem_plan": "10.00",
+            "valor_hora_homem_plan": "20.00",
+            "qtd_plan": "1.00",
+            "valor_unitario_plan": "100.00",
+            
+            # Realizado
+            "funcionario_real": func.id,
+            "horas_homem_real": "8.00",
+            "valor_hora_homem_real": "25.00",
+            "combustivel_real": diesel.id,
+            "diesel_gasto_real": "50.00",
+            "valor_diesel_real": "6.00",
+            "qtd_real": "1.00",
+            "valor_unitario_real": "120.00"
+        }
+        res = self.client.post(url, data, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        rateio_id = res.data['id']
+        
+        # Verify save method autocalculated values
+        rateio = RateioOperacional.objects.get(id=rateio_id)
+        self.assertEqual(float(rateio.valor_total_homem_plan), 200.00)
+        self.assertEqual(float(rateio.valor_total_plan), 100.00)
+        self.assertEqual(float(rateio.valor_total_homem_real), 200.00)
+        self.assertEqual(float(rateio.valor_total_diesel_real), 300.00)
+        self.assertEqual(float(rateio.valor_total_real), 120.00)
+        
+        # Verify stock movement SAIDA was created automatically for diesel
+        mov = EstoqueMovimento.objects.filter(
+            documento_referencia=f"RATEIO #{rateio_id}",
+            tipo_movimento='SAIDA'
+        )
+        self.assertTrue(mov.exists())
+        self.assertEqual(float(mov.first().quantidade), 50.00)
+        self.assertEqual(float(mov.first().valor_total), 300.00)
+        
+        # 3. Verify report integration
+        from relatorios import services as report_services
+        
+        # Custo por Talhão: Total real: homem 200 + diesel 300 + outros 120 = 620
+        # Distributed by area (20 / 50 = 40%, 30 / 50 = 60%):
+        # T01 share real = 620 * 0.40 = 248.00
+        # T02 share real = 620 * 0.60 = 372.00
+        # T01 share plan = 300 (homem 200 + outros 100) * 0.40 = 120.00
+        # T02 share plan = 300 * 0.60 = 180.00
+        talhoes_report = report_services.custo_por_talhao(self.safra, self.fazenda)
+        t1_rep = next(r for r in talhoes_report if r["talhao_id"] == t1.id)
+        t2_rep = next(r for r in talhoes_report if r["talhao_id"] == t2.id)
+        self.assertEqual(t1_rep["custo_real"], 248.00)
+        self.assertEqual(t2_rep["custo_real"], 372.00)
+        self.assertEqual(t1_rep["custo_planejado"], 120.00)
+        self.assertEqual(t2_rep["custo_planejado"], 180.00)
+        
+        # Custo Mensal: 620 total real added to custos_rateio_operacional
+        mensal_report = report_services.custo_mensal(self.safra, self.fazenda)
+        month_rep = next(r for r in mensal_report if r["mes"] == "2026-06")
+        self.assertEqual(month_rep["custos_rateio_operacional"], 620.00)
+        
+        # Mão de Obra Fixa: func should have 8.00 hours from rateio
+        salario = SalarioMensal.objects.create(
+            safra=self.safra, funcionario=func, mes=6, ano=2026,
+            salario_base="2000.00", encargos="500.00", beneficios="200.00"
+        )
+        mof_report = report_services.mao_obra_fixa(self.safra, self.fazenda)
+        func_rep = next(r for r in mof_report if r["funcionario_id"] == func.id and r["mes"] == "2026-06")
+        self.assertEqual(func_rep["horas_trabalhadas"], 8.00)
+        
+        # 4. Delete RateioOperacional and check stock is inactivated
+        url_del = reverse('operacao-rateio-operacional-detail', args=[rateio_id])
+        res_del = self.client.delete(url_del)
+        self.assertEqual(res_del.status_code, status.HTTP_204_NO_CONTENT)
+        
+        mov = EstoqueMovimento.objects.filter(documento_referencia=f"RATEIO #{rateio_id}")
+        self.assertFalse(mov.filter(ativo=True).exists())
 
 

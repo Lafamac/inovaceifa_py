@@ -1,6 +1,6 @@
 from django.db import models
 from core.models import BaseModel, Fazenda, Safra
-from referencias.models import TipoOperacao, GrupoTrabalhador, CriterioRateio, ContaGerencial
+from referencias.models import TipoOperacao, GrupoTrabalhador, CriterioRateio, ContaGerencial, AtividadeEducampo
 from cadastros.models import Talhao, Produto, Maquina, Funcionario
 
 class OrdemServico(BaseModel):
@@ -192,3 +192,81 @@ class AbastecimentoMaquina(BaseModel):
 
     def __str__(self):
         return f"{self.maquina.codigo} - {self.quantidade}L ({self.data_abastecimento})"
+
+
+class RateioOperacional(BaseModel):
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='rateios_operacionais')
+    data = models.DateField()
+    fazenda_rateio = models.ForeignKey(Fazenda, on_delete=models.SET_NULL, null=True, blank=True, related_name='rateios_operacionais')
+    atividade_educampo = models.ForeignKey(AtividadeEducampo, on_delete=models.PROTECT)
+
+    # Planejado
+    descricao_plan = models.CharField(max_length=255, null=True, blank=True)
+    funcionario_plan = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, related_name='funcionario_plan_rateios')
+    horas_homem_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_hora_homem_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_homem_plan = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    trator_plan = models.ForeignKey(Maquina, on_delete=models.SET_NULL, null=True, blank=True, related_name='trator_plan_rateios')
+    implemento_plan = models.ForeignKey(Maquina, on_delete=models.SET_NULL, null=True, blank=True, related_name='implemento_plan_rateios')
+    horas_maq_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_hora_maq_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_maq_plan = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    combustivel_plan = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='combustivel_plan_rateios')
+    diesel_gasto_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_diesel_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_diesel_plan = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    qtd_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_unitario_plan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_plan = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+
+    # Realizado
+    descricao_real = models.CharField(max_length=255, null=True, blank=True)
+    funcionario_real = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, related_name='funcionario_real_rateios')
+    horas_homem_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_hora_homem_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_homem_real = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    trator_real = models.ForeignKey(Maquina, on_delete=models.SET_NULL, null=True, blank=True, related_name='trator_real_rateios')
+    implemento_real = models.ForeignKey(Maquina, on_delete=models.SET_NULL, null=True, blank=True, related_name='implemento_real_rateios')
+    horas_maq_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_hora_trator_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_hora_implemento_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_maq_real = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    combustivel_real = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='combustivel_real_rateios')
+    diesel_gasto_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_diesel_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_diesel_real = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    qtd_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_unitario_real = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    valor_total_real = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Rateio Operacional"
+        verbose_name_plural = "Rateios Operacionais"
+
+    def save(self, *args, **kwargs):
+        # Planejado
+        if self.horas_homem_plan is not None and self.valor_hora_homem_plan is not None:
+            self.valor_total_homem_plan = self.horas_homem_plan * self.valor_hora_homem_plan
+        if self.horas_maq_plan is not None and self.valor_hora_maq_plan is not None:
+            self.valor_total_maq_plan = self.horas_maq_plan * self.valor_hora_maq_plan
+        if self.diesel_gasto_plan is not None and self.valor_diesel_plan is not None:
+            self.valor_total_diesel_plan = self.diesel_gasto_plan * self.valor_diesel_plan
+        if self.qtd_plan is not None and self.valor_unitario_plan is not None:
+            self.valor_total_plan = self.qtd_plan * self.valor_unitario_plan
+
+        # Realizado
+        if self.horas_homem_real is not None and self.valor_hora_homem_real is not None:
+            self.valor_total_homem_real = self.horas_homem_real * self.valor_hora_homem_real
+        if self.horas_maq_real is not None:
+            trator_v = self.valor_hora_trator_real or 0
+            imple_v = self.valor_hora_implemento_real or 0
+            self.valor_total_maq_real = self.horas_maq_real * (trator_v + imple_v)
+        if self.diesel_gasto_real is not None and self.valor_diesel_real is not None:
+            self.valor_total_diesel_real = self.diesel_gasto_real * self.valor_diesel_real
+        if self.qtd_real is not None and self.valor_unitario_real is not None:
+            self.valor_total_real = self.qtd_real * self.valor_unitario_real
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Rateio {self.id} em {self.data} - {self.atividade_educampo.nome}"

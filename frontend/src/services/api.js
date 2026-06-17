@@ -131,6 +131,7 @@ const getInitialDB = () => {
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&auto=format&fit=crop",
       fazenda_padrao: 1
     },
+    rateios_operacionais: [],
     proprietarios: [
       { id: 1, nome: "Carlos Augusto de Souza", documento: "123.456.789-00", email: "carlos.souza@inovaceifa.com.br", celular: "(34) 99999-1234", cep: "38740-000", endereco: "Av. Rui Barbosa, 123", bairro: "Centro", cidade: "Patrocínio" }
     ],
@@ -1828,6 +1829,140 @@ export const relatorioService = {
       const idx = db.gastos_rateio?.findIndex(g => g.id === Number(id));
       if (idx !== -1 && idx !== undefined) {
         db.gastos_rateio[idx].ativo = false;
+        saveDB(db);
+        return true;
+      }
+      throw error;
+    }
+  },
+
+  getRateiosOperacionais: () => {
+    return requestHandler(
+      () => api.get('/api/rateios-operacionais/'),
+      () => getDB().rateios_operacionais || []
+    );
+  },
+
+  createRateioOperacional: async (data) => {
+    try {
+      const res = await api.post('/api/rateios-operacionais/', data);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.rateios_operacionais) db.rateios_operacionais = [];
+      const newId = db.rateios_operacionais.length > 0 ? Math.max(...db.rateios_operacionais.map(r => r.id)) + 1 : 1;
+      
+      const fazenda = db.fazendas?.find(f => f.id === Number(data.fazenda_rateio));
+      const educampo = db.atividadesEducampo?.find(a => a.id === Number(data.atividade_educampo)) || { nome: "Mão de Obra Geral" };
+      const funcPlan = db.funcionarios?.find(f => f.id === Number(data.funcionario_plan));
+      const funcReal = db.funcionarios?.find(f => f.id === Number(data.funcionario_real));
+      const tratorPlan = db.maquinas?.find(m => m.id === Number(data.trator_plan));
+      const tratorReal = db.maquinas?.find(m => m.id === Number(data.trator_real));
+      const implementoPlan = db.maquinas?.find(m => m.id === Number(data.implemento_plan));
+      const implementoReal = db.maquinas?.find(m => m.id === Number(data.implemento_real));
+      const combPlan = db.produtos?.find(p => p.id === Number(data.combustivel_plan));
+      const combReal = db.produtos?.find(p => p.id === Number(data.combustivel_real));
+
+      const newRateio = {
+        id: newId,
+        safra: Number(data.safra),
+        data: data.data,
+        fazenda_rateio: data.fazenda_rateio ? Number(data.fazenda_rateio) : null,
+        fazenda_rateio_nome: fazenda ? fazenda.nome : null,
+        atividade_educampo: Number(data.atividade_educampo),
+        atividade_educampo_nome: educampo.nome,
+        
+        // Planejado
+        descricao_plan: data.descricao_plan || null,
+        funcionario_plan: data.funcionario_plan ? Number(data.funcionario_plan) : null,
+        funcionario_plan_nome: funcPlan ? funcPlan.nome : null,
+        horas_homem_plan: data.horas_homem_plan ? Number(data.horas_homem_plan) : null,
+        valor_hora_homem_plan: data.valor_hora_homem_plan ? Number(data.valor_hora_homem_plan) : null,
+        valor_total_homem_plan: data.horas_homem_plan && data.valor_hora_homem_plan ? Number(data.horas_homem_plan) * Number(data.valor_hora_homem_plan) : null,
+        trator_plan: data.trator_plan ? Number(data.trator_plan) : null,
+        trator_plan_codigo: tratorPlan ? tratorPlan.codigo : null,
+        implemento_plan: data.implemento_plan ? Number(data.implemento_plan) : null,
+        implemento_plan_codigo: implementoPlan ? implementoPlan.codigo : null,
+        horas_maq_plan: data.horas_maq_plan ? Number(data.horas_maq_plan) : null,
+        valor_hora_maq_plan: data.valor_hora_maq_plan ? Number(data.valor_hora_maq_plan) : null,
+        valor_total_maq_plan: data.horas_maq_plan && data.valor_hora_maq_plan ? Number(data.horas_maq_plan) * Number(data.valor_hora_maq_plan) : null,
+        combustivel_plan: data.combustivel_plan ? Number(data.combustivel_plan) : null,
+        combustivel_plan_nome: combPlan ? combPlan.nome_comercial : null,
+        diesel_gasto_plan: data.diesel_gasto_plan ? Number(data.diesel_gasto_plan) : null,
+        valor_diesel_plan: data.valor_diesel_plan ? Number(data.valor_diesel_plan) : null,
+        valor_total_diesel_plan: data.diesel_gasto_plan && data.valor_diesel_plan ? Number(data.diesel_gasto_plan) * Number(data.valor_diesel_plan) : null,
+        qtd_plan: data.qtd_plan ? Number(data.qtd_plan) : null,
+        valor_unitario_plan: data.valor_unitario_plan ? Number(data.valor_unitario_plan) : null,
+        valor_total_plan: data.qtd_plan && data.valor_unitario_plan ? Number(data.qtd_plan) * Number(data.valor_unitario_plan) : null,
+
+        // Realizado
+        descricao_real: data.descricao_real || null,
+        funcionario_real: data.funcionario_real ? Number(data.funcionario_real) : null,
+        funcionario_real_nome: funcReal ? funcReal.nome : null,
+        horas_homem_real: data.horas_homem_real ? Number(data.horas_homem_real) : null,
+        valor_hora_homem_real: data.valor_hora_homem_real ? Number(data.valor_hora_homem_real) : null,
+        valor_total_homem_real: data.horas_homem_real && data.valor_hora_homem_real ? Number(data.horas_homem_real) * Number(data.valor_hora_homem_real) : null,
+        trator_real: data.trator_real ? Number(data.trator_real) : null,
+        trator_real_codigo: tratorReal ? tratorReal.codigo : null,
+        implemento_real: data.implemento_real ? Number(data.implemento_real) : null,
+        implemento_real_codigo: implementoReal ? implementoReal.codigo : null,
+        horas_maq_real: data.horas_maq_real ? Number(data.horas_maq_real) : null,
+        valor_hora_trator_real: data.valor_hora_trator_real ? Number(data.valor_hora_trator_real) : null,
+        valor_hora_implemento_real: data.valor_hora_implemento_real ? Number(data.valor_hora_implemento_real) : null,
+        valor_total_maq_real: data.horas_maq_real ? Number(data.horas_maq_real) * (Number(data.valor_hora_trator_real || 0) + Number(data.valor_hora_implemento_real || 0)) : null,
+        combustivel_real: data.combustivel_real ? Number(data.combustivel_real) : null,
+        combustivel_real_nome: combReal ? combReal.nome_comercial : null,
+        diesel_gasto_real: data.diesel_gasto_real ? Number(data.diesel_gasto_real) : null,
+        valor_diesel_real: data.valor_diesel_real ? Number(data.valor_diesel_real) : null,
+        valor_total_diesel_real: data.diesel_gasto_real && data.valor_diesel_real ? Number(data.diesel_gasto_real) * Number(data.valor_diesel_real) : null,
+        qtd_real: data.qtd_real ? Number(data.qtd_real) : null,
+        valor_unitario_real: data.valor_unitario_real ? Number(data.valor_unitario_real) : null,
+        valor_total_real: data.qtd_real && data.valor_unitario_real ? Number(data.qtd_real) * Number(data.valor_unitario_real) : null,
+
+        ativo: true
+      };
+
+      db.rateios_operacionais.push(newRateio);
+      
+      // Se houver consumo de diesel real, gerar saída no estoque
+      if (newRateio.combustivel_real && newRateio.diesel_gasto_real && newRateio.diesel_gasto_real > 0) {
+        if (!db.estoque_movimentos) db.estoque_movimentos = [];
+        const newMovId = db.estoque_movimentos.length > 0 ? Math.max(...db.estoque_movimentos.map(m => m.id)) + 1 : 1;
+        db.estoque_movimentos.push({
+          id: newMovId,
+          fazenda_id: newRateio.fazenda_rateio || newRateio.safra, // fallback
+          safra_id: newRateio.safra,
+          produto_id: newRateio.combustivel_real,
+          tipo_movimento: 'SAIDA',
+          quantidade: newRateio.diesel_gasto_real,
+          valor_unitario: newRateio.valor_diesel_real,
+          valor_total: newRateio.valor_total_diesel_real,
+          data_movimento: newRateio.data,
+          documento_referencia: `RATEIO #${newRateio.id}`,
+          observacao: `SAÍDA AUTOMÁTICA PELO CONSUMO REAL DE DIESEL NO RATEIO OPERACIONAL #${newRateio.id}.`,
+          ativo: true
+        });
+      }
+
+      saveDB(db);
+      return newRateio;
+    }
+  },
+
+  deleteRateioOperacional: async (id) => {
+    try {
+      await api.delete(`/api/rateios-operacionais/${id}/`);
+      return true;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const db = getDB();
+      const idx = db.rateios_operacionais?.findIndex(r => r.id === Number(id));
+      if (idx !== -1 && idx !== undefined) {
+        db.rateios_operacionais[idx].ativo = false;
+        const mov = db.estoque_movimentos?.find(m => m.documento_referencia === `RATEIO #${id}`);
+        if (mov) mov.ativo = false;
         saveDB(db);
         return true;
       }

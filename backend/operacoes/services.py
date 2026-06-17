@@ -178,3 +178,45 @@ def remover_movimento_abastecimento(abastecimento):
     EstoqueMovimento.objects.filter(
         documento_referencia=doc_ref
     ).update(ativo=False)
+
+
+@transaction.atomic
+def gerar_movimento_rateio_diesel(rateio):
+    """
+    Sincroniza o estoque gerando uma SAIDA correspondente do produto combustivel se houver consumo real no rateio.
+    """
+    doc_ref = f"RATEIO #{rateio.id}"
+    
+    # Remove para evitar duplicações (idempotência)
+    EstoqueMovimento.objects.filter(
+        documento_referencia=doc_ref,
+        tipo_movimento='SAIDA'
+    ).delete()
+
+    if rateio.ativo and rateio.combustivel_real and rateio.diesel_gasto_real and rateio.diesel_gasto_real > 0:
+        # Se fazenda_rateio for preenchido, usamos ela. Se for null (compartilhado), a fazenda padrão associada a essa safra será safra.fazenda.
+        fazenda_mov = rateio.fazenda_rateio or rateio.safra.fazenda
+        
+        EstoqueMovimento.objects.create(
+            fazenda=fazenda_mov,
+            safra=rateio.safra,
+            produto=rateio.combustivel_real,
+            tipo_movimento='SAIDA',
+            quantidade=rateio.diesel_gasto_real,
+            valor_unitario=rateio.valor_diesel_real or 0,
+            valor_total=rateio.valor_total_diesel_real or 0,
+            data_movimento=rateio.data,
+            documento_referencia=doc_ref,
+            observacao=f"SAÍDA AUTOMÁTICA PELO CONSUMO REAL DE DIESEL NO RATEIO OPERACIONAL #{rateio.id}."
+        )
+
+
+@transaction.atomic
+def remover_movimento_rateio_diesel(rateio):
+    """
+    Inativa a movimentação de estoque quando o rateio correspondente é inativado.
+    """
+    doc_ref = f"RATEIO #{rateio.id}"
+    EstoqueMovimento.objects.filter(
+        documento_referencia=doc_ref
+    ).update(ativo=False)
