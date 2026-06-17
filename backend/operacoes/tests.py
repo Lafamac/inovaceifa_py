@@ -3,10 +3,10 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from core.models import Fazenda, Safra, Proprietario
-from referencias.models import TipoOperacao, UnidadeMedida, ClassificacaoProduto, TipoMaquina, GrupoTrabalhador
-from cadastros.models import Produto, Talhao, Maquina, Funcionario
+from referencias.models import TipoOperacao, UnidadeMedida, ClassificacaoProduto, TipoMaquina, GrupoTrabalhador, CriterioRateio, ContaGerencial
+from cadastros.models import Produto, Talhao, Maquina, Funcionario, EstoqueMovimento
 from planejamento.models import PlanejamentoSafra, OrdemServicoPlanejada
-from operacoes.models import OrdemServico, ApontamentoOperacao, AuditoriaOrdemServico
+from operacoes.models import OrdemServico, ApontamentoOperacao, AuditoriaOrdemServico, GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina
 from accounts.models import Perfil
 
 User = get_user_model()
@@ -196,4 +196,92 @@ class OperacoesAPITests(APITestCase):
         
         self.os_real.refresh_from_db()
         self.assertEqual(self.os_real.status, 'CONCLUIDA')
+
+    def test_abastecimento_estoque_sync(self):
+        # 1. Setup machine and diesel product
+        tipo_maq = TipoMaquina.objects.create(nome="Trator")
+        maquina = Maquina.objects.create(
+            codigo="TR-AB", descricao="Trator Abastecimento",
+            fazenda=self.fazenda, tipo=tipo_maq
+        )
+        diesel = Produto.objects.create(
+            nome_comercial="Óleo Diesel S10",
+            unidade=self.unidade,
+            classificacao=self.classificacao
+        )
+
+        # 2. Post Abastecimento via API
+        url = reverse('operacao-abastecimento-list')
+        data = {
+            "fazenda": self.fazenda.id,
+            "safra": self.safra.id,
+            "maquina": maquina.id,
+            "data_abastecimento": "2026-06-01",
+            "combustivel": diesel.id,
+            "quantidade": "50.00",
+            "valor_unitario": "6.0000",
+            "valor_total": "300.00",
+            "horimetro": "120.50",
+            "observacao": "Abastecimento Teste"
+        }
+        res = self.client.post(url, data, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        ab_id = res.data['id']
+
+        # Verify stock movement SAIDA was created
+        mov = EstoqueMovimento.objects.filter(
+            documento_referencia=f"ABASTECIMENTO #{ab_id}",
+            tipo_movimento='SAIDA'
+        )
+        self.assertTrue(mov.exists())
+        self.assertEqual(float(mov.first().quantidade), 50.00)
+
+        # 3. Delete Abastecimento
+        url_del = reverse('operacao-abastecimento-detail', args=[ab_id])
+        res_del = self.client.delete(url_del)
+        self.assertEqual(res_del.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Verify stock movement was inactivated
+        mov = EstoqueMovimento.objects.filter(documento_referencia=f"ABASTECIMENTO #{ab_id}")
+        self.assertFalse(mov.filter(ativo=True).exists())
+
+    def test_rateio_distribuicao_area(self):
+        # 1. Setup criterio, conta, and 2 talhões
+        criterio_area = CriterioRateio.objects.create(nome="Área (Hectares)")
+        conta = ContaGerencial.objects.create(nome="Energia Elétrica")
+        
+        from referencias.models import TipoIrrigacao, Cultura
+        ti = TipoIrrigacao.objects.create(nome="Nenhum")
+        cult = Cultura.objects.create(nome="Café")
+        t1 = Talhao.objects.create(codigo="T01", nome="Talhao 01", area=20.00, fazenda=self.fazenda, tipo_irrigacao=ti, cultura=cult)
+        t2 = Talhao.objects.create(codigo="T02", nome="Talhao 02", area=30.00, fazenda=self.fazenda, tipo_irrigacao=ti, cultura=cult)
+
+        # 2. Post GastoRateioRealizado via API
+        url = reverse('operacao-gasto-rateio-list')
+        data = {
+            "fazenda": self.fazenda.id,
+            "safra": self.safra.id,
+            "criterio_rateio": criterio_area.id,
+            "conta_gerencial": conta.id,
+            "valor": "1000.00",
+            "data_gasto": "2026-06-01",
+            "observacao": "Conta de Luz Junho"
+        }
+        res = self.client.post(url, data, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        gasto_id = res.data['id']
+
+        # Verify RateioTalhao was created automatically
+        rateios = RateioTalhao.objects.filter(gasto_rateio_id=gasto_id, ativo=True)
+        self.assertEqual(rateios.count(), 2)
+        
+        # Verify areas division: 20/50 = 40%, 30/50 = 60%
+        # Talhao 1 should get 400.00, Talhao 2 should get 600.00
+        r1 = rateios.get(talhao=t1)
+        r2 = rateios.get(talhao=t2)
+        self.assertEqual(float(r1.valor), 400.00)
+        self.assertEqual(float(r2.valor), 600.00)
+        self.assertEqual(float(r1.percentual), 40.00)
+        self.assertEqual(float(r2.percentual), 60.00)
+
 

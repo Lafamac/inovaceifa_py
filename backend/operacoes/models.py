@@ -1,6 +1,6 @@
 from django.db import models
 from core.models import BaseModel, Fazenda, Safra
-from referencias.models import TipoOperacao, GrupoTrabalhador
+from referencias.models import TipoOperacao, GrupoTrabalhador, CriterioRateio, ContaGerencial
 from cadastros.models import Talhao, Produto, Maquina, Funcionario
 
 class OrdemServico(BaseModel):
@@ -141,3 +141,54 @@ class AuditoriaOrdemServico(BaseModel):
 
     def __str__(self):
         return f"Auditoria {self.get_tipo_desvio_display()} - OS {self.ordem_servico.id}"
+
+class GastoRateioRealizado(BaseModel):
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='gastos_rateio_realizados')
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='gastos_rateio_realizados')
+    criterio_rateio = models.ForeignKey(CriterioRateio, on_delete=models.PROTECT)
+    conta_gerencial = models.ForeignKey(ContaGerencial, on_delete=models.PROTECT)
+    valor = models.DecimalField(max_digits=12, decimal_places=2)
+    data_gasto = models.DateField()
+    observacao = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Gasto de Rateio Realizado"
+        verbose_name_plural = "Gastos de Rateio Realizados"
+
+    def __str__(self):
+        return f"{self.conta_gerencial.nome} - {self.valor} ({self.data_gasto})"
+
+
+class RateioTalhao(BaseModel):
+    gasto_rateio = models.ForeignKey(GastoRateioRealizado, on_delete=models.CASCADE, related_name='rateios_talhoes')
+    talhao = models.ForeignKey(Talhao, on_delete=models.PROTECT)
+    valor = models.DecimalField(max_digits=12, decimal_places=2)
+    percentual = models.DecimalField(max_digits=5, decimal_places=2)
+
+    class Meta:
+        verbose_name = "Rateio por Talhão"
+        verbose_name_plural = "Rateios por Talhão"
+        unique_together = ('gasto_rateio', 'talhao', 'ativo')
+
+    def __str__(self):
+        return f"{self.talhao.codigo} - {self.valor} ({self.percentual}%)"
+
+
+class AbastecimentoMaquina(BaseModel):
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='abastecimentos')
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='abastecimentos')
+    maquina = models.ForeignKey(Maquina, on_delete=models.PROTECT)
+    data_abastecimento = models.DateField()
+    combustivel = models.ForeignKey(Produto, on_delete=models.PROTECT)
+    quantidade = models.DecimalField(max_digits=10, decimal_places=2)
+    valor_unitario = models.DecimalField(max_digits=10, decimal_places=4)
+    valor_total = models.DecimalField(max_digits=12, decimal_places=2)
+    horimetro = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    observacao = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Abastecimento de Máquina"
+        verbose_name_plural = "Abastecimentos de Máquina"
+
+    def __str__(self):
+        return f"{self.maquina.codigo} - {self.quantidade}L ({self.data_abastecimento})"

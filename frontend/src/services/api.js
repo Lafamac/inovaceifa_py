@@ -1559,6 +1559,280 @@ export const relatorioService = {
       saveDB(db);
       return newConta;
     }
+  },
+
+  getAbastecimentos: () => {
+    return requestHandler(
+      () => api.get('/api/abastecimentos/'),
+      () => getDB().abastecimentos || []
+    );
+  },
+
+  createAbastecimento: async (data) => {
+    try {
+      const res = await api.post('/api/abastecimentos/', data);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.abastecimentos) db.abastecimentos = [];
+      const newId = db.abastecimentos.length > 0 ? Math.max(...db.abastecimentos.map(a => a.id)) + 1 : 1;
+      const combustivel = db.produtos?.find(p => p.id === Number(data.combustivel)) || { nome_comercial: "Diesel S10", unidade_sigla: "L" };
+      const maquina = db.maquinas?.find(m => m.id === Number(data.maquina)) || { codigo: "TR-01", descricao: "Trator" };
+      const newAbt = {
+        id: newId,
+        fazenda: Number(data.fazenda),
+        safra: Number(data.safra),
+        maquina: Number(data.maquina),
+        maquina_codigo: maquina.codigo,
+        maquina_descricao: maquina.descricao,
+        data_abastecimento: data.data_abastecimento,
+        combustivel: Number(data.combustivel),
+        combustivel_nome: combustivel.nome_comercial,
+        quantidade: Number(data.quantidade),
+        valor_unitario: Number(data.valor_unitario),
+        valor_total: Number(data.valor_total),
+        horimetro: data.horimetro ? Number(data.horimetro) : null,
+        observacao: data.observacao,
+        ativo: true
+      };
+      db.abastecimentos.push(newAbt);
+      
+      if (!db.estoque_movimentos) db.estoque_movimentos = [];
+      const newMovId = db.estoque_movimentos.length > 0 ? Math.max(...db.estoque_movimentos.map(m => m.id)) + 1 : 1;
+      db.estoque_movimentos.push({
+        id: newMovId,
+        fazenda_id: newAbt.fazenda,
+        safra_id: newAbt.safra,
+        produto_id: newAbt.combustivel,
+        tipo_movimento: 'SAIDA',
+        quantidade: newAbt.quantidade,
+        valor_unitario: newAbt.valor_unitario,
+        valor_total: newAbt.valor_total,
+        data_movimento: newAbt.data_abastecimento,
+        documento_referencia: `ABASTECIMENTO #${newAbt.id}`,
+        observacao: `SAÍDA AUTOMÁTICA PELO ABASTECIMENTO DA MÁQUINA ${newAbt.maquina_codigo}.`,
+        ativo: true
+      });
+
+      saveDB(db);
+      return newAbt;
+    }
+  },
+
+  updateAbastecimento: async (id, data) => {
+    try {
+      const res = await api.put(`/api/abastecimentos/${id}/`, data);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const idx = db.abastecimentos?.findIndex(a => a.id === Number(id));
+      if (idx !== -1 && idx !== undefined) {
+        const combustivel = db.produtos?.find(p => p.id === Number(data.combustivel)) || { nome_comercial: "Diesel S10", unidade_sigla: "L" };
+        const maquina = db.maquinas?.find(m => m.id === Number(data.maquina)) || { codigo: "TR-01", descricao: "Trator" };
+        db.abastecimentos[idx] = {
+          ...db.abastecimentos[idx],
+          maquina: Number(data.maquina),
+          maquina_codigo: maquina.codigo,
+          maquina_descricao: maquina.descricao,
+          data_abastecimento: data.data_abastecimento,
+          combustivel: Number(data.combustivel),
+          combustivel_nome: combustivel.nome_comercial,
+          quantidade: Number(data.quantidade),
+          valor_unitario: Number(data.valor_unitario),
+          valor_total: Number(data.valor_total),
+          horimetro: data.horimetro ? Number(data.horimetro) : null,
+          observacao: data.observacao
+        };
+        const mov = db.estoque_movimentos?.find(m => m.documento_referencia === `ABASTECIMENTO #${id}`);
+        if (mov) {
+          mov.produto_id = Number(data.combustivel);
+          mov.quantidade = Number(data.quantidade);
+          mov.valor_unitario = Number(data.valor_unitario);
+          mov.valor_total = Number(data.valor_total);
+          mov.data_movimento = data.data_abastecimento;
+        }
+        saveDB(db);
+        return db.abastecimentos[idx];
+      }
+      throw error;
+    }
+  },
+
+  deleteAbastecimento: async (id) => {
+    try {
+      await api.delete(`/api/abastecimentos/${id}/`);
+      return true;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const db = getDB();
+      const idx = db.abastecimentos?.findIndex(a => a.id === Number(id));
+      if (idx !== -1 && idx !== undefined) {
+        db.abastecimentos[idx].ativo = false;
+        const mov = db.estoque_movimentos?.find(m => m.documento_referencia === `ABASTECIMENTO #${id}`);
+        if (mov) mov.ativo = false;
+        saveDB(db);
+        return true;
+      }
+      throw error;
+    }
+  },
+
+  getGastosRateio: () => {
+    return requestHandler(
+      () => api.get('/api/gastos-rateio/'),
+      () => getDB().gastos_rateio || []
+    );
+  },
+
+  createGastoRateio: async (data) => {
+    try {
+      const res = await api.post('/api/gastos-rateio/', data);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.gastos_rateio) db.gastos_rateio = [];
+      const newId = db.gastos_rateio.length > 0 ? Math.max(...db.gastos_rateio.map(g => g.id)) + 1 : 1;
+      const criterio = db.criterios_rateio?.find(c => c.id === Number(data.criterio_rateio)) || { nome: "Área (Hectares)" };
+      const conta = db.contas_gerenciais?.find(c => c.id === Number(data.conta_gerencial)) || { nome: "Despesa" };
+      const newGasto = {
+        id: newId,
+        fazenda: Number(data.fazenda),
+        safra: Number(data.safra),
+        criterio_rateio: Number(data.criterio_rateio),
+        criterio_rateio_nome: criterio.nome,
+        conta_gerencial: Number(data.conta_gerencial),
+        conta_gerencial_nome: conta.nome,
+        valor: Number(data.valor),
+        data_gasto: data.data_gasto,
+        observacao: data.observacao,
+        rateios_talhoes: [],
+        ativo: true
+      };
+
+      const talhoes = db.talhoes.filter(t => t.fazenda_id === newGasto.fazenda);
+      if (criterio.nome === "Área (Hectares)") {
+        const totalArea = talhoes.reduce((acc, curr) => acc + curr.area, 0);
+        if (totalArea > 0) {
+          newGasto.rateios_talhoes = talhoes.map(t => {
+            const pct = (t.area / totalArea) * 100;
+            const val = newGasto.valor * (t.area / totalArea);
+            return {
+              id: Math.random(),
+              talhao: t.id,
+              talhao_codigo: t.nome.split(" - ")[0],
+              talhao_nome: t.nome.split(" - ")[1] || t.nome,
+              valor: Number(val.toFixed(2)),
+              percentual: Number(pct.toFixed(2))
+            };
+          });
+        }
+      } else {
+        const count = talhoes.length;
+        if (count > 0) {
+          newGasto.rateios_talhoes = talhoes.map(t => {
+            const pct = 100 / count;
+            const val = newGasto.valor / count;
+            return {
+              id: Math.random(),
+              talhao: t.id,
+              talhao_codigo: t.nome.split(" - ")[0],
+              talhao_nome: t.nome.split(" - ")[1] || t.nome,
+              valor: Number(val.toFixed(2)),
+              percentual: Number(pct.toFixed(2))
+            };
+          });
+        }
+      }
+
+      db.gastos_rateio.push(newGasto);
+      saveDB(db);
+      return newGasto;
+    }
+  },
+
+  updateGastoRateio: async (id, data) => {
+    try {
+      const res = await api.put(`/api/gastos-rateio/${id}/`, data);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const idx = db.gastos_rateio?.findIndex(g => g.id === Number(id));
+      if (idx !== -1 && idx !== undefined) {
+        const criterio = db.criterios_rateio?.find(c => c.id === Number(data.criterio_rateio)) || { nome: "Área (Hectares)" };
+        const conta = db.contas_gerenciais?.find(c => c.id === Number(data.conta_gerencial)) || { nome: "Despesa" };
+        const gasto = db.gastos_rateio[idx];
+        gasto.criterio_rateio = Number(data.criterio_rateio);
+        gasto.criterio_rateio_nome = criterio.nome;
+        gasto.conta_gerencial = Number(data.conta_gerencial);
+        gasto.conta_gerencial_nome = conta.nome;
+        gasto.valor = Number(data.valor);
+        gasto.data_gasto = data.data_gasto;
+        gasto.observacao = data.observacao;
+
+        const talhoes = db.talhoes.filter(t => t.fazenda_id === gasto.fazenda);
+        if (criterio.nome === "Área (Hectares)") {
+          const totalArea = talhoes.reduce((acc, curr) => acc + curr.area, 0);
+          if (totalArea > 0) {
+            gasto.rateios_talhoes = talhoes.map(t => {
+              const pct = (t.area / totalArea) * 100;
+              const val = gasto.valor * (t.area / totalArea);
+              return {
+                id: Math.random(),
+                talhao: t.id,
+                talhao_codigo: t.nome.split(" - ")[0],
+                talhao_nome: t.nome.split(" - ")[1] || t.nome,
+                valor: Number(val.toFixed(2)),
+                percentual: Number(pct.toFixed(2))
+              };
+            });
+          }
+        } else {
+          const count = talhoes.length;
+          if (count > 0) {
+            gasto.rateios_talhoes = talhoes.map(t => {
+              const pct = 100 / count;
+              const val = gasto.valor / count;
+              return {
+                id: Math.random(),
+                talhao: t.id,
+                talhao_codigo: t.nome.split(" - ")[0],
+                talhao_nome: t.nome.split(" - ")[1] || t.nome,
+                valor: Number(val.toFixed(2)),
+                percentual: Number(pct.toFixed(2))
+              };
+            });
+          }
+        }
+        saveDB(db);
+        return gasto;
+      }
+      throw error;
+    }
+  },
+
+  deleteGastoRateio: async (id) => {
+    try {
+      await api.delete(`/api/gastos-rateio/${id}/`);
+      return true;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const db = getDB();
+      const idx = db.gastos_rateio?.findIndex(g => g.id === Number(id));
+      if (idx !== -1 && idx !== undefined) {
+        db.gastos_rateio[idx].ativo = false;
+        saveDB(db);
+        return true;
+      }
+      throw error;
+    }
   }
 };
 

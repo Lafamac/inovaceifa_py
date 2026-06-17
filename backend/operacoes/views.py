@@ -5,12 +5,14 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import (
     OrdemServico, ApontamentoOperacao, ApontamentoInsumo,
-    ApontamentoMaquina, ApontamentoFuncionario, AuditoriaOrdemServico
+    ApontamentoMaquina, ApontamentoFuncionario, AuditoriaOrdemServico,
+    GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina
 )
 from .serializers import (
     OrdemServicoSerializer, ApontamentoOperacaoSerializer,
     ApontamentoInsumoSerializer, ApontamentoMaquinaSerializer,
-    ApontamentoFuncionarioSerializer, AuditoriaOrdemServicoSerializer
+    ApontamentoFuncionarioSerializer, AuditoriaOrdemServicoSerializer,
+    GastoRateioRealizadoSerializer, RateioTalhaoSerializer, AbastecimentoMaquinaSerializer
 )
 from planejamento.views import BaseTenantPlanejamentoViewSet
 
@@ -125,3 +127,37 @@ class AuditoriaOrdemServicoViewSet(BaseTenantPlanejamentoViewSet):
     queryset = AuditoriaOrdemServico.objects.all()
     serializer_class = AuditoriaOrdemServicoSerializer
     permission_classes = [IsAuthenticated]
+
+
+class GastoRateioRealizadoViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = GastoRateioRealizado.objects.all()
+    serializer_class = GastoRateioRealizadoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save()
+        instance.rateios_talhoes.all().update(ativo=False)
+
+
+class AbastecimentoMaquinaViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = AbastecimentoMaquina.objects.all()
+    serializer_class = AbastecimentoMaquinaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        abastecimento = serializer.save()
+        from .services import gerar_movimento_abastecimento
+        gerar_movimento_abastecimento(abastecimento)
+
+    def perform_update(self, serializer):
+        abastecimento = serializer.save()
+        from .services import gerar_movimento_abastecimento
+        gerar_movimento_abastecimento(abastecimento)
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save()
+        from .services import remover_movimento_abastecimento
+        remover_movimento_abastecimento(instance)
+

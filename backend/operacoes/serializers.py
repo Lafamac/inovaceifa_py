@@ -4,7 +4,8 @@ from cadastros.serializers import FuncionarioSerializer, MaquinaSerializer, Prod
 from .models import (
     OrdemServico, OrdemServicoTalhao, ItemInsumoOSReal,
     ApontamentoOperacao, ApontamentoInsumo, ApontamentoMaquina,
-    ApontamentoFuncionario, AuditoriaOrdemServico
+    ApontamentoFuncionario, AuditoriaOrdemServico,
+    GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina
 )
 
 class ApontamentoInsumoSerializer(serializers.ModelSerializer):
@@ -116,3 +117,55 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
                 except Talhao.DoesNotExist:
                     pass
         return instance
+
+
+class RateioTalhaoSerializer(serializers.ModelSerializer):
+    talhao_codigo = serializers.CharField(source='talhao.codigo', read_only=True)
+    talhao_nome = serializers.CharField(source='talhao.nome', read_only=True)
+
+    class Meta:
+        model = RateioTalhao
+        fields = '__all__'
+
+
+class GastoRateioRealizadoSerializer(serializers.ModelSerializer):
+    criterio_rateio_nome = serializers.CharField(source='criterio_rateio.nome', read_only=True)
+    conta_gerencial_nome = serializers.CharField(source='conta_gerencial.nome', read_only=True)
+    rateios_talhoes = RateioTalhaoSerializer(many=True, read_only=True)
+    talhoes_dados = serializers.JSONField(write_only=True, required=False, allow_null=True)
+
+    class Meta:
+        model = GastoRateioRealizado
+        fields = [
+            'id', 'fazenda', 'safra', 'criterio_rateio', 'criterio_rateio_nome',
+            'conta_gerencial', 'conta_gerencial_nome', 'valor', 'data_gasto',
+            'observacao', 'rateios_talhoes', 'talhoes_dados', 'ativo',
+            'created_at', 'updated_at'
+        ]
+
+    def create(self, validated_data):
+        talhoes_dados = validated_data.pop('talhoes_dados', None)
+        gasto = GastoRateioRealizado.objects.create(**validated_data)
+        from .services import calcular_e_salvar_rateio_realizado
+        calcular_e_salvar_rateio_realizado(gasto, dados_talhoes=talhoes_dados)
+        return gasto
+
+    def update(self, instance, validated_data):
+        talhoes_dados = validated_data.pop('talhoes_dados', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        from .services import calcular_e_salvar_rateio_realizado
+        calcular_e_salvar_rateio_realizado(instance, dados_talhoes=talhoes_dados)
+        return instance
+
+
+class AbastecimentoMaquinaSerializer(serializers.ModelSerializer):
+    maquina_codigo = serializers.CharField(source='maquina.codigo', read_only=True)
+    maquina_descricao = serializers.CharField(source='maquina.descricao', read_only=True)
+    combustivel_nome = serializers.CharField(source='combustivel.nome_comercial', read_only=True)
+
+    class Meta:
+        model = AbastecimentoMaquina
+        fields = '__all__'
+

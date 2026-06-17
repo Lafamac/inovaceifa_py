@@ -19,6 +19,7 @@ from operacoes.models import (
     ApontamentoMaquina,
     OrdemServico,
     OrdemServicoTalhao,
+    RateioTalhao,
 )
 from planejamento.models import (
     ItemInsumoOSPlanejado,
@@ -292,6 +293,17 @@ def custo_por_talhao(safra, fazenda):
         for talhao_id, value in distribute_by_os_talhoes(ordem, total_os).items():
             if talhao_id in rows:
                 rows[talhao_id]["custo_real"] += value
+
+    # Adicionar custos de rateio realizados
+    rateios_reais = RateioTalhao.objects.filter(
+        gasto_rateio__safra=safra,
+        gasto_rateio__fazenda=fazenda,
+        gasto_rateio__ativo=True,
+        ativo=True
+    )
+    for rateio in rateios_reais:
+        if rateio.talhao_id in rows:
+            rows[rateio.talhao_id]["custo_real"] += rateio.valor
 
     result = []
     for row in rows.values():

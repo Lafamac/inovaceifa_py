@@ -23,7 +23,9 @@ import {
   Gauge,
   Clock,
   ChevronDown,
-  Printer
+  Printer,
+  Fuel,
+  Coins
 } from 'lucide-react';
 
 export const OrdensServico = () => {
@@ -40,6 +42,38 @@ export const OrdensServico = () => {
 
   // Estados de Filtro
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Módulo de Rateio e Abastecimento
+  const [activeSubTab, setActiveSubTab] = useState('os');
+  const [abastecimentos, setAbastecimentos] = useState([]);
+  const [gastosRateio, setGastosRateio] = useState([]);
+  const [criteriosRateio, setCriteriosRateio] = useState([]);
+  const [contasGerenciais, setContasGerenciais] = useState([]);
+
+  const [showNewAbtModal, setShowNewAbtModal] = useState(false);
+  const [showNewRateioModal, setShowNewRateioModal] = useState(false);
+
+  // Formulário de Abastecimento
+  const [abtForm, setAbtForm] = useState({
+    maquina: '',
+    combustivel: '',
+    data_abastecimento: new Date().toISOString().slice(0, 10),
+    quantidade: '',
+    valor_unitario: '',
+    valor_total: 0,
+    horimetro: '',
+    observacao: ''
+  });
+
+  // Formulário de Rateio
+  const [rateioForm, setRateioForm] = useState({
+    criterio_rateio: '',
+    conta_gerencial: '',
+    valor: '',
+    data_gasto: new Date().toISOString().slice(0, 10),
+    observacao: '',
+    talhoes_dados: {} // mapeamento de talhao_id -> { valor, percentual }
+  });
 
   // Referências para criação e apontamentos
   const [tiposOperacao, setTiposOperacao] = useState([]);
@@ -92,14 +126,46 @@ export const OrdensServico = () => {
     }, 4500);
   };
 
+  const fetchAbastecimentos = useCallback(async () => {
+    if (!safraAtiva || !fazendaAtiva) return;
+    try {
+      const list = await relatorioService.getAbastecimentos();
+      const filtrados = list.filter(a => 
+        (a.fazenda_id === fazendaAtiva.id || a.fazenda === fazendaAtiva.id) &&
+        (a.safra_id === safraAtiva.id || a.safra === safraAtiva.id) &&
+        a.ativo !== false
+      );
+      setAbastecimentos(filtrados);
+    } catch (err) {
+      console.error("Erro ao carregar abastecimentos", err);
+    }
+  }, [safraAtiva, fazendaAtiva]);
+
+  const fetchGastosRateio = useCallback(async () => {
+    if (!safraAtiva || !fazendaAtiva) return;
+    try {
+      const list = await relatorioService.getGastosRateio();
+      const filtrados = list.filter(g => 
+        (g.fazenda_id === fazendaAtiva.id || g.fazenda === fazendaAtiva.id) &&
+        (g.safra_id === safraAtiva.id || g.safra === safraAtiva.id) &&
+        g.ativo !== false
+      );
+      setGastosRateio(filtrados);
+    } catch (err) {
+      console.error("Erro ao carregar gastos de rateio", err);
+    }
+  }, [safraAtiva, fazendaAtiva]);
+
   const loadReferences = useCallback(async () => {
     try {
-      const [resOps, resTalhoes, resProds, resMaquinas, resFuncs] = await Promise.all([
+      const [resOps, resTalhoes, resProds, resMaquinas, resFuncs, resCriterios, resContas] = await Promise.all([
         api.get('/api/ref/tipos-operacao/'),
         api.get('/api/talhoes/'),
         api.get('/api/produtos/'),
         api.get('/api/maquinas/'),
-        api.get('/api/funcionarios/')
+        api.get('/api/funcionarios/'),
+        api.get('/api/ref/criterios-rateio/'),
+        api.get('/api/ref/contas-gerenciais/')
       ]);
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
@@ -123,6 +189,8 @@ export const OrdensServico = () => {
       setMaquinas(filterByProprietario(resMaquinas.data?.results || resMaquinas.data || []));
       setFuncionarios(filterByProprietario(resFuncs.data?.results || resFuncs.data || []));
       setProdutos(resProds.data?.results || resProds.data || []);
+      setCriteriosRateio(resCriterios.data?.results || resCriterios.data || []);
+      setContasGerenciais(resContas.data?.results || resContas.data || []);
     } catch (err) {
       console.error("Erro ao carregar referências de OS", err);
     }
@@ -165,8 +233,10 @@ export const OrdensServico = () => {
 
   useEffect(() => {
     fetchOrdensServico();
+    fetchAbastecimentos();
+    fetchGastosRateio();
     loadReferences();
-  }, [fetchOrdensServico, loadReferences]);
+  }, [fetchOrdensServico, fetchAbastecimentos, fetchGastosRateio, loadReferences]);
 
   const handleIniciarOS = async (id) => {
     setSaving(true);
@@ -443,6 +513,227 @@ export const OrdensServico = () => {
 
   const lookup = (list, id, field = 'nome') => list.find(item => item.id === Number(id))?.[field] || '-';
 
+  // Salvar Abastecimento
+  const handleCreateAbastecimento = async (e) => {
+    e.preventDefault();
+    if (!abtForm.maquina || !abtForm.combustivel || !abtForm.quantidade || !abtForm.valor_unitario) {
+      showAlert('error', 'Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    const qty = Number(abtForm.quantidade);
+    const price = Number(abtForm.valor_unitario);
+    const hor = abtForm.horimetro ? Number(abtForm.horimetro) : null;
+
+    if (qty < 0 || price < 0 || (hor !== null && hor < 0)) {
+      showAlert('error', 'Quantidade, valor unitário e horímetro não podem ser negativos.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        fazenda: fazendaAtiva.id,
+        safra: safraAtiva.id,
+        maquina: Number(abtForm.maquina),
+        combustivel: Number(abtForm.combustivel),
+        data_abastecimento: abtForm.data_abastecimento,
+        quantidade: qty,
+        valor_unitario: price,
+        valor_total: Number((qty * price).toFixed(2)),
+        horimetro: hor,
+        observacao: abtForm.observacao.toUpperCase()
+      };
+
+      await relatorioService.createAbastecimento(payload);
+      showAlert('success', 'Abastecimento registrado com sucesso.');
+      setShowNewAbtModal(false);
+      setAbtForm({
+        maquina: '',
+        combustivel: '',
+        data_abastecimento: new Date().toISOString().slice(0, 10),
+        quantidade: '',
+        valor_unitario: '',
+        valor_total: 0,
+        horimetro: '',
+        observacao: ''
+      });
+      await fetchAbastecimentos();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao salvar o abastecimento.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAbastecimento = async (id) => {
+    if (!window.confirm("Deseja realmente excluir este abastecimento?")) return;
+    try {
+      await relatorioService.deleteAbastecimento(id);
+      showAlert('success', 'Abastecimento excluído.');
+      await fetchAbastecimentos();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao excluir o abastecimento.');
+    }
+  };
+
+  // Salvar Gasto Rateio Realizado
+  const handleCreateGastoRateio = async (e) => {
+    e.preventDefault();
+    if (!rateioForm.criterio_rateio || !rateioForm.conta_gerencial || !rateioForm.valor) {
+      showAlert('error', 'Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    const val = Number(rateioForm.valor);
+    if (val <= 0) {
+      showAlert('error', 'O valor do gasto deve ser maior que zero.');
+      return;
+    }
+
+    const criterio = criteriosRateio.find(c => c.id === Number(rateioForm.criterio_rateio));
+    const isManual = criterio && ["Direto", "Por Talhão"].includes(criterio.nome);
+
+    let talhoes_dados = [];
+    if (isManual) {
+      // Validar distribuição manual
+      let somaPercentual = 0;
+      let somaValor = 0;
+      
+      for (const t of talhoes) {
+        const tDados = rateioForm.talhoes_dados[t.id] || { valor: 0, percentual: 0 };
+        const tVal = Number(tDados.valor || 0);
+        const tPct = Number(tDados.percentual || 0);
+        
+        if (tVal < 0 || tPct < 0) {
+          showAlert('error', 'Valores ou percentuais não podem ser negativos.');
+          return;
+        }
+        
+        if (tVal > 0 || tPct > 0) {
+          somaPercentual += tPct;
+          somaValor += tVal;
+          talhoes_dados.push({
+            talhao_id: t.id,
+            valor: tVal,
+            percentual: tPct
+          });
+        }
+      }
+
+      if (talhoes_dados.length === 0) {
+        showAlert('error', 'Por favor, distribua o valor do rateio entre os talões.');
+        return;
+      }
+
+      // Validar se soma fecha (permite pequena margem de arredondamento)
+      const diffPercent = Math.abs(somaPercentual - 100);
+      const diffValue = Math.abs(somaValor - val);
+
+      if (diffPercent > 0.05 && diffValue > 0.05) {
+        showAlert('error', `A soma da distribuição não fecha com o valor total (Valor: R$ ${somaValor.toFixed(2)} vs R$ ${val.toFixed(2)} | Percentual: ${somaPercentual.toFixed(2)}% vs 100%).`);
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        fazenda: fazendaAtiva.id,
+        safra: safraAtiva.id,
+        criterio_rateio: Number(rateioForm.criterio_rateio),
+        conta_gerencial: Number(rateioForm.conta_gerencial),
+        valor: val,
+        data_gasto: rateioForm.data_gasto,
+        observacao: rateioForm.observacao.toUpperCase(),
+        talhoes_dados: isManual ? talhoes_dados : null
+      };
+
+      await relatorioService.createGastoRateio(payload);
+      showAlert('success', 'Lançamento de rateio registrado.');
+      setShowNewRateioModal(false);
+      setRateioForm({
+        criterio_rateio: '',
+        conta_gerencial: '',
+        valor: '',
+        data_gasto: new Date().toISOString().slice(0, 10),
+        observacao: '',
+        talhoes_dados: {}
+      });
+      await fetchGastosRateio();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao salvar o rateio.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteGastoRateio = async (id) => {
+    if (!window.confirm("Deseja realmente excluir este lançamento de rateio?")) return;
+    try {
+      await relatorioService.deleteGastoRateio(id);
+      showAlert('success', 'Lançamento de rateio excluído.');
+      await fetchGastosRateio();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao excluir o rateio.');
+    }
+  };
+
+  const getRateioPreview = (valorGasto, criterioId) => {
+    const val = Number(valorGasto || 0);
+    if (val <= 0 || !criterioId) return [];
+
+    const criterio = criteriosRateio.find(c => c.id === Number(criterioId));
+    if (!criterio) return [];
+
+    const count = talhoes.length;
+    if (count === 0) return [];
+
+    if (criterio.nome === "Área (Hectares)") {
+      const totalArea = talhoes.reduce((acc, curr) => acc + Number(curr.area || 0), 0);
+      if (totalArea > 0) {
+        return talhoes.map(t => {
+          const areaVal = Number(t.area || 0);
+          const pct = (areaVal / totalArea) * 100;
+          const valor = val * (areaVal / totalArea);
+          return {
+            talhao_codigo: t.codigo,
+            talhao_nome: t.nome,
+            percentual: pct,
+            valor: valor
+          };
+        });
+      }
+    } else if (criterio.nome === "Por Fazenda") {
+      return talhoes.map(t => {
+        const pct = 100 / count;
+        const valor = val / count;
+        return {
+          talhao_codigo: t.codigo,
+          talhao_nome: t.nome,
+          percentual: pct,
+          valor: valor
+        };
+      });
+    }
+
+    // Default or other automated: equal distribution preview
+    return talhoes.map(t => {
+      const pct = 100 / count;
+      const valor = val / count;
+      return {
+        talhao_codigo: t.codigo,
+        talhao_nome: t.nome,
+        percentual: pct,
+        valor: valor
+      };
+    });
+  };
+
   if (loading && ordens.length === 0) {
     return (
       <div className="flex h-[400px] w-full items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -472,18 +763,18 @@ export const OrdensServico = () => {
       )}
 
       {/* Cabeçalho Principal */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 no-print">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 no-print border-b border-white/[0.04] pb-4">
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight font-display flex items-center gap-2">
             <ClipboardList className="w-6 h-6 text-emerald-500" />
-            Execução de Ordens de Serviço
+            Execução & Operações Agrícolas
           </h1>
           <p className="text-slate-400 text-xs mt-1">
-            Lance apontamentos reais de funcionários, diesel e horímetros em campo.
+            Gerencie ordens de serviço, logs de abastecimento de combustível e rateio de despesas operacionais.
           </p>
         </div>
 
-        {safraAtiva && (
+        {safraAtiva && activeSubTab === 'os' && (
           <button
             onClick={() => setShowNewOSModal(true)}
             className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-bold py-2.5 px-5 text-xs uppercase shadow-md cursor-pointer"
@@ -492,15 +783,72 @@ export const OrdensServico = () => {
             Nova OS Avulsa
           </button>
         )}
+
+        {safraAtiva && activeSubTab === 'abastecimento' && (
+          <button
+            onClick={() => setShowNewAbtModal(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-bold py-2.5 px-5 text-xs uppercase shadow-md cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Lançar Abastecimento
+          </button>
+        )}
+
+        {safraAtiva && activeSubTab === 'rateio' && (
+          <button
+            onClick={() => setShowNewRateioModal(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-bold py-2.5 px-5 text-xs uppercase shadow-md cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Lançar Gasto / Rateio
+          </button>
+        )}
+      </div>
+
+      {/* Sub-abas de Navegação */}
+      <div className="flex border-b border-white/[0.06] pb-1 gap-2 no-print">
+        <button
+          onClick={() => setActiveSubTab('os')}
+          className={`flex items-center gap-2 py-3 px-4 text-xs font-black uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+            activeSubTab === 'os'
+              ? 'border-emerald-500 text-emerald-400 font-bold bg-white/[0.02]'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          Ordens de Serviço
+        </button>
+        <button
+          onClick={() => setActiveSubTab('abastecimento')}
+          className={`flex items-center gap-2 py-3 px-4 text-xs font-black uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+            activeSubTab === 'abastecimento'
+              ? 'border-emerald-500 text-emerald-400 font-bold bg-white/[0.02]'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Fuel className="w-4 h-4" />
+          Abastecimento
+        </button>
+        <button
+          onClick={() => setActiveSubTab('rateio')}
+          className={`flex items-center gap-2 py-3 px-4 text-xs font-black uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+            activeSubTab === 'rateio'
+              ? 'border-emerald-500 text-emerald-400 font-bold bg-white/[0.02]'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Coins className="w-4 h-4" />
+          Rateio Realizado
+        </button>
       </div>
 
       {!safraAtiva ? (
         <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center bg-slate-900/10 backdrop-blur-md">
           <AlertCircle className="mx-auto h-10 w-10 text-slate-500" />
           <h2 className="mt-4 text-sm font-bold text-slate-300">Nenhuma Safra Ativa</h2>
-          <p className="mt-1 text-xs text-slate-500">Selecione uma safra ativa para carregar os apontamentos agrícolas.</p>
+          <p className="mt-1 text-xs text-slate-500">Selecione uma safra ativa para carregar os dados operacionais.</p>
         </div>
-      ) : (
+      ) : activeSubTab === 'os' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Coluna Esquerda: Listagem com Filtros */}
@@ -576,7 +924,7 @@ export const OrdensServico = () => {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] text-slate-500">
-                        <span>{os.talhoes_detalhe?.length || 0} talhões vinculados</span>
+                        <span>{os.talhoes_detalhe?.length || 0} talões vinculados</span>
                         <span>{os.apontamentos?.length || 0} apontamentos</span>
                       </div>
                     </div>
@@ -778,6 +1126,155 @@ export const OrdensServico = () => {
             )}
           </section>
 
+        </div>
+      ) : activeSubTab === 'abastecimento' ? (
+        <div className="glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/40 space-y-6 text-left">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-black text-white font-display flex items-center gap-2">
+                <Fuel className="w-5 h-5 text-emerald-500" />
+                Logs de Abastecimento de Máquinas
+              </h3>
+              <p className="text-slate-400 text-xs mt-1">Registro de combustível abastecido. Gera saídas automáticas de estoque.</p>
+            </div>
+          </div>
+
+          {abastecimentos.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/5 bg-slate-950/15 p-12 text-center text-slate-500 text-xs">
+              Nenhum abastecimento registrado nesta fazenda e safra.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-slate-950/20">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/[0.06] bg-slate-950/60 text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="p-4">Data</th>
+                    <th className="p-4">Máquina</th>
+                    <th className="p-4">Combustível</th>
+                    <th className="p-4 text-right">Qtd (Litros)</th>
+                    <th className="p-4 text-right">Vl. Unitário</th>
+                    <th className="p-4 text-right">Vl. Total</th>
+                    <th className="p-4 text-right">Horímetro</th>
+                    <th className="p-4">Observação</th>
+                    <th className="p-4 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04] text-slate-350">
+                  {abastecimentos.map(abt => (
+                    <tr key={abt.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="p-4 whitespace-nowrap">{new Date(abt.data_abastecimento).toLocaleDateString('pt-BR')}</td>
+                      <td className="p-4 font-bold text-white">
+                        {abt.maquina_codigo} <span className="text-slate-500 font-normal text-[10px]">({abt.maquina_descricao})</span>
+                      </td>
+                      <td className="p-4">{abt.combustivel_nome}</td>
+                      <td className="p-4 text-right font-semibold">{Number(abt.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="p-4 text-right">R$ {Number(abt.valor_unitario).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
+                      <td className="p-4 text-right font-black text-emerald-450">R$ {Number(abt.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="p-4 text-right">{abt.horimetro ? `${Number(abt.horimetro).toLocaleString('pt-BR')} h` : '-'}</td>
+                      <td className="p-4 max-w-xs truncate">{abt.observacao || '-'}</td>
+                      <td className="p-4 text-center">
+                        <button
+                          onClick={() => handleDeleteAbastecimento(abt.id)}
+                          className="p-2 text-rose-500 hover:text-rose-450 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
+                          title="Excluir abastecimento"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/40 space-y-6 text-left">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-black text-white font-display flex items-center gap-2">
+                <Coins className="w-5 h-5 text-emerald-500" />
+                Gastos e Rateios Realizados
+              </h3>
+              <p className="text-slate-400 text-xs mt-1">Lançamento de custos operacionais indiretos com rateio proporcional para os talhões.</p>
+            </div>
+          </div>
+
+          {gastosRateio.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/5 bg-slate-950/15 p-12 text-center text-slate-500 text-xs">
+              Nenhum gasto ou rateio realizado registrado nesta fazenda e safra.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {gastosRateio.map(g => (
+                <div key={g.id} className="rounded-xl border border-white/[0.06] bg-slate-950/20 p-4 space-y-4">
+                  
+                  {/* Header do Gasto */}
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-white/[0.06] pb-3 gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-black text-xs uppercase bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-emerald-400">
+                          {g.conta_gerencial_nome}
+                        </span>
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider bg-slate-900 px-2.5 py-0.5 rounded-full">
+                          Critério: {g.criterio_rateio_nome}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Data do Gasto: {new Date(g.data_gasto).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor Total</span>
+                        <span className="text-base font-black text-white">
+                          R$ {Number(g.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeleteGastoRateio(g.id)}
+                        className="p-2 text-rose-500 hover:text-rose-450 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
+                        title="Excluir rateio"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {g.observacao && (
+                    <p className="text-[11px] text-slate-400 bg-slate-900/40 p-2.5 rounded-lg border border-white/[0.02]">
+                      <strong>Obs:</strong> {g.observacao}
+                    </p>
+                  )}
+
+                  {/* Detalhamento do Rateio por Talhão */}
+                  <div className="space-y-2">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distribuição por Talhão</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {g.rateios_talhoes?.map(rt => (
+                        <div key={rt.id} className="bg-slate-950/40 border border-white/[0.04] p-2.5 rounded-xl text-left space-y-1">
+                          <span className="block text-[10px] font-black text-white truncate" title={rt.talhao_nome}>
+                            {rt.talhao_codigo}
+                          </span>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <span className="text-[11px] font-bold text-emerald-450">
+                              R$ {Number(rt.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-bold">
+                              {Number(rt.percentual).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1176,6 +1673,448 @@ export const OrdensServico = () => {
               >
                 {saving ? 'Registrando...' : 'Salvar Apontamento Operacional'}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Novo Abastecimento */}
+      {showNewAbtModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Fuel className="w-4 h-4 text-emerald-500" />
+                <span>Registrar Abastecimento</span>
+              </h3>
+              <button 
+                onClick={() => setShowNewAbtModal(false)} 
+                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAbastecimento} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+              
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Máquina *</span>
+                  <select
+                    required
+                    value={abtForm.maquina}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setAbtForm(prev => ({ ...prev, maquina: e.target.value }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  >
+                    <option value="">Selecione a máquina...</option>
+                    {maquinas.map(m => {
+                      const fazendaOrigem = (fazendas || []).find(f => f.id === m.fazenda_id || f.id === m.fazenda);
+                      const tagFazenda = fazendaOrigem ? ` [${fazendaOrigem.sigla}]` : '';
+                      return (
+                        <option key={m.id} value={m.id} className="bg-slate-900">
+                          {m.codigo} - {m.descricao}{tagFazenda}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              </div>
+
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Combustível *</span>
+                  <select
+                    required
+                    value={abtForm.combustivel}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setAbtForm(prev => ({ ...prev, combustivel: e.target.value }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  >
+                    <option value="">Selecione o combustível...</option>
+                    {produtos
+                      .filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL')
+                      .map(p => (
+                        <option key={p.id} value={p.id} className="bg-slate-900">
+                          {p.nome_comercial} ({p.unidade_sigla || 'L'})
+                        </option>
+                      ))
+                    }
+                    {produtos.filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL').length === 0 &&
+                      produtos.map(p => (
+                        <option key={p.id} value={p.id} className="bg-slate-900">
+                          {p.nome_comercial} ({p.unidade_sigla || 'L'})
+                        </option>
+                      ))
+                    }
+                  </select>
+                </label>
+              </div>
+
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data do Abastecimento *</span>
+                  <input
+                    type="date"
+                    required
+                    value={abtForm.data_abastecimento}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setAbtForm(prev => ({ ...prev, data_abastecimento: e.target.value }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
+
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Horímetro da Máquina</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Ex: 1250.5"
+                    value={abtForm.horimetro}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setAbtForm(prev => ({ ...prev, horimetro: e.target.value }))}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
+
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Quantidade (Litros) *</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    placeholder="0.00"
+                    value={abtForm.quantidade}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => handleAbtQtyOrPriceChange('quantidade', e.target.value)}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
+
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Valor Unitário (R$) *</span>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    required
+                    placeholder="0.0000"
+                    value={abtForm.valor_unitario}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => handleAbtQtyOrPriceChange('valor_unitario', e.target.value)}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
+
+              <div className="md:col-span-2 p-3 bg-slate-950/30 rounded-xl border border-white/[0.04] flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Valor Total Calculado:</span>
+                <span className="text-base font-black text-emerald-450">
+                  R$ {Number(abtForm.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Observações / Notas</span>
+                  <textarea
+                    placeholder="Observações do abastecimento..."
+                    value={abtForm.observacao}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setAbtForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
+                    rows={2}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                  />
+                </label>
+              </div>
+
+              <div className="md:col-span-2 flex justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNewAbtModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+                  tabIndex={-1}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/25 cursor-pointer"
+                >
+                  {saving ? 'Gravando...' : 'Salvar Abastecimento'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Novo Gasto e Rateio */}
+      {showNewRateioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-3xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Coins className="w-4 h-4 text-emerald-500" />
+                <span>Lançar Gasto e Rateio Realizado</span>
+              </h3>
+              <button 
+                onClick={() => setShowNewRateioModal(false)} 
+                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateGastoRateio} className="space-y-4 text-left">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Conta Gerencial (Despesa) *</span>
+                    <select
+                      required
+                      value={rateioForm.conta_gerencial}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioForm(prev => ({ ...prev, conta_gerencial: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    >
+                      <option value="">Selecione...</option>
+                      {contasGerenciais.map(c => (
+                        <option key={c.id} value={c.id} className="bg-slate-900">
+                          {c.codigo} - {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Critério de Rateio *</span>
+                    <select
+                      required
+                      value={rateioForm.criterio_rateio}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioForm(prev => ({ ...prev, criterio_rateio: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    >
+                      <option value="">Selecione...</option>
+                      {criteriosRateio.map(c => (
+                        <option key={c.id} value={c.id} className="bg-slate-900">
+                          {c.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Valor do Gasto (R$) *</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="0.00"
+                      value={rateioForm.valor}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioForm(prev => ({ ...prev, valor: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data do Lançamento *</span>
+                    <input
+                      type="date"
+                      required
+                      value={rateioForm.data_gasto}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioForm(prev => ({ ...prev, data_gasto: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    />
+                  </label>
+                </div>
+
+              </div>
+
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Observações</span>
+                  <textarea
+                    placeholder="Descrição complementar..."
+                    value={rateioForm.observacao}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setRateioForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
+                    rows={2}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                  />
+                </label>
+              </div>
+
+              {/* Distribuição Dinâmica / Demonstrativa */}
+              {rateioForm.valor && rateioForm.criterio_rateio && (() => {
+                const criterio = criteriosRateio.find(c => c.id === Number(rateioForm.criterio_rateio));
+                if (!criterio) return null;
+                const isManual = ["Direto", "Por Talhão"].includes(criterio.nome);
+
+                if (isManual) {
+                  const totalGasto = Number(rateioForm.valor || 0);
+                  const { totalVal, totalPct } = getManualTotals();
+                  const diffPercent = Math.abs(totalPct - 100);
+                  const isClosePct = diffPercent <= 0.05;
+                  
+                  return (
+                    <div className="space-y-3 border-t border-white/[0.06] pt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Activity className="w-4 h-4 text-emerald-500" />
+                          Distribuição Manual por Talhão
+                        </span>
+                        
+                        <div className={`px-3 py-1 rounded-xl text-xs font-black uppercase border ${
+                          isClosePct
+                            ? 'bg-emerald-950/50 border-emerald-800 text-emerald-450'
+                            : 'bg-rose-950/50 border-rose-800 text-rose-450'
+                        }`}>
+                          Soma: {totalPct.toFixed(2)}% de 100% | R$ {totalVal.toFixed(2)} de R$ {totalGasto.toFixed(2)}
+                        </div>
+                      </div>
+
+                      {totalGasto <= 0 ? (
+                        <p className="text-xs text-amber-450 italic">Insira um valor de gasto maior que zero acima para habilitar a distribuição manual.</p>
+                      ) : (
+                        <div className="max-h-[200px] overflow-y-auto border border-white/[0.06] rounded-xl bg-slate-950/40 p-2 space-y-2">
+                          {talhoes.map(t => {
+                            const tDados = rateioForm.talhoes_dados[t.id] || { valor: '', percentual: '' };
+                            return (
+                              <div key={t.id} className="grid grid-cols-12 gap-3 items-center bg-slate-900/40 p-2 rounded-lg text-xs">
+                                <div className="col-span-6 font-bold text-white">
+                                  {t.codigo} - {t.nome}
+                                </div>
+                                <div className="col-span-3 flex items-center gap-1">
+                                  <span className="text-[10px] text-slate-500">R$</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={tDados.valor}
+                                    onKeyDown={handleKeyDown}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      const numericVal = Number(v);
+                                      let pct = '';
+                                      if (totalGasto > 0 && v !== '') {
+                                        pct = ((numericVal / totalGasto) * 100).toFixed(2);
+                                      }
+                                      setRateioForm(prev => ({
+                                        ...prev,
+                                        talhoes_dados: {
+                                          ...prev.talhoes_dados,
+                                          [t.id]: { valor: v, percentual: pct }
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full bg-slate-950 border border-white/[0.08] focus:border-emerald-500 rounded-lg p-1.5 text-xs text-white text-right outline-none"
+                                  />
+                                </div>
+                                <div className="col-span-3 flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={tDados.percentual}
+                                    onKeyDown={handleKeyDown}
+                                    onChange={(e) => {
+                                      const p = e.target.value;
+                                      const numericPct = Number(p);
+                                      let v = '';
+                                      if (totalGasto > 0 && p !== '') {
+                                        v = ((numericPct / 100) * totalGasto).toFixed(2);
+                                      }
+                                      setRateioForm(prev => ({
+                                        ...prev,
+                                        talhoes_dados: {
+                                          ...prev.talhoes_dados,
+                                          [t.id]: { valor: v, percentual: p }
+                                        }
+                                      }));
+                                    }}
+                                    className="w-full bg-slate-950 border border-white/[0.08] focus:border-emerald-500 rounded-lg p-1.5 text-xs text-white text-right outline-none"
+                                  />
+                                  <span className="text-[10px] text-slate-500">%</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else {
+                  // Automático - Exibir prévia calculada em tempo real
+                  const preview = getRateioPreview(rateioForm.valor, rateioForm.criterio_rateio);
+                  return (
+                    <div className="space-y-3 border-t border-white/[0.06] pt-4">
+                      <span className="block text-xs font-bold text-slate-355 uppercase tracking-wider flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-teal-500" />
+                        Prévia da Distribuição Automática ({criterio.nome})
+                      </span>
+
+                      <div className="max-h-[200px] overflow-y-auto border border-white/[0.06] rounded-xl bg-slate-950/40 p-2">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-white/[0.04] text-slate-500 font-bold uppercase">
+                              <th className="p-2">Talhão</th>
+                              <th className="p-2 text-right">Percentual (%)</th>
+                              <th className="p-2 text-right">Valor Estimado (R$)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/[0.02]">
+                            {preview.map((row, i) => (
+                              <tr key={i} className="text-slate-300">
+                                <td className="p-2 font-semibold">{row.talhao_codigo} - {row.talhao_nome}</td>
+                                <td className="p-2 text-right font-mono">{Number(row.percentual || 0).toFixed(2)}%</td>
+                                <td className="p-2 text-right font-mono text-emerald-450">R$ {Number(row.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
+
+              <div className="flex justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNewRateioModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
+                  tabIndex={-1}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/25 cursor-pointer"
+                >
+                  {saving ? 'Gravando...' : 'Salvar Rateio'}
+                </button>
+              </div>
+
             </form>
           </div>
         </div>
