@@ -103,6 +103,8 @@ const emptyForms = {
     concentracao: '',
     periodo_carencia: '',
     alvo: '',
+    quantidade_inicial: '',
+    valor_unitario_inicial: '',
   },
   estoque: {
     fazenda: '',
@@ -247,6 +249,7 @@ const getFallbackDB = () => {
 
 const fieldId = (item, base) => item?.[base] ?? item?.[`${base}_id`];
 const sameId = (left, right) => String(left ?? '') === String(right ?? '');
+const lookup = (collection, id, fallback = '-') => (collection || []).find((item) => sameId(item.id, id))?.nome || fallback;
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatMask = (val, mask) => {
@@ -368,7 +371,7 @@ const SelectField = ({ label, value, onChange, options, required = false, defaul
 
 export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const { user } = useAuth();
-  const { atualizarTenant, fazendaAtiva } = useTenant();
+  const { atualizarTenant, fazendaAtiva, selecionarFazenda } = useTenant();
   const [activeTab, setActiveTab] = useState('proprietarios');
   const [expandedSection, setExpandedSection] = useState('cadastros');
   const [records, setRecords] = useState({
@@ -384,6 +387,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     estoque: [],
     usuarios: [],
     perfis: [],
+    saldos: [],
   });
   const [refs, setRefs] = useState(Object.fromEntries(Object.keys(refEndpoints).map((key) => [key, []])));
   const [forms, setForms] = useState(emptyForms);
@@ -399,15 +403,20 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const [showInactiveOnly, setShowInactiveOnly] = useState(false);
   const [selectedRefTab, setSelectedRefTab] = useState('culturas');
 
+  // Variáveis para modal de cópia de produtos entre safras
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copySourceSafraId, setCopySourceSafraId] = useState('');
+  const [copyCarryStock, setCopyCarryStock] = useState(false);
+
   const currentForm = forms[activeTab];
 
   const isSuperUsuario = useMemo(() => {
     return user && (
       user.is_superuser ||
       user.perfil_id === 1 ||
-      user.cargo?.toLowerCase().includes('gerente') ||
-      user.cargo?.toLowerCase().includes('super') ||
-      user.cargo?.toLowerCase().includes('superusuário')
+      (user.cargo || '').toLowerCase().includes('gerente') ||
+      (user.cargo || '').toLowerCase().includes('super') ||
+      (user.cargo || '').toLowerCase().includes('superusuário')
     );
   }, [user]);
 
@@ -441,9 +450,47 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   }, [records.fazendas, user]);
 
   const safrasOptions = useMemo(
-    () => records.safras.map((safra) => ({ value: safra.id, label: `${safra.nome}${safra.ativa ? ' - ativa' : ''}` })),
-    [records.safras],
+    () => (records?.safras || []).map((safra) => ({ value: safra.id, label: `${safra.nome}${safra.ativa ? ' - ativa' : ''}` })),
+    [records?.safras],
   );
+
+  const otherSafrasOptions = useMemo(() => {
+    return (records?.safras || [])
+      .filter((s) => s && s.id && !sameId(s.id, currentSafraId))
+      .map((s) => {
+        const fazendaNome = lookup(records?.fazendas || [], fieldId(s, 'fazenda'));
+        return { value: s.id, label: `${s.nome || ''} (${fazendaNome})` };
+      });
+  }, [records?.safras, records?.fazendas, currentSafraId]);
+
+  const handleCopySafra = async (event) => {
+    event.preventDefault();
+    if (!copySourceSafraId) {
+      showAlert('error', 'Selecione a safra de origem.');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const response = await api.post('/api/produtos/copiar-safra/', {
+        safra_origem_id: copySourceSafraId,
+        safra_destino_id: currentSafraId,
+        carregar_estoque: copyCarryStock,
+      });
+      
+      showAlert('success', response.data?.detail || 'Produtos importados com sucesso!');
+      setShowCopyModal(false);
+      setCopySourceSafraId('');
+      setCopyCarryStock(false);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      const detail = err.response?.data?.detail || err.message;
+      showAlert('error', `Erro ao importar produtos: ${detail}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const refOptions = (key, labelGetter = (item) => item.nome) =>
     refs[key].map((item) => ({ value: item.id, label: labelGetter(item) }));
@@ -456,6 +503,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       setSuccess(message);
       setError('');
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     window.setTimeout(() => {
       setError('');
       setSuccess('');
@@ -488,9 +536,31 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         delete allowedEndpoints.proprietarios;
       }
 
+      // Carregar registros operacionais individualmente para que falhas em um endpoint não quebrem os outros
+      const loadedRecordsPromises = Object.entries(allowedEndpoints).map(async ([key, url]) => {
+        try {
+          const list = await fetchList(url, key);
+          return [key, list];
+        } catch (err) {
+          console.error(`Erro ao carregar o cadastro ${key}:`, err);
+          return [key, []];
+        }
+      });
+
+      // Carregar tabelas de referência individualmente
+      const loadedRefsPromises = Object.entries(refEndpoints).map(async ([key, url]) => {
+        try {
+          const list = await fetchList(url, key);
+          return [key, list];
+        } catch (err) {
+          console.error(`Erro ao carregar a referência ${key}:`, err);
+          return [key, []];
+        }
+      });
+
       const [loadedRecords, loadedRefs] = await Promise.all([
-        Promise.all(Object.entries(allowedEndpoints).map(async ([key, url]) => [key, await fetchList(url, key)])),
-        Promise.all(Object.entries(refEndpoints).map(async ([key, url]) => [key, await fetchList(url, key)])),
+        Promise.all(loadedRecordsPromises),
+        Promise.all(loadedRefsPromises),
       ]);
 
       let perfisList = [];
@@ -503,10 +573,21 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         }
       }
 
+      let saldosEstoque = [];
+      if (fazendaAtiva && currentSafraId) {
+        try {
+          const res = await api.get('/api/estoque/saldos/');
+          saldosEstoque = asList(res.data);
+        } catch (e) {
+          console.error("Erro ao carregar saldos de estoque:", e);
+        }
+      }
+
       setRecords((prev) => ({
         ...prev,
         ...Object.fromEntries(loadedRecords),
         ...(isSuperUsuario ? { perfis: perfisList } : {}),
+        saldos: saldosEstoque,
       }));
       setRefs(Object.fromEntries(loadedRefs));
     } catch (err) {
@@ -515,7 +596,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, fazendaAtiva, currentSafraId, isSuperUsuario]);
 
   useEffect(() => {
     loadData();
@@ -563,6 +644,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'produtos') {
       payload.unidade ||= refs.unidadesMedida[0]?.id;
       payload.classificacao ||= refs.classificacoesProduto[0]?.id;
+      if (fazendaAtiva) payload.fazenda = fazendaAtiva.id;
+      if (currentSafraId) payload.safra = currentSafraId;
     }
     return payload;
   };
@@ -612,14 +695,32 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         const url = activeTab === 'referencias'
           ? `${refEndpoints[selectedRefTab]}${editingId}/`
           : `${endpoints[activeTab]}${editingId}/`;
-        await api.put(url, payload);
+        
+        let editPayload = payload;
+        if (activeTab === 'produtos') {
+          const { quantidade_inicial, valor_unitario_inicial, ...cleaned } = payload;
+          editPayload = cleaned;
+        }
+
+        await api.put(url, editPayload);
         showAlert('success', 'Registro atualizado com sucesso.');
       } else {
         // Modo Criação
         const url = activeTab === 'referencias'
           ? refEndpoints[selectedRefTab]
           : endpoints[activeTab];
-        const response = await api.post(url, payload);
+        
+        let createPayload = payload;
+        let qInitial = null;
+        let vUnitInitial = null;
+        if (activeTab === 'produtos') {
+          const { quantidade_inicial, valor_unitario_inicial, ...cleaned } = payload;
+          createPayload = cleaned;
+          qInitial = quantidade_inicial;
+          vUnitInitial = valor_unitario_inicial;
+        }
+
+        const response = await api.post(url, createPayload);
         if (activeTab === 'fazendas') {
           createdFarmId = response.data?.id;
         }
@@ -632,6 +733,31 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         }
         
         showAlert('success', successMsg);
+
+        // Lançar estoque inicial automaticamente para novo produto se informado
+        if (activeTab === 'produtos' && qInitial && Number(qInitial) > 0) {
+          if (fazendaAtiva && currentSafraId) {
+            try {
+              await api.post('/api/estoque/movimentos/', {
+                fazenda: fazendaAtiva.id,
+                safra: currentSafraId,
+                produto: response.data.id,
+                tipo_movimento: 'ENTRADA',
+                quantidade: Number(qInitial),
+                valor_unitario: Number(vUnitInitial || 0),
+                valor_total: Number(qInitial) * Number(vUnitInitial || 0),
+                data_movimento: new Date().toISOString().slice(0, 10),
+                documento_referencia: 'ESTOQUE INICIAL',
+                observacao: 'LANÇAMENTO AUTOMÁTICO DE ESTOQUE INICIAL NO CADASTRO DO PRODUTO.'
+              });
+            } catch (stockErr) {
+              console.error("Erro ao criar estoque inicial para o produto:", stockErr);
+              showAlert('error', 'Produto criado, mas erro ao registrar estoque inicial: ' + (stockErr.response?.data?.detail || stockErr.message));
+            }
+          } else {
+            showAlert('error', 'Produto criado, mas estoque inicial não pôde ser lançado porque nenhuma fazenda ou safra está selecionada no cabeçalho.');
+          }
+        }
       }
 
       await loadData();
@@ -642,6 +768,15 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           }
         } catch (e) {
           console.error("Erro ao atualizar tenant", e);
+        }
+      }
+
+      // Alternar automaticamente para a fazenda do registro cadastrado/editado para atualizar a listagem no contexto correto
+      if (payload.fazenda && selecionarFazenda) {
+        try {
+          selecionarFazenda(payload.fazenda);
+        } catch (e) {
+          console.error("Erro ao selecionar fazenda do registro:", e);
         }
       }
 
@@ -834,7 +969,36 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     return baseList.filter((item) => getText(item).toLowerCase().includes(query));
   };
 
-  const lookup = (collection, id, fallback = '-') => collection.find((item) => sameId(item.id, id))?.nome || fallback;
+  const getActiveTabGetText = useCallback((tab) => {
+    switch (tab) {
+      case 'proprietarios':
+        return (item) => `${item.nome} ${item.documento || ''} ${item.cidade || ''}`;
+      case 'fazendas':
+        return (item) => `${item.nome} ${item.sigla || ''} ${item.cnpj_ou_produtor || ''} ${item.cidade || ''}`;
+      case 'safras':
+        return (item) => item.nome || '';
+      case 'talhoes':
+        return (item) => `${item.codigo} ${item.nome}`;
+      case 'maquinas':
+        return (item) => `${item.codigo} ${item.descricao}`;
+      case 'funcionarios':
+        return (item) => `${item.nome} ${item.cargo || ''}`;
+      case 'terceirizados':
+        return (item) => `${item.nome} ${item.documento || ''}`;
+      case 'turmas':
+        return (item) => `${item.nome} ${item.responsavel || ''}`;
+      case 'produtos':
+        return (item) => `${item.codigo || ''} ${item.nome_comercial}`;
+      case 'usuarios':
+        return (item) => `${item.username} ${item.email} ${item.first_name} ${item.last_name}`;
+      case 'referencias':
+        if (selectedRefTab === 'unidadesMedida') return (item) => `${item.sigla} ${item.nome}`;
+        if (selectedRefTab === 'contasGerenciais') return (item) => `${item.codigo} ${item.nome}`;
+        return (item) => item.nome || '';
+      default:
+        return (item) => `${item.produto_nome || ''} ${item.tipo_movimento}`;
+    }
+  }, [selectedRefTab]);
 
   const renderFormFields = () => {
     if (activeTab === 'proprietarios') {
@@ -987,6 +1151,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Concentração" value={currentForm.concentracao} onChange={(value) => patchForm('concentracao', value)} />
           <InputField label="Período de Carência (dias)" type="number" value={currentForm.periodo_carencia} onChange={(value) => patchForm('periodo_carencia', value)} />
           <InputField label="Alvo" value={currentForm.alvo} onChange={(value) => patchForm('alvo', value)} />
+          {!editingId && (
+            <>
+              <InputField label="Quantidade Inicial em Estoque" type="number" value={currentForm.quantidade_inicial || ''} onChange={(value) => patchForm('quantidade_inicial', value)} />
+              <InputField label="Valor Unitário Inicial (R$)" type="number" value={currentForm.valor_unitario_inicial || ''} onChange={(value) => patchForm('valor_unitario_inicial', value)} />
+            </>
+          )}
         </div>
       );
     }
@@ -1259,22 +1429,29 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     }
 
     if (activeTab === 'produtos') {
-      return filteredRows('produtos', (item) => `${item.codigo || ''} ${item.nome_comercial}`).map((item) => (
-        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
-          <td className="py-3 px-5">
-            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome_comercial}</p>
-            <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.codigo || 'Sem código'}</p>
-          </td>
-          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.classificacao_nome || 'Insumo'}</td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-450">{item.unidade_sigla || item.unidade_nome || '-'}</td>
-          <td className="py-3 px-5 text-center">
-            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
-            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
-              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-            </button>
-          </td>
-        </tr>
-      ));
+      return filteredRows('produtos', (item) => `${item.codigo || ''} ${item.nome_comercial}`).map((item) => {
+        const saldoItem = (records.saldos || []).find(s => sameId(s.produto_id, item.id));
+        const qtdSaldo = saldoItem ? saldoItem.saldo : 0;
+        
+        return (
+          <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+            <td className="py-3 px-5">
+              <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome_comercial}</p>
+              <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.codigo || 'Sem código'}</p>
+            </td>
+            <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.classificacao_nome || 'Insumo'}</td>
+            <td className="py-3 px-5 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              {Number(qtdSaldo).toLocaleString('pt-BR')} {item.unidade_sigla || item.unidade_nome || '-'}
+            </td>
+            <td className="py-3 px-5 text-center">
+              <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+                {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              </button>
+            </td>
+          </tr>
+        );
+      });
     }
 
     if (activeTab === 'usuarios') {
@@ -1477,21 +1654,35 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight font-display">Gestão de {activeLabel}</h1>
             </div>
 
-            {/* Novo Registro button trigger */}
+            {/* Novo Registro / Importar Safra button triggers */}
             {((activeTab !== 'referencias') || isSuperUsuario) && (
-              <button
-                onClick={() => {
-                  setEditingId(null);
-                  resetForm();
-                  setError('');
-                  setSuccess('');
-                  setShowModal(true);
-                }}
-                className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Novo Registro</span>
-              </button>
+              <div className="flex items-center gap-3">
+                {activeTab === 'produtos' && (
+                  <button
+                    onClick={() => {
+                      setCopySourceSafraId('');
+                      setCopyCarryStock(false);
+                      setShowCopyModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-emerald-500/30 dark:border-emerald-550/30 text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-xs font-bold uppercase transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <span>Importar Safra</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setEditingId(null);
+                    resetForm();
+                    setError('');
+                    setSuccess('');
+                    setShowModal(true);
+                  }}
+                  className="flex items-center gap-1.5 px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Novo Registro</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -1574,7 +1765,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 ) : (
                   renderRows()
                 )}
-                {!loading && filteredRows(activeTab, () => '').length === 0 && (
+                 {!loading && filteredRows(activeTab, getActiveTabGetText(activeTab)).length === 0 && (
                   <tr><td colSpan="4" className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 font-medium italic">Nenhum registro localizado para os filtros informados.</td></tr>
                 )}
               </tbody>
@@ -1641,6 +1832,83 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 disabled:opacity-60 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
                 >
                   {saving ? 'Salvando...' : 'Confirmar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL PARA IMPORTAR PRODUTOS DE OUTRA SAFRA */}
+      {showCopyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
+              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <CalendarRange className="w-5 h-5 text-emerald-500" />
+                <span>Importar Produtos de Safra</span>
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCopyModal(false);
+                  setCopySourceSafraId('');
+                  setCopyCarryStock(false);
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCopySafra} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <SelectField
+                    required
+                    label="Safra de Origem"
+                    value={copySourceSafraId}
+                    onChange={setCopySourceSafraId}
+                    options={otherSafrasOptions}
+                    defaultOption="Selecione a safra de origem..."
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={copyCarryStock}
+                      onChange={(event) => setCopyCarryStock(event.target.checked)}
+                      className="h-4 w-4 rounded border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/50 text-emerald-500"
+                    />
+                    Transportar saldos físicos para a nova safra
+                  </label>
+                </div>
+              </div>
+
+              {/* Actions inside Modal */}
+              <div className="flex gap-3 border-t border-slate-100 dark:border-slate-800/80 pt-4 mt-6">
+                <button
+                  type="button"
+                  tabIndex="-1"
+                  onClick={() => {
+                    setShowCopyModal(false);
+                    setCopySourceSafraId('');
+                    setCopyCarryStock(false);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold uppercase transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 disabled:opacity-60 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
+                >
+                  {saving ? 'Importando...' : 'Confirmar Importação'}
                 </button>
               </div>
             </form>

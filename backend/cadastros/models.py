@@ -145,7 +145,9 @@ class TurmaTerceirizada(BaseModel):
 
 
 class Produto(BaseModel):
-    codigo = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='produtos', null=True, blank=True)
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='produtos', null=True, blank=True)
+    codigo = models.CharField(max_length=50, null=True, blank=True)
     nome_comercial = models.CharField(max_length=150)
     unidade = models.ForeignKey(UnidadeMedida, on_delete=models.PROTECT)
     classificacao = models.ForeignKey(ClassificacaoProduto, on_delete=models.PROTECT)
@@ -158,6 +160,7 @@ class Produto(BaseModel):
     class Meta:
         verbose_name = "Produto/Insumo"
         verbose_name_plural = "Produtos/Insumos"
+        unique_together = (('fazenda', 'safra', 'codigo', 'ativo'),)
 
     def __str__(self):
         return self.nome_comercial

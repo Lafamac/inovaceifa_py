@@ -143,6 +143,113 @@ class ProdutoViewSet(BaseTenantViewSet):
     queryset = Produto.objects.all()
     serializer_class = ProdutoSerializer
 
+    def get_queryset(self):
+        # Filtra produtos pertencentes às fazendas permitidas
+        qs = super().get_queryset().filter(
+            fazenda__in=self.request.fazendas_permitidas
+        )
+        if self.request.safra_ativa:
+            qs = qs.filter(safra=self.request.safra_ativa)
+        return qs
+
+    @action(detail=False, methods=['post'], url_path='copiar-safra')
+    def copiar_safra(self, request):
+        safra_origem_id = request.data.get('safra_origem_id')
+        safra_destino_id = request.data.get('safra_destino_id') or (request.safra_ativa.id if request.safra_ativa else None)
+        carregar_estoque = request.data.get('carregar_estoque', False)
+
+        if not safra_origem_id or not safra_destino_id:
+            return Response(
+                {"detail": "Informe safra_origem_id e safra_destino_id."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            safra_origem = Safra.objects.get(id=safra_origem_id)
+            safra_destino = Safra.objects.get(id=safra_destino_id)
+        except Safra.DoesNotExist:
+            return Response(
+                {"detail": "Safra de origem ou destino não encontrada."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Buscar todos os produtos ativos da safra de origem
+        produtos_origem = Produto.objects.filter(safra=safra_origem, ativo=True)
+        count = 0
+        
+        for p in produtos_origem:
+            saldo = 0
+            if carregar_estoque:
+                # Calcular o saldo do produto na safra de origem
+                entradas = EstoqueMovimento.objects.filter(
+                    fazenda=safra_origem.fazenda, safra=safra_origem, produto=p, tipo_movimento='ENTRADA', ativo=True
+                ).aggregate(total=Sum('quantidade'))['total'] or 0
+                saidas = EstoqueMovimento.objects.filter(
+                    fazenda=safra_origem.fazenda, safra=safra_origem, produto=p, tipo_movimento='SAIDA', ativo=True
+                ).aggregate(total=Sum('quantidade'))['total'] or 0
+                ajustes = EstoqueMovimento.objects.filter(
+                    fazenda=safra_origem.fazenda, safra=safra_origem, produto=p, tipo_movimento='AJUSTE', ativo=True
+                ).aggregate(total=Sum('quantidade'))['total'] or 0
+                transf_enviadas = EstoqueMovimento.objects.filter(
+                    origem_transferencia=safra_origem.fazenda, safra=safra_origem, produto=p, tipo_movimento='TRANSFERENCIA', ativo=True
+                ).aggregate(total=Sum('quantidade'))['total'] or 0
+                transf_recebidas = EstoqueMovimento.objects.filter(
+                    destino_transferencia=safra_origem.fazenda, safra=safra_origem, produto=p, tipo_movimento='TRANSFERENCIA', ativo=True
+                ).aggregate(total=Sum('quantidade'))['total'] or 0
+                
+                saldo = (entradas + ajustes + transf_recebidas) - (saidas + transf_enviadas)
+
+            # Evitar duplicar se já existir produto com o mesmo nome comercial na safra de destino
+            prod_destino = Produto.objects.filter(
+                fazenda=safra_destino.fazenda,
+                safra=safra_destino,
+                nome_comercial=p.nome_comercial,
+                ativo=True
+            ).first()
+
+            if not prod_destino:
+                # Clonar produto
+                prod_destino = Produto(
+                    fazenda=safra_destino.fazenda,
+                    safra=safra_destino,
+                    codigo=p.codigo,
+                    nome_comercial=p.nome_comercial,
+                    unidade=p.unidade,
+                    classificacao=p.classificacao,
+                    grupo_quimico=p.grupo_quimico,
+                    concentracao=p.concentracao,
+                    periodo_carencia=p.periodo_carencia,
+                    alvo=p.alvo,
+                    recomendacoes_tecnicas=p.recomendacoes_tecnicas
+                )
+                prod_destino.save()
+                count += 1
+
+            # Transportar saldo físico se positivo e solicitado
+            if carregar_estoque and saldo > 0:
+                # Verificar se já existe lançamento de SALDO ANTERIOR para esse produto
+                if not EstoqueMovimento.objects.filter(
+                    fazenda=safra_destino.fazenda,
+                    safra=safra_destino,
+                    produto=prod_destino,
+                    documento_referencia='SALDO ANTERIOR',
+                    ativo=True
+                ).exists():
+                    EstoqueMovimento.objects.create(
+                        fazenda=safra_destino.fazenda,
+                        safra=safra_destino,
+                        produto=prod_destino,
+                        tipo_movimento='ENTRADA',
+                        quantidade=saldo,
+                        valor_unitario=0.0000,
+                        valor_total=0.00,
+                        data_movimento=safra_destino.data_inicio,
+                        documento_referencia='SALDO ANTERIOR',
+                        observacao=f'TRANSPORTE AUTOMÁTICO DE SALDO DA SAFRA ANTERIOR ({safra_origem.nome}).'
+                    )
+
+        return Response({"detail": f"{count} produtos copiados com sucesso para a safra {safra_destino.nome}."})
+
 
 class EstoqueMovimentoViewSet(BaseTenantViewSet):
     queryset = EstoqueMovimento.objects.all()
