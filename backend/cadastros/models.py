@@ -52,6 +52,7 @@ class Maquina(BaseModel):
     modelo = models.CharField(max_length=100, null=True, blank=True)
     ano_fabricacao = models.IntegerField(null=True, blank=True)
     tipo = models.ForeignKey(TipoMaquina, on_delete=models.PROTECT) # Trator, Colhedora, Caminhão, etc.
+    propria = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "Máquina"
@@ -185,6 +186,7 @@ class EstoqueMovimento(BaseModel):
     documento_referencia = models.CharField(max_length=100, null=True, blank=True) # NFe ou ID de OS
     origem_transferencia = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='transferencias_enviadas', null=True, blank=True)
     destino_transferencia = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='transferencias_recebidas', null=True, blank=True)
+    transferencia_vinculada = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='vinculos')
     observacao = models.TextField(null=True, blank=True)
 
     class Meta:
@@ -193,3 +195,107 @@ class EstoqueMovimento(BaseModel):
 
     def __str__(self):
         return f"{self.tipo_movimento} - {self.produto.nome_comercial} - {self.quantidade} ({self.fazenda.sigla})"
+
+
+class TransferenciaAtivo(BaseModel):
+    TIPO_ATIVO_CHOICES = (
+        ('MAQUINA', 'Máquina'),
+        ('FUNCIONARIO', 'Funcionário'),
+    )
+    tipo_ativo = models.CharField(max_length=20, choices=TIPO_ATIVO_CHOICES)
+    maquina = models.ForeignKey(Maquina, on_delete=models.SET_NULL, null=True, blank=True, related_name='transferencias')
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, related_name='transferencias')
+    origem = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='transferencias_ativos_enviadas')
+    destino = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='transferencias_ativos_recebidas')
+    data_transferencia = models.DateField()
+    observacao = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Transferência de Ativo"
+        verbose_name_plural = "Transferências de Ativos"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.origem == self.destino:
+            raise ValidationError("A fazenda de origem e destino devem ser diferentes.")
+        if self.origem.proprietario != self.destino.proprietario:
+            raise ValidationError("As fazendas devem pertencer ao mesmo proprietário.")
+        if self.tipo_ativo == 'MAQUINA':
+            if not self.maquina:
+                raise ValidationError("Máquina é obrigatória para transferência de máquina.")
+            if self.maquina.fazenda != self.origem:
+                raise ValidationError("A máquina não pertence à fazenda de origem.")
+        elif self.tipo_ativo == 'FUNCIONARIO':
+            if not self.funcionario:
+                raise ValidationError("Funcionário é obrigatório para transferência de funcionário.")
+            if self.funcionario.fazenda != self.origem:
+                raise ValidationError("O funcionário não pertence à fazenda de origem.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+        if self.tipo_ativo == 'MAQUINA' and self.maquina:
+            self.maquina.fazenda = self.destino
+            self.maquina.save()
+        elif self.tipo_ativo == 'FUNCIONARIO' and self.funcionario:
+            self.funcionario.fazenda = self.destino
+            self.funcionario.save()
+
+    def __str__(self):
+        ativo_nome = self.maquina.codigo if self.tipo_ativo == 'MAQUINA' and self.maquina else (self.funcionario.nome if self.funcionario else '')
+        return f"{self.tipo_ativo} - {ativo_nome} de {self.origem.sigla} para {self.destino.sigla}"
+
+
+class LocacaoMaquina(BaseModel):
+    TIPO_COBRANCA_CHOICES = (
+        ('DIA', 'Diária'),
+        ('HORA', 'Hora'),
+        ('MES', 'Mês'),
+        ('OUTRO', 'Outro'),
+    )
+    maquina = models.ForeignKey(Maquina, on_delete=models.PROTECT, related_name='locacoes')
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='locacoes')
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='locacoes')
+    tipo_cobranca = models.CharField(max_length=20, choices=TIPO_COBRANCA_CHOICES)
+    quantidade = models.DecimalField(max_digits=10, decimal_places=2)
+    valor_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    data_inicio = models.DateField()
+    data_fim = models.DateField()
+    data_vencimento = models.DateField(help_text="Data de vencimento para o Contas a Pagar")
+    observacao = models.TextField(null=True, blank=True)
+    contas_a_pagar = models.ForeignKey('financeiro.ContasAPagar', on_delete=models.SET_NULL, null=True, blank=True, related_name='locacao_maquina')
+
+    class Meta:
+        verbose_name = "Locação de Máquina"
+        verbose_name_plural = "Locações de Máquinas"
+
+    def save(self, *args, **kwargs):
+        self.valor_total = self.quantidade * self.valor_unitario
+        from financeiro.models import ContasAPagar
+        desc = f"LOCAÇÃO MÁQUINA: {self.maquina.codigo} ({self.data_inicio.strftime('%d/%m/%Y')} a {self.data_fim.strftime('%d/%m/%Y')})"
+        
+        if not self.contas_a_pagar:
+            cp = ContasAPagar.objects.create(
+                descricao=desc.upper(),
+                valor=self.valor_total,
+                data_vencimento=self.data_vencimento,
+                status='PENDENTE',
+                fazenda=self.fazenda,
+                safra=self.safra
+            )
+            self.contas_a_pagar = cp
+        else:
+            cp = self.contas_a_pagar
+            cp.descricao = desc.upper()
+            cp.valor = self.valor_total
+            cp.data_vencimento = self.data_vencimento
+            cp.fazenda = self.fazenda
+            cp.safra = self.safra
+            cp.ativo = self.ativo
+            cp.save()
+            
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Locação {self.maquina.codigo} - {self.safra.nome}"

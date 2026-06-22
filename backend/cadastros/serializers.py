@@ -1,8 +1,9 @@
 from rest_framework import serializers
+from core.models import Fazenda, Safra
 from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
     Funcionario, SalarioMensal, Terceirizado, TurmaTerceirizada,
-    Produto, EstoqueMovimento
+    Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina
 )
 
 class EstimativaProducaoTalhaoSerializer(serializers.ModelSerializer):
@@ -94,6 +95,66 @@ class EstoqueMovimentoSerializer(serializers.ModelSerializer):
     origem_transferencia_nome = serializers.ReadOnlyField(source='origem_transferencia.nome')
     destino_transferencia_nome = serializers.ReadOnlyField(source='destino_transferencia.nome')
 
+    fazenda = serializers.PrimaryKeyRelatedField(queryset=Fazenda.objects.all(), required=False)
+    safra = serializers.PrimaryKeyRelatedField(queryset=Safra.objects.all(), required=False)
+
     class Meta:
         model = EstoqueMovimento
+        fields = '__all__'
+
+    def validate(self, attrs):
+        tipo = attrs.get('tipo_movimento')
+        
+        if tipo == 'TRANSFERENCIA':
+            origem = attrs.get('origem_transferencia')
+            destino = attrs.get('destino_transferencia')
+            if not origem or not destino:
+                raise serializers.ValidationError("Transferência exige fazenda de origem e destino.")
+            if origem == destino:
+                raise serializers.ValidationError("As fazendas de origem e destino devem ser diferentes.")
+            if origem.proprietario != destino.proprietario:
+                raise serializers.ValidationError("As fazendas devem pertencer ao mesmo proprietário.")
+            
+            # Auto-populate fazenda for origin (outflow) record
+            attrs['fazenda'] = origem
+            
+            # If safra is not provided, populate it from request context or origin farm
+            if not attrs.get('safra'):
+                request = self.context.get('request')
+                if request and getattr(request, 'safra_ativa', None):
+                    attrs['safra'] = request.safra_ativa
+                else:
+                    safra_origem = Safra.objects.filter(fazenda=origem, ativa=True, ativo=True).first()
+                    if not safra_origem:
+                        raise serializers.ValidationError("A fazenda de origem não possui uma safra ativa.")
+                    attrs['safra'] = safra_origem
+        else:
+            if not attrs.get('fazenda'):
+                raise serializers.ValidationError({"fazenda": "Este campo é obrigatório."})
+            if not attrs.get('safra'):
+                raise serializers.ValidationError({"safra": "Este campo é obrigatório."})
+                
+        return attrs
+
+
+class TransferenciaAtivoSerializer(serializers.ModelSerializer):
+    maquina_codigo = serializers.ReadOnlyField(source='maquina.codigo')
+    maquina_descricao = serializers.ReadOnlyField(source='maquina.descricao')
+    funcionario_nome = serializers.ReadOnlyField(source='funcionario.nome')
+    origem_nome = serializers.ReadOnlyField(source='origem.nome')
+    destino_nome = serializers.ReadOnlyField(source='destino.nome')
+
+    class Meta:
+        model = TransferenciaAtivo
+        fields = '__all__'
+
+
+class LocacaoMaquinaSerializer(serializers.ModelSerializer):
+    maquina_codigo = serializers.ReadOnlyField(source='maquina.codigo')
+    maquina_descricao = serializers.ReadOnlyField(source='maquina.descricao')
+    safra_nome = serializers.ReadOnlyField(source='safra.nome')
+    fazenda_nome = serializers.ReadOnlyField(source='fazenda.nome')
+
+    class Meta:
+        model = LocacaoMaquina
         fields = '__all__'

@@ -11,6 +11,7 @@ from cadastros.models import (
     Produto,
     SalarioMensal,
     Talhao,
+    LocacaoMaquina,
 )
 from core.models import Fazenda
 from financeiro.models import ContasAPagar, ContasAReceber, ItemPedidoCompra
@@ -373,6 +374,14 @@ def custo_por_talhao(safra, fazenda):
             # Real
             share_real = obter_valor_rateio_para_talhao(rateio, safra, t_obj, tipo='real')
             rows[t_id]["custo_real"] += share_real
+
+    # Adicionar custos de locação de máquinas (rateado proporcionalmente à área)
+    locacoes = LocacaoMaquina.objects.filter(safra=safra, fazenda=fazenda, ativo=True)
+    total_area_fazenda = sum((Decimal(str(row["area"])) for row in rows.values()), ZERO)
+    for loc in locacoes:
+        if total_area_fazenda > ZERO:
+            for row in rows.values():
+                row["custo_real"] += loc.valor_total * (Decimal(str(row["area"])) / total_area_fazenda)
 
     result = []
     for row in rows.values():

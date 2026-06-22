@@ -82,6 +82,7 @@ const emptyForms = {
     modelo: '',
     ano_fabricacao: '',
     tipo: '',
+    propria: true,
   },
   funcionarios: {
     fazenda: '',
@@ -119,6 +120,30 @@ const emptyForms = {
     destino_transferencia: '',
     observacao: '',
   },
+  locacoes_maquinas: {
+    maquina: '',
+    safra: '',
+    fazenda: '',
+    tipo_cobranca: 'DIA',
+    quantidade: '',
+    valor_unitario: '',
+    data_inicio: new Date().toISOString().slice(0, 10),
+    data_fim: new Date().toISOString().slice(0, 10),
+    data_vencimento: new Date().toISOString().slice(0, 10),
+    observacao: '',
+  },
+  transferencias: {
+    tipo_ativo: 'MAQUINA',
+    maquina: '',
+    funcionario: '',
+    produto: '',
+    origem: '',
+    destino: '',
+    quantidade: '',
+    valor_unitario: '',
+    data_transferencia: new Date().toISOString().slice(0, 10),
+    observacao: '',
+  },
   usuarios: { username: '', email: '', first_name: '', last_name: '', password: '', perfil_id: '', fazendas_permitidas_ids: [] },
   referencias: { nome: '', sigla: '', codigo: '' },
 };
@@ -135,6 +160,8 @@ const endpoints = {
   produtos: '/api/produtos/',
   estoque: '/api/estoque/movimentos/',
   usuarios: '/api/accounts/usuarios/',
+  locacoes_maquinas: '/api/locacoes-maquinas/',
+  transferencias: '/api/transferencias-ativos/',
 };
 
 const refEndpoints = {
@@ -191,6 +218,7 @@ const menuSections = [
       { id: 'safras', label: 'Safras', icon: CalendarRange },
       { id: 'talhoes', label: 'Talhões', icon: Grid3X3 },
       { id: 'maquinas', label: 'Máquinas', icon: Tractor },
+      { id: 'transferencias', label: 'Transferências', icon: ClipboardList },
       { id: 'referencias', label: 'Tabelas de Referência', icon: Database },
     ],
   },
@@ -214,6 +242,7 @@ const menuSections = [
       { id: 'funcionarios', label: 'Funcionários', icon: Users },
       { id: 'terceirizados', label: 'Terceirizados', icon: Briefcase },
       { id: 'turmas', label: 'Turmas', icon: Users },
+      { id: 'locacoes_maquinas', label: 'Locação de Máquinas', icon: Tractor },
       { id: 'contas_pagar', label: 'Contas a Pagar', icon: WalletCards },
       { id: 'contas_receber', label: 'Contas a Receber', icon: WalletCards },
     ],
@@ -371,7 +400,7 @@ const SelectField = ({ label, value, onChange, options, required = false, defaul
 
 export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const { user } = useAuth();
-  const { atualizarTenant, fazendaAtiva, selecionarFazenda } = useTenant();
+  const { atualizarTenant, fazendaAtiva, selecionarFazenda, safraAtiva } = useTenant();
   const [activeTab, setActiveTab] = useState('proprietarios');
   const [expandedSection, setExpandedSection] = useState('cadastros');
   const [records, setRecords] = useState({
@@ -388,6 +417,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     usuarios: [],
     perfis: [],
     saldos: [],
+    locacoes_maquinas: [],
+    transferencias: [],
   });
   const [refs, setRefs] = useState(Object.fromEntries(Object.keys(refEndpoints).map((key) => [key, []])));
   const [forms, setForms] = useState(emptyForms);
@@ -449,19 +480,29 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     return list.map((fazenda) => ({ value: fazenda.id, label: `${fazenda.nome}${fazenda.sigla ? ` (${fazenda.sigla})` : ''}` }));
   }, [records.fazendas, user]);
 
-  const safrasOptions = useMemo(
-    () => (records?.safras || []).map((safra) => ({ value: safra.id, label: `${safra.nome}${safra.ativa ? ' - ativa' : ''}` })),
-    [records?.safras],
-  );
+  const safrasOptions = useMemo(() => {
+    const activeFarmId = fazendaAtiva?.id;
+    return (records?.safras || [])
+      .filter((safra) => {
+        const fazendaId = safra?.fazenda_id || safra?.fazenda;
+        return activeFarmId && sameId(fazendaId, activeFarmId);
+      })
+      .map((safra) => ({ value: safra.id, label: `${safra.nome}${safra.ativa ? ' - ativa' : ''}` }));
+  }, [records?.safras, fazendaAtiva]);
 
   const otherSafrasOptions = useMemo(() => {
+    const activeFarmId = fazendaAtiva?.id;
     return (records?.safras || [])
-      .filter((s) => s && s.id && !sameId(s.id, currentSafraId))
+      .filter((s) => {
+        if (!s || !s.id || sameId(s.id, currentSafraId)) return false;
+        const fazendaId = s?.fazenda_id || s?.fazenda;
+        return activeFarmId && sameId(fazendaId, activeFarmId);
+      })
       .map((s) => {
         const fazendaNome = lookup(records?.fazendas || [], fieldId(s, 'fazenda'));
         return { value: s.id, label: `${s.nome || ''} (${fazendaNome})` };
       });
-  }, [records?.safras, records?.fazendas, currentSafraId]);
+  }, [records?.safras, records?.fazendas, currentSafraId, fazendaAtiva]);
 
   const handleCopySafra = async (event) => {
     event.preventDefault();
@@ -621,6 +662,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       if (fazendaAtiva && 'fazenda' in defaultForm) {
         defaultForm.fazenda = fazendaAtiva.id;
       }
+      if (fazendaAtiva && 'origem' in defaultForm) {
+        defaultForm.origem = fazendaAtiva.id;
+      }
+      if (safraAtiva && 'safra' in defaultForm) {
+        defaultForm.safra = safraAtiva.id;
+      }
       return { ...prev, [tab]: defaultForm };
     });
   };
@@ -663,6 +710,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       produtos: ['nome_comercial', 'unidade', 'classificacao'],
       estoque: ['fazenda', 'safra', 'produto', 'tipo_movimento', 'quantidade', 'data_movimento'],
       usuarios: ['username', 'email', 'first_name', 'perfil_id'],
+      locacoes_maquinas: ['maquina', 'tipo_cobranca', 'quantidade', 'valor_unitario', 'data_inicio', 'data_fim', 'data_vencimento'],
+      transferencias: ['tipo_ativo', 'origem', 'destino', 'data_transferencia'],
       referencias: ALL_REFERENCES[selectedRefTab].fields.filter((f) => f.required).map((f) => f.name),
     };
 
@@ -678,11 +727,59 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     const targetKey = activeTab === 'referencias' ? 'referencias' : activeTab;
+    
+    // Se for a aba de transferências e for do tipo PRODUTO, enviamos para o endpoint de estoque
+    if (activeTab === 'transferencias' && forms.transferencias.tipo_ativo === 'PRODUTO') {
+      const payload = {
+        tipo_movimento: 'TRANSFERENCIA',
+        produto: forms.transferencias.produto,
+        quantidade: Number(forms.transferencias.quantidade || 0),
+        valor_unitario: Number(forms.transferencias.valor_unitario || 0),
+        data_movimento: forms.transferencias.data_transferencia,
+        origem_transferencia: forms.transferencias.origem,
+        destino_transferencia: forms.transferencias.destino,
+        observacao: forms.transferencias.observacao,
+        safra: currentSafraId,
+      };
+
+      if (!payload.produto || !payload.quantidade || !payload.origem_transferencia || !payload.destino_transferencia || !payload.data_movimento) {
+        showAlert('error', 'Preencha os campos obrigatórios para transferência de produto.');
+        return;
+      }
+      
+      if (payload.origem_transferencia === payload.destino_transferencia) {
+        showAlert('error', 'A fazenda de origem e destino devem ser diferentes.');
+        return;
+      }
+
+      setSaving(true);
+      try {
+        const response = await api.post('/api/estoque/movimentos/', payload);
+        showAlert('success', response.data?.warning || 'Transferência de produto realizada com sucesso.');
+        resetForm('transferencias');
+        setShowModal(false);
+        setEditingId(null);
+        await loadData();
+      } catch (err) {
+        console.error(err);
+        const detail = err.response?.data?.detail || err.message;
+        showAlert('error', `Erro ao transferir produto: ${detail}`);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     let payload = fillRequiredRefs(cleanPayload(forms[targetKey]));
 
     if (activeTab === 'estoque') {
       payload.safra = payload.safra || currentSafraId;
       payload.valor_total = Number(payload.quantidade || 0) * Number(payload.valor_unitario || 0);
+    }
+
+    if (activeTab === 'locacoes_maquinas') {
+      payload.safra = payload.safra || currentSafraId;
+      payload.fazenda = payload.fazenda || (fazendaAtiva ? fazendaAtiva.id : '');
     }
 
     if (!validatePayload(payload)) return;
@@ -876,9 +973,14 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      const url = activeTab === 'referencias'
-        ? `${refEndpoints[selectedRefTab]}${item.id}/`
-        : `${endpoints[activeTab]}${item.id}/`;
+      let url = '';
+      if (item.isProduct) {
+        url = `/api/estoque/movimentos/${item.rawId}/`;
+      } else {
+        url = activeTab === 'referencias'
+          ? `${refEndpoints[selectedRefTab]}${item.id}/`
+          : `${endpoints[activeTab]}${item.id}/`;
+      }
       await api.patch(url, { ativo: novoEstado });
       showAlert('success', novoEstado ? 'Registro reativado!' : 'Registro inativado com sucesso.');
       await loadData();
@@ -952,7 +1054,36 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
   const filteredRows = (key, getText) => {
     const query = searchQuery.trim().toLowerCase();
-    let baseList = key === 'referencias' ? (refs[selectedRefTab] || []) : (records[key] || []);
+    
+    let baseList;
+    if (key === 'referencias') {
+      baseList = refs[selectedRefTab] || [];
+    } else if (key === 'transferencias') {
+      const assetTransfers = records.transferencias || [];
+      const productTransfers = (records.estoque || [])
+        .filter(m => m.tipo_movimento === 'TRANSFERENCIA')
+        .map(pt => ({
+          id: `prod_${pt.id}`,
+          tipo_ativo: 'PRODUTO',
+          produto: pt.produto,
+          produto_nome: pt.produto_nome || lookup(records.produtos, fieldId(pt, 'produto')),
+          origem: pt.origem_transferencia || pt.fazenda,
+          origem_nome: pt.origem_transferencia_nome || lookup(records.fazendas, fieldId(pt, 'origem_transferencia') || fieldId(pt, 'fazenda')),
+          destino: pt.destino_transferencia,
+          destino_nome: pt.destino_transferencia_nome || lookup(records.fazendas, fieldId(pt, 'destino_transferencia')),
+          data_transferencia: pt.data_movimento,
+          quantidade: pt.quantidade,
+          valor_unitario: pt.valor_unitario,
+          valor_total: pt.valor_total,
+          observacao: pt.observacao,
+          ativo: pt.ativo,
+          isProduct: true,
+          rawId: pt.id,
+        }));
+      baseList = [...assetTransfers, ...productTransfers];
+    } else {
+      baseList = records[key] || [];
+    }
 
     // Filtrar Ativos vs Inativos de acordo com o filtro do botão
     baseList = baseList.filter(item => {
@@ -960,9 +1091,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       return showInactiveOnly ? !isItemActive : isItemActive;
     });
 
-    // Se for a aba de safras, talhões ou máquinas, filtrar apenas registros da fazenda selecionada (tenant)
-    if ((key === 'safras' || key === 'talhoes' || key === 'maquinas') && fazendaAtiva) {
+    // Se for a aba de safras, talhões, máquinas ou locações, filtrar apenas registros da fazenda selecionada (tenant)
+    if ((key === 'safras' || key === 'talhoes' || key === 'maquinas' || key === 'locacoes_maquinas') && fazendaAtiva) {
       baseList = baseList.filter(item => sameId(fieldId(item, 'fazenda'), fazendaAtiva.id));
+    }
+    if (key === 'transferencias' && fazendaAtiva) {
+      baseList = baseList.filter(item => sameId(fieldId(item, 'origem'), fazendaAtiva.id) || sameId(fieldId(item, 'destino'), fazendaAtiva.id));
     }
 
     if (!query) return baseList;
@@ -995,6 +1129,10 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         if (selectedRefTab === 'unidadesMedida') return (item) => `${item.sigla} ${item.nome}`;
         if (selectedRefTab === 'contasGerenciais') return (item) => `${item.codigo} ${item.nome}`;
         return (item) => item.nome || '';
+      case 'locacoes_maquinas':
+        return (item) => `${item.maquina_codigo || ''} ${item.tipo_cobranca || ''} ${item.observacao || ''}`;
+      case 'transferencias':
+        return (item) => `${item.tipo_ativo || ''} ${item.maquina_codigo || ''} ${item.funcionario_nome || ''} ${item.produto_nome || ''} ${item.observacao || ''}`;
       default:
         return (item) => `${item.produto_nome || ''} ${item.tipo_movimento}`;
     }
@@ -1096,6 +1234,90 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Modelo" value={currentForm.modelo} onChange={(value) => patchForm('modelo', value)} />
           <InputField label="Ano Fabricação" type="number" value={currentForm.ano_fabricacao} onChange={(value) => patchForm('ano_fabricacao', value)} />
           <SelectField required label="Tipo" value={currentForm.tipo} onChange={(value) => patchForm('tipo', value)} options={refOptions('tiposMaquina')} />
+          <SelectField required label="Propriedade da Máquina" value={currentForm.propria === false ? 'false' : 'true'} onChange={(value) => patchForm('propria', value === 'true')} options={[{ value: 'true', label: 'PRÓPRIA' }, { value: 'false', label: 'ALUGADA' }]} />
+        </div>
+      );
+    }
+
+    if (activeTab === 'locacoes_maquinas') {
+      const maquinasOptions = (records.maquinas || [])
+        .filter(m => sameId(fieldId(m, 'fazenda'), fazendaAtiva?.id))
+        .map(m => ({ value: m.id, label: `${m.codigo} - ${m.descricao}` }));
+
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SelectField required label="Máquina" value={currentForm.maquina} onChange={(value) => patchForm('maquina', value)} options={maquinasOptions} />
+          <SelectField required label="Tipo de Cobrança" value={currentForm.tipo_cobranca} onChange={(value) => patchForm('tipo_cobranca', value)} options={[{ value: 'DIA', label: 'DIÁRIA' }, { value: 'HORA', label: 'HORA' }, { value: 'MES', label: 'MÊS' }, { value: 'OUTRO', label: 'OUTRO' }]} />
+          <InputField required label="Quantidade" type="number" step="any" value={currentForm.quantidade} onChange={(value) => patchForm('quantidade', value)} />
+          <InputField required label="Valor Unitário (R$)" type="number" step="any" value={currentForm.valor_unitario} onChange={(value) => patchForm('valor_unitario', value)} />
+          <InputField required label="Data Início" type="date" value={currentForm.data_inicio} onChange={(value) => patchForm('data_inicio', value)} />
+          <InputField required label="Data Fim" type="date" value={currentForm.data_fim} onChange={(value) => patchForm('data_fim', value)} />
+          <InputField required label="Vencimento do Contas a Pagar" type="date" value={currentForm.data_vencimento} onChange={(value) => patchForm('data_vencimento', value)} />
+          <div className="md:col-span-2">
+            <InputField label="Observação" value={currentForm.observacao} onChange={(value) => patchForm('observacao', value)} />
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'transferencias') {
+      const origemId = currentForm.origem;
+      
+      const maquinasOrigemOptions = (records.maquinas || [])
+        .filter(m => sameId(fieldId(m, 'fazenda'), origemId))
+        .map(m => ({ value: m.id, label: `${m.codigo} - ${m.descricao}` }));
+
+      const funcionariosOrigemOptions = (records.funcionarios || [])
+        .filter(f => sameId(fieldId(f, 'fazenda'), origemId))
+        .map(f => ({ value: f.id, label: f.nome }));
+
+      const produtosOptions = (records.produtos || [])
+        .map(p => ({ value: p.id, label: p.nome_comercial }));
+
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SelectField required label="Tipo de Ativo" value={currentForm.tipo_ativo} onChange={(value) => {
+            patchForm('tipo_ativo', value);
+            patchForm('maquina', '');
+            patchForm('funcionario', '');
+            patchForm('produto', '');
+          }} options={[{ value: 'MAQUINA', label: 'MÁQUINA' }, { value: 'FUNCIONARIO', label: 'FUNCIONÁRIO' }, { value: 'PRODUTO', label: 'PRODUTO / INSUMO' }]} />
+          
+          <InputField required label="Data da Transferência" type="date" value={currentForm.data_transferencia} onChange={(value) => patchForm('data_transferencia', value)} />
+          
+          <SelectField required label="Fazenda de Origem" value={currentForm.origem} onChange={(value) => {
+            patchForm('origem', value);
+            patchForm('maquina', '');
+            patchForm('funcionario', '');
+          }} options={fazendasOptions} />
+          
+          <SelectField required label="Fazenda de Destino" value={currentForm.destino} onChange={(value) => patchForm('destino', value)} options={fazendasOptions} />
+
+          {currentForm.tipo_ativo === 'MAQUINA' && (
+            <div className="md:col-span-2">
+              <SelectField required label="Máquina" value={currentForm.maquina} onChange={(value) => patchForm('maquina', value)} options={maquinasOrigemOptions} />
+            </div>
+          )}
+
+          {currentForm.tipo_ativo === 'FUNCIONARIO' && (
+            <div className="md:col-span-2">
+              <SelectField required label="Funcionário" value={currentForm.funcionario} onChange={(value) => patchForm('funcionario', value)} options={funcionariosOrigemOptions} />
+            </div>
+          )}
+
+          {currentForm.tipo_ativo === 'PRODUTO' && (
+            <>
+              <SelectField required label="Produto / Insumo" value={currentForm.produto} onChange={(value) => patchForm('produto', value)} options={produtosOptions} />
+              <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                <InputField required label="Quantidade" type="number" step="any" value={currentForm.quantidade} onChange={(value) => patchForm('quantidade', value)} />
+                <InputField label="Valor Unitário (R$)" type="number" step="any" value={currentForm.valor_unitario} onChange={(value) => patchForm('valor_unitario', value)} />
+              </div>
+            </>
+          )}
+
+          <div className="md:col-span-2">
+            <InputField label="Observação" value={currentForm.observacao} onChange={(value) => patchForm('observacao', value)} />
+          </div>
         </div>
       );
     }
@@ -1518,6 +1740,72 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       ));
     }
 
+    if (activeTab === 'locacoes_maquinas') {
+      return filteredRows('locacoes_maquinas', getActiveTabGetText('locacoes_maquinas')).map((item) => (
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">
+              {item.maquina_codigo || lookup(records.maquinas, fieldId(item, 'maquina'))}
+            </p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">
+              Período: {item.data_inicio} a {item.data_fim}
+            </p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+            Cobrança por {item.tipo_cobranca || 'DIA'} ({item.quantidade} x R$ {money(item.valor_unitario)})
+          </td>
+          <td className="py-3 px-5 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            R$ {money(item.valor_total)}
+            <p className="text-[9px] text-slate-450 font-normal">Vence em: {item.data_vencimento}</p>
+          </td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
+        </tr>
+      ));
+    }
+
+    if (activeTab === 'transferencias') {
+      return filteredRows('transferencias', getActiveTabGetText('transferencias')).map((item) => {
+        let descricaoAtivo = '';
+        if (item.tipo_ativo === 'MAQUINA') {
+          descricaoAtivo = item.maquina_codigo || lookup(records.maquinas, fieldId(item, 'maquina'));
+        } else if (item.tipo_ativo === 'FUNCIONARIO') {
+          descricaoAtivo = item.funcionario_nome || lookup(records.funcionarios, fieldId(item, 'funcionario'));
+        } else {
+          descricaoAtivo = item.produto_nome || lookup(records.produtos, fieldId(item, 'produto'));
+        }
+        
+        return (
+          <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+            <td className="py-3 px-5">
+              <p className="text-xs font-black text-slate-800 dark:text-white uppercase">
+                {item.tipo_ativo || 'Ativo'}
+              </p>
+              <p className="text-[10px] font-bold text-slate-655 dark:text-slate-300">
+                {descricaoAtivo}
+              </p>
+            </td>
+            <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+              Origem: {item.origem_nome || lookup(records.fazendas, fieldId(item, 'origem'))} → Destino: {item.destino_nome || lookup(records.fazendas, fieldId(item, 'destino'))}
+            </td>
+            <td className="py-3 px-5 text-right text-xs font-bold text-slate-600 dark:text-slate-350">
+              {item.data_transferencia || item.data_movimento}
+              {item.quantidade && <p className="text-[9px] text-teal-500 font-bold">{Number(item.quantidade).toLocaleString('pt-BR')} unidades</p>}
+            </td>
+            <td className="py-3 px-5 text-center">
+              <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+                {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              </button>
+            </td>
+          </tr>
+        );
+      });
+    }
+
     return filteredRows('estoque', (item) => `${item.produto_nome || ''} ${item.tipo_movimento}`).map((item) => (
       <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
         <td className="py-3 px-5">
@@ -1777,7 +2065,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
+          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
 
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">

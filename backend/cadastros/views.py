@@ -12,14 +12,15 @@ from referencias.models import (
 from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
     Funcionario, SalarioMensal, Terceirizado, TurmaTerceirizada,
-    Produto, EstoqueMovimento
+    Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina
 )
 from cadastros.serializers import (
     TalhaoSerializer, EstimativaProducaoTalhaoSerializer,
     MaquinaSerializer, CustoMensalMaquinaSerializer,
     FuncionarioSerializer, SalarioMensalSerializer,
     TerceirizadoSerializer, TurmaTerceirizadaSerializer,
-    ProdutoSerializer, EstoqueMovimentoSerializer
+    ProdutoSerializer, EstoqueMovimentoSerializer,
+    TransferenciaAtivoSerializer, LocacaoMaquinaSerializer
 )
 
 
@@ -267,7 +268,6 @@ class EstoqueMovimentoViewSet(BaseTenantViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Validar estoque se for Saída ou Transferência
         tipo = serializer.validated_data.get('tipo_movimento')
         produto = serializer.validated_data.get('produto')
         quantidade = serializer.validated_data.get('quantidade')
@@ -278,9 +278,20 @@ class EstoqueMovimentoViewSet(BaseTenantViewSet):
         # Se for transferência, a fazenda de origem é a fazenda do contexto
         if tipo == 'TRANSFERENCIA':
             origem = serializer.validated_data.get('origem_transferencia')
-            if not origem:
+            destino = serializer.validated_data.get('destino_transferencia')
+            if not origem or not destino:
                 return Response(
-                    {"detail": "Transferência exige fazenda de origem."},
+                    {"detail": "Transferência exige fazenda de origem e destino."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if origem == destino:
+                return Response(
+                    {"detail": "As fazendas de origem e destino devem ser diferentes."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if origem.proprietario != destino.proprietario:
+                return Response(
+                    {"detail": "As fazendas devem pertencer ao mesmo proprietário."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             fazenda = origem
@@ -293,14 +304,121 @@ class EstoqueMovimentoViewSet(BaseTenantViewSet):
                 # Alerta dinâmico (não bloqueante)
                 warning_msg = f"Atenção: Saldo insuficiente de {produto.nome_comercial} para esta operação. Saldo atual: {saldo}."
 
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        
-        response_data = serializer.data
+        if tipo == 'TRANSFERENCIA':
+            from django.db import transaction
+            origem = serializer.validated_data.get('origem_transferencia')
+            destino = serializer.validated_data.get('destino_transferencia')
+            
+            # Buscar safra ativa da fazenda destino
+            safra_destino = Safra.objects.filter(fazenda=destino, ativa=True, ativo=True).first()
+            if not safra_destino:
+                return Response(
+                    {"detail": "A fazenda de destino não possui uma safra ativa."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Buscar ou clonar produto no destino
+            produto_destino = Produto.objects.filter(
+                fazenda=destino,
+                safra=safra_destino,
+                nome_comercial=produto.nome_comercial,
+                ativo=True
+            ).first()
+            if not produto_destino:
+                produto_destino = Produto.objects.create(
+                    fazenda=destino,
+                    safra=safra_destino,
+                    codigo=produto.codigo,
+                    nome_comercial=produto.nome_comercial,
+                    unidade=produto.unidade,
+                    classificacao=produto.classificacao,
+                    grupo_quimico=produto.grupo_quimico,
+                    concentracao=produto.concentracao,
+                    periodo_carencia=produto.periodo_carencia,
+                    alvo=produto.alvo,
+                    recomendacoes_tecnicas=produto.recomendacoes_tecnicas
+                )
+
+            with transaction.atomic():
+                outflow = serializer.save(
+                    fazenda=origem,
+                    safra=safra,
+                    produto=produto,
+                    tipo_movimento='TRANSFERENCIA'
+                )
+                
+                inflow = EstoqueMovimento.objects.create(
+                    fazenda=destino,
+                    safra=safra_destino,
+                    produto=produto_destino,
+                    tipo_movimento='TRANSFERENCIA',
+                    quantidade=quantidade,
+                    valor_unitario=serializer.validated_data.get('valor_unitario', 0),
+                    valor_total=serializer.validated_data.get('valor_total', 0) or (quantidade * serializer.validated_data.get('valor_unitario', 0)),
+                    data_movimento=serializer.validated_data.get('data_movimento'),
+                    documento_referencia=serializer.validated_data.get('documento_referencia'),
+                    origem_transferencia=origem,
+                    destino_transferencia=destino,
+                    observacao=serializer.validated_data.get('observacao'),
+                    transferencia_vinculada=outflow
+                )
+                
+                outflow.transferencia_vinculada = inflow
+                outflow.save()
+                
+            response_data = self.get_serializer(outflow).data
+        else:
+            self.perform_create(serializer)
+            response_data = serializer.data
+
+        headers = self.get_success_headers(response_data)
         if warning_msg:
             response_data['warning'] = warning_msg
 
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save()
+        if instance.transferencia_vinculada and instance.transferencia_vinculada.ativo:
+            instance.transferencia_vinculada.ativo = False
+            instance.transferencia_vinculada.save()
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        if instance.tipo_movimento == 'TRANSFERENCIA' and instance.transferencia_vinculada:
+            linked = instance.transferencia_vinculada
+            
+            # Se o produto mudou, precisamos encontrar ou clonar o produto correto no destino
+            if instance.produto.nome_comercial != linked.produto.nome_comercial:
+                produto_destino = Produto.objects.filter(
+                    fazenda=linked.fazenda,
+                    safra=linked.safra,
+                    nome_comercial=instance.produto.nome_comercial,
+                    ativo=True
+                ).first()
+                if not produto_destino:
+                    produto_destino = Produto.objects.create(
+                        fazenda=linked.fazenda,
+                        safra=linked.safra,
+                        codigo=instance.produto.codigo,
+                        nome_comercial=instance.produto.nome_comercial,
+                        unidade=instance.produto.unidade,
+                        classificacao=instance.produto.classificacao,
+                        grupo_quimico=instance.produto.grupo_quimico,
+                        concentracao=instance.produto.concentracao,
+                        periodo_carencia=instance.produto.periodo_carencia,
+                        alvo=instance.produto.alvo,
+                        recomendacoes_tecnicas=instance.produto.recomendacoes_tecnicas
+                    )
+                linked.produto = produto_destino
+
+            linked.quantidade = instance.quantidade
+            linked.valor_unitario = instance.valor_unitario
+            linked.valor_total = instance.valor_total
+            linked.data_movimento = instance.data_movimento
+            linked.observacao = instance.observacao
+            linked.save()
 
     def calcular_saldo_produto(self, fazenda, safra, produto):
         entradas = EstoqueMovimento.objects.filter(
@@ -385,3 +503,27 @@ class EstoqueSaldoViewSet(viewsets.ViewSet):
                 })
 
         return Response(saldos)
+
+
+class TransferenciaAtivoViewSet(BaseTenantViewSet):
+    queryset = TransferenciaAtivo.objects.all()
+    serializer_class = TransferenciaAtivoSerializer
+
+    def get_queryset(self):
+        from django.db.models import Q
+        return super().get_queryset().filter(
+            Q(origem__in=self.request.fazendas_permitidas) | Q(destino__in=self.request.fazendas_permitidas)
+        )
+
+
+class LocacaoMaquinaViewSet(BaseTenantViewSet):
+    queryset = LocacaoMaquina.objects.all()
+    serializer_class = LocacaoMaquinaSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(
+            fazenda__in=self.request.fazendas_permitidas
+        )
+        if self.request.safra_ativa:
+            qs = qs.filter(safra=self.request.safra_ativa)
+        return qs

@@ -100,12 +100,12 @@
 
 
 ### 🔄 Fase 6.6: Entrada de Dados de Rateios Operacionais ("Aba Rateios")
-- [ ] Criar o modelo `RateioOperacional` no app `operacoes` contendo todos os campos de planejado e realizado (horas homem, horas máquina, diesel, e outros custos) herdando de `BaseModel`.
-- [ ] Implementar a lógica de propagação de custos em `operacoes/services.py` distribuindo os custos proporcionalmente à área física (ha) dos talhões ativos (da fazenda especificada ou compartilhada globalmente caso nula).
-- [ ] Implementar a baixa automática de estoque de diesel (`EstoqueMovimento` de saída) ao registrar combustível realizado no rateio.
-- [ ] Criar endpoints `/api/rateios-operacionais/` com serializers e views associados.
-- [ ] Integrar o rateio operacional nos relatórios analíticos (`custo-talhao`, `custo-mensal` e `mof`).
-- [ ] Desenvolver no frontend a aba **Rateios Operacionais** dentro do módulo de ordens de serviço, contendo listagem e modal de cadastro de duas colunas, com caixa alta e navegação otimizada por Enter/Tab.
+- [x] Criar o modelo `RateioOperacional` no app `operacoes` contendo todos os campos de planejado e realizado (horas homem, horas máquina, diesel, e outros custos) herdando de `BaseModel`.
+- [x] Implementar a lógica de propagação de custos em `operacoes/services.py` distribuindo os custos proporcionalmente à área física (ha) dos talhões ativos (da fazenda especificada ou compartilhada globalmente caso nula).
+- [x] Implementar a baixa automática de estoque de diesel (`EstoqueMovimento` de saída) ao registrar combustível realizado no rateio.
+- [x] Criar endpoints `/api/rateios-operacionais/` com serializers e views associados.
+- [x] Integrar o rateio operacional nos relatórios analíticos (`custo-talhao`, `custo-mensal` e `mof`).
+- [x] Desenvolver no frontend a aba **Rateios Operacionais** dentro do módulo de ordens de serviço, contendo listagem e modal de cadastro de duas colunas, com caixa alta e navegação otimizada por Enter/Tab.
 
 
 ### 📊 Fase 7: Relatórios (`relatorios`)
@@ -139,7 +139,7 @@
     - [x] Terceirizados
     - [x] Turmas de Trabalho
     - [x] Produtos e Insumos
-    - [x] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo)
+    - [x] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo e filtro de safras pela fazenda ativa no modal)
     - [x] Contas a Pagar (Gestão financeira integrada)
     - [x] Ordens de Serviço (Cadastro, listagem e apontamentos operacionais em campo)
     - [x] Correção de alinhamento no campo de busca/pesquisa (jogando texto para a direita e centralizando ícone da lupa verticalmente)
@@ -149,6 +149,14 @@
   - [x] **Impressão e Gestão de Ordens de Serviço**:
     - [x] Tela de impressão amigável (CSS `@media print` customizado para folha A4 e PDFs bem estruturados para operadores de campo).
   - [x] **Relatórios Analíticos**: Visualização responsiva de tabelas e fluxos.
+
+### 🔄 Fase 9: Transferências de Ativos e Locação de Máquinas (Novo Requisito)
+- [x] Criar modelos `TransferenciaAtivo` (Máquina/Funcionário) e `LocacaoMaquina` no backend (`cadastros`).
+- [x] Adicionar campo `propria` em `Maquina` e `transferencia_vinculada` em `EstoqueMovimento`.
+- [x] Implementar fluxo de transferência de produtos em duas vias no `EstoqueMovimentoViewSet` (com autocriação de produto no destino se necessário).
+- [x] Implementar integração de contas a pagar automática para locações de máquinas.
+- [x] Ratear valor de locação de máquinas proporcionalmente à área no relatório de custo por talhão.
+- [x] Desenvolver no frontend interfaces completas para transferências e locação de máquinas (com teclado Enter/Tab, caixa alta e duas colunas).
 
 ---
 
@@ -201,7 +209,7 @@
 - [x] `POST /api/ordens-servico/{id}/concluir/`
 - [x] `GET/POST /api/gastos-rateio/`
 - [x] `GET/POST /api/abastecimentos/`
-- [ ] `GET/POST /api/rateios-operacionais/`
+- [x] `GET/POST /api/rateios-operacionais/`
 
 ### Compras, Vendas & Financeiro (Fase 6.5)
 - [x] `GET/POST /api/financeiro/pedidos-compra/`
@@ -222,6 +230,10 @@
 - [x] `GET /api/relatorios/estoque/`
 - [x] `GET /api/relatorios/gestao-a-vista/`
 - [x] `GET /api/relatorios/producao-talhao/`
+
+### Transferências e Locações de Máquinas (Fase 9)
+- [x] `GET/POST /api/transferencias-ativos/`
+- [x] `GET/POST /api/locacoes-maquinas/`
 
 ---
 
