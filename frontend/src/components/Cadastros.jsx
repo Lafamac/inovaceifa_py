@@ -22,6 +22,7 @@ import {
   Users,
   WalletCards,
   Warehouse,
+  Wrench,
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -83,6 +84,7 @@ const emptyForms = {
     ano_fabricacao: '',
     tipo: '',
     propria: true,
+    horimetro_inicial: '',
   },
   funcionarios: {
     fazenda: '',
@@ -162,6 +164,7 @@ const endpoints = {
   usuarios: '/api/accounts/usuarios/',
   locacoes_maquinas: '/api/locacoes-maquinas/',
   transferencias: '/api/transferencias-ativos/',
+  manutencoes_maquinas: '/api/manutencoes-maquinas/',
 };
 
 const refEndpoints = {
@@ -419,6 +422,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     saldos: [],
     locacoes_maquinas: [],
     transferencias: [],
+    manutencoes_maquinas: [],
   });
   const [refs, setRefs] = useState(Object.fromEntries(Object.keys(refEndpoints).map((key) => [key, []])));
   const [forms, setForms] = useState(emptyForms);
@@ -438,6 +442,16 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copySourceSafraId, setCopySourceSafraId] = useState('');
   const [copyCarryStock, setCopyCarryStock] = useState(false);
+
+  const [newMaintenance, setNewMaintenance] = useState({
+    data: new Date().toISOString().slice(0, 10),
+    data_vencimento: new Date().toISOString().slice(0, 10),
+    descricao: '',
+    valor: '',
+    nota_fiscal: ''
+  });
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [maintenanceMachine, setMaintenanceMachine] = useState(null);
 
   const currentForm = forms[activeTab];
 
@@ -536,7 +550,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const refOptions = (key, labelGetter = (item) => item.nome) =>
     refs[key].map((item) => ({ value: item.id, label: labelGetter(item) }));
 
-  const showAlert = (type, message) => {
+  const showAlert = (type, message, persistent = false) => {
     if (type === 'error') {
       setError(message);
       setSuccess('');
@@ -545,10 +559,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       setError('');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    window.setTimeout(() => {
-      setError('');
-      setSuccess('');
-    }, 4500);
+    if (!persistent) {
+      window.setTimeout(() => {
+        setError('');
+        setSuccess('');
+      }, 4500);
+    }
   };
 
   const fetchList = async (url, fallbackKey) => {
@@ -823,13 +839,18 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         }
         
         let successMsg = response.data?.warning || 'Registro criado com sucesso.';
+        let isPersistent = false;
         if (activeTab === 'proprietarios') {
           successMsg = 'Proprietário cadastrado com sucesso! O usuário correspondente foi criado e os dados de acesso foram enviados por e-mail.';
+          isPersistent = true;
+          alert(successMsg);
         } else if (activeTab === 'funcionarios' && payload.criar_usuario && payload.email) {
           successMsg = 'Funcionário cadastrado com sucesso! O usuário correspondente foi criado e os dados de acesso foram enviados por e-mail.';
+          isPersistent = true;
+          alert(successMsg);
         }
         
-        showAlert('success', successMsg);
+        showAlert('success', successMsg, isPersistent);
 
         // Lançar estoque inicial automaticamente para novo produto se informado
         if (activeTab === 'produtos' && qInitial && Number(qInitial) > 0) {
@@ -1052,6 +1073,53 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     setShowModal(true);
   };
 
+  const handleAddMaintenance = async () => {
+    if (!maintenanceMachine) return;
+    if (!newMaintenance.descricao || !newMaintenance.valor || !newMaintenance.data || !newMaintenance.data_vencimento) {
+      showAlert('error', 'Preencha a data, vencimento, trabalho realizado e o valor da manutenção.');
+      return;
+    }
+    setSavingMaintenance(true);
+    try {
+      await api.post('/api/manutencoes-maquinas/', {
+        maquina: maintenanceMachine.id,
+        safra: safraAtiva?.id,
+        data: newMaintenance.data,
+        data_vencimento: newMaintenance.data_vencimento,
+        descricao: newMaintenance.descricao,
+        valor: Number(newMaintenance.valor),
+        nota_fiscal: newMaintenance.nota_fiscal
+      });
+      showAlert('success', 'Manutenção registrada e conta a pagar gerada com sucesso!');
+      setNewMaintenance({
+        data: new Date().toISOString().slice(0, 10),
+        data_vencimento: new Date().toISOString().slice(0, 10),
+        descricao: '',
+        valor: '',
+        nota_fiscal: ''
+      });
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      const detail = err.response?.data?.detail || err.message;
+      showAlert('error', `Erro ao registrar manutenção: ${detail}`);
+    } finally {
+      setSavingMaintenance(false);
+    }
+  };
+
+  const handleDeleteMaintenance = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta manutenção?')) return;
+    try {
+      await api.delete(`/api/manutencoes-maquinas/${id}/`);
+      showAlert('success', 'Manutenção excluída com sucesso!');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao excluir manutenção.');
+    }
+  };
+
   const filteredRows = (key, getText) => {
     const query = searchQuery.trim().toLowerCase();
     
@@ -1233,11 +1301,13 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Marca" value={currentForm.marca} onChange={(value) => patchForm('marca', value)} />
           <InputField label="Modelo" value={currentForm.modelo} onChange={(value) => patchForm('modelo', value)} />
           <InputField label="Ano Fabricação" type="number" value={currentForm.ano_fabricacao} onChange={(value) => patchForm('ano_fabricacao', value)} />
+          <InputField label="Horímetro Inicial (h)" type="number" step="any" value={currentForm.horimetro_inicial} onChange={(value) => patchForm('horimetro_inicial', value)} />
           <SelectField required label="Tipo" value={currentForm.tipo} onChange={(value) => patchForm('tipo', value)} options={refOptions('tiposMaquina')} />
           <SelectField required label="Propriedade da Máquina" value={currentForm.propria === false ? 'false' : 'true'} onChange={(value) => patchForm('propria', value === 'true')} options={[{ value: 'true', label: 'PRÓPRIA' }, { value: 'false', label: 'ALUGADA' }]} />
         </div>
       );
     }
+
 
     if (activeTab === 'locacoes_maquinas') {
       const maquinasOptions = (records.maquinas || [])
@@ -1567,8 +1637,28 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <p className="text-[10px] text-slate-455 dark:text-slate-500">{item.marca || '-'} {item.modelo || ''}</p>
           </td>
           <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">{item.tipo_nome || 'Trator/Máquina'}</td>
+          <td className="py-3 px-5 text-right">
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{item.tipo_nome || 'Trator/Máquina'}</p>
+            <p className="text-[10px] text-slate-450 dark:text-slate-500">Horímetro Inicial: {Number(item.horimetro_inicial || 0).toLocaleString('pt-BR')} h</p>
+          </td>
           <td className="py-3 px-5 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setMaintenanceMachine(item);
+                setNewMaintenance({
+                  data: new Date().toISOString().slice(0, 10),
+                  data_vencimento: new Date().toISOString().slice(0, 10),
+                  descricao: '',
+                  valor: '',
+                  nota_fiscal: ''
+                });
+              }}
+              className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 mr-2 cursor-pointer"
+              title="Manutenções"
+            >
+              <Wrench className="h-3.5 w-3.5" />
+            </button>
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
               {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -1827,15 +1917,35 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   return (
     <div className="cadastros-page w-full max-w-7xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       {error && (
-        <div className="mb-6 p-4 rounded-xl border border-rose-200 dark:border-rose-950/20 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 text-sm font-semibold flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
-          <p>{error}</p>
+        <div className="mb-6 p-4 rounded-xl border border-rose-200 dark:border-rose-950/20 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 text-sm font-semibold flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <p>{error}</p>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setError('')} 
+            className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 font-black cursor-pointer text-base px-2 focus:outline-none"
+            title="Fechar"
+          >
+            ✕
+          </button>
         </div>
       )}
       {success && (
-        <div className="mb-6 p-4 rounded-xl border border-emerald-200 dark:border-emerald-950/20 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 text-sm font-semibold flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <p>{success}</p>
+        <div className="mb-6 p-4 rounded-xl border border-emerald-200 dark:border-emerald-950/20 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 text-sm font-semibold flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <p>{success}</p>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setSuccess('')} 
+            className="text-emerald-500 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-200 font-black cursor-pointer text-base px-2 focus:outline-none"
+            title="Fechar"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -2200,6 +2310,129 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL DEDICADO PARA MANUTENÇÃO DE MÁQUINAS */}
+      {maintenanceMachine && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
+              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-emerald-500" />
+                <span>Manutenções: {maintenanceMachine.codigo} - {maintenanceMachine.descricao}</span>
+              </h2>
+              <button
+                onClick={() => setMaintenanceMachine(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              {/* Sub-form to Add Maintenance */}
+              <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-white/[0.08] space-y-3">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Nova Manutenção</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <InputField
+                    label="Data da Manutenção"
+                    type="date"
+                    value={newMaintenance.data}
+                    onChange={(val) => setNewMaintenance(prev => ({ ...prev, data: val }))}
+                  />
+                  <InputField
+                    label="Vencimento do Pagamento"
+                    type="date"
+                    value={newMaintenance.data_vencimento}
+                    onChange={(val) => setNewMaintenance(prev => ({ ...prev, data_vencimento: val }))}
+                  />
+                  <InputField
+                    label="Valor (R$)"
+                    type="number"
+                    step="any"
+                    value={newMaintenance.valor}
+                    onChange={(val) => setNewMaintenance(prev => ({ ...prev, valor: val }))}
+                  />
+                  <InputField
+                    label="Número da Nota Fiscal (NF)"
+                    value={newMaintenance.nota_fiscal}
+                    onChange={(val) => setNewMaintenance(prev => ({ ...prev, nota_fiscal: val }))}
+                  />
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="O que foi realizado / Descrição"
+                      value={newMaintenance.descricao}
+                      onChange={(val) => setNewMaintenance(prev => ({ ...prev, descricao: val }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    disabled={savingMaintenance}
+                    onClick={handleAddMaintenance}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 disabled:opacity-60 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
+                  >
+                    {savingMaintenance ? 'Registrando...' : 'Registrar Manutenção'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Maintenance History List */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Histórico na Safra Ativa</p>
+                {((records.manutencoes_maquinas || []).filter(m => sameId(m.maquina, maintenanceMachine.id) && m.ativo !== false)).length === 0 ? (
+                  <p className="text-xs text-slate-400 italic text-center py-4 bg-slate-50/50 dark:bg-slate-950/10 rounded-xl border border-slate-100 dark:border-slate-800/40">Nenhuma manutenção registrada nesta safra.</p>
+                ) : (
+                  <div className="overflow-hidden border border-slate-100 dark:border-slate-800/80 rounded-xl bg-white dark:bg-slate-900 shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+                          <th className="py-2.5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Data</th>
+                          <th className="py-2.5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Descrição / NF</th>
+                          <th className="py-2.5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-wider">Vencimento</th>
+                          <th className="py-2.5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-right">Valor</th>
+                          <th className="py-2.5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center w-12">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        {((records.manutencoes_maquinas || []).filter(m => sameId(m.maquina, maintenanceMachine.id) && m.ativo !== false)).map((m) => (
+                          <tr key={m.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/10">
+                            <td className="py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                              {m.data ? new Date(m.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                            </td>
+                            <td className="py-2.5 px-4 text-xs text-slate-500 dark:text-slate-400 uppercase break-all">
+                              {m.descricao}{m.nota_fiscal ? ` (NF: ${m.nota_fiscal})` : ''}
+                            </td>
+                            <td className="py-2.5 px-4 text-xs text-slate-500 dark:text-slate-400">
+                              {m.data_vencimento ? new Date(m.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                            </td>
+                            <td className="py-2.5 px-4 text-xs font-black text-slate-800 dark:text-white text-right">
+                              {Number(m.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMaintenance(m.id)}
+                                className="text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer"
+                                title="Excluir manutenção"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

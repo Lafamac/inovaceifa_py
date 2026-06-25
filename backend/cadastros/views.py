@@ -12,7 +12,8 @@ from referencias.models import (
 from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
     Funcionario, SalarioMensal, Terceirizado, TurmaTerceirizada,
-    Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina
+    Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina,
+    ManutencaoMaquina
 )
 from cadastros.serializers import (
     TalhaoSerializer, EstimativaProducaoTalhaoSerializer,
@@ -20,7 +21,8 @@ from cadastros.serializers import (
     FuncionarioSerializer, SalarioMensalSerializer,
     TerceirizadoSerializer, TurmaTerceirizadaSerializer,
     ProdutoSerializer, EstoqueMovimentoSerializer,
-    TransferenciaAtivoSerializer, LocacaoMaquinaSerializer
+    TransferenciaAtivoSerializer, LocacaoMaquinaSerializer,
+    ManutencaoMaquinaSerializer
 )
 
 
@@ -527,3 +529,28 @@ class LocacaoMaquinaViewSet(BaseTenantViewSet):
         if self.request.safra_ativa:
             qs = qs.filter(safra=self.request.safra_ativa)
         return qs
+
+
+class ManutencaoMaquinaViewSet(BaseTenantViewSet):
+    queryset = ManutencaoMaquina.objects.all()
+    serializer_class = ManutencaoMaquinaSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(
+            maquina__fazenda__in=self.request.fazendas_permitidas
+        )
+        if self.request.safra_ativa:
+            qs = qs.filter(safra=self.request.safra_ativa)
+
+        maquina_id = self.request.query_params.get('maquina')
+        if maquina_id:
+            qs = qs.filter(maquina_id=maquina_id)
+
+        return qs
+
+    def perform_create(self, serializer):
+        if 'safra' not in serializer.validated_data and self.request.safra_ativa:
+            serializer.save(safra=self.request.safra_ativa)
+        else:
+            serializer.save()
+

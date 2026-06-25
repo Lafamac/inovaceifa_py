@@ -3,7 +3,8 @@ from core.models import Fazenda, Safra
 from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
     Funcionario, SalarioMensal, Terceirizado, TurmaTerceirizada,
-    Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina
+    Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina,
+    ManutencaoMaquina
 )
 
 class EstimativaProducaoTalhaoSerializer(serializers.ModelSerializer):
@@ -158,3 +159,14 @@ class LocacaoMaquinaSerializer(serializers.ModelSerializer):
     class Meta:
         model = LocacaoMaquina
         fields = '__all__'
+
+
+class ManutencaoMaquinaSerializer(serializers.ModelSerializer):
+    maquina_codigo = serializers.ReadOnlyField(source='maquina.codigo')
+    maquina_descricao = serializers.ReadOnlyField(source='maquina.descricao')
+    safra_nome = serializers.ReadOnlyField(source='safra.nome')
+
+    class Meta:
+        model = ManutencaoMaquina
+        fields = '__all__'
+

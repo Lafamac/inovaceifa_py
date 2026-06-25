@@ -53,6 +53,7 @@ class Maquina(BaseModel):
     ano_fabricacao = models.IntegerField(null=True, blank=True)
     tipo = models.ForeignKey(TipoMaquina, on_delete=models.PROTECT) # Trator, Colhedora, Caminhão, etc.
     propria = models.BooleanField(default=True)
+    horimetro_inicial = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Horímetro inicial no cadastro da máquina")
 
     class Meta:
         verbose_name = "Máquina"
@@ -299,3 +300,51 @@ class LocacaoMaquina(BaseModel):
 
     def __str__(self):
         return f"Locação {self.maquina.codigo} - {self.safra.nome}"
+
+
+class ManutencaoMaquina(BaseModel):
+    maquina = models.ForeignKey(Maquina, on_delete=models.PROTECT, related_name='manutencoes')
+    safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='manutencoes')
+    data = models.DateField()
+    descricao = models.TextField()
+    valor = models.DecimalField(max_digits=12, decimal_places=2)
+    data_vencimento = models.DateField(null=True, blank=True, help_text="Data de vencimento para o Contas a Pagar")
+    nota_fiscal = models.CharField(max_length=50, null=True, blank=True, help_text="Número da Nota Fiscal")
+    contas_a_pagar = models.ForeignKey('financeiro.ContasAPagar', on_delete=models.SET_NULL, null=True, blank=True, related_name='manutencao_maquina')
+
+    class Meta:
+        verbose_name = "Manutenção de Máquina"
+        verbose_name_plural = "Manutenções de Máquinas"
+
+    def save(self, *args, **kwargs):
+        from financeiro.models import ContasAPagar
+        nf_str = f" NF: {self.nota_fiscal}" if self.nota_fiscal else ""
+        desc = f"MANUTENÇÃO MÁQUINA: {self.maquina.codigo} - {self.descricao}{nf_str}"
+        venc = self.data_vencimento or self.data
+        
+        if not self.contas_a_pagar:
+            cp = ContasAPagar.objects.create(
+                descricao=desc.upper(),
+                valor=self.valor,
+                data_vencimento=venc,
+                status='PENDENTE',
+                fazenda=self.maquina.fazenda,
+                safra=self.safra
+            )
+            self.contas_a_pagar = cp
+        else:
+            cp = self.contas_a_pagar
+            cp.descricao = desc.upper()
+            cp.valor = self.valor
+            cp.data_vencimento = venc
+            cp.fazenda = self.maquina.fazenda
+            cp.safra = self.safra
+            cp.ativo = self.ativo
+            cp.save()
+            
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Manutenção {self.maquina.codigo} - {self.data}"
+
+

@@ -1,5 +1,6 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from core.models import Proprietario, Fazenda, Safra
 from core.serializers import ProprietarioSerializer, FazendaSerializer, SafraSerializer
 
@@ -14,6 +15,17 @@ class ProprietarioViewSet(viewsets.ModelViewSet):
         is_super = getattr(request.user, 'perfil', None) and request.user.perfil.nivel == 1
         if not (is_super or request.user.is_superuser):
             raise PermissionDenied("Apenas o perfil de Superusuário (nível 1) tem acesso ao cadastro de proprietários.")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        
+        # Add warning message informing about user and email creation
+        data = serializer.data
+        data['warning'] = 'Proprietário cadastrado com sucesso! O usuário correspondente foi criado e os dados de acesso foram enviados por e-mail.'
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
 
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'

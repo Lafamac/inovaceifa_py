@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { relatorioService } from '../services/api';
 import { Sprout, Lock, Mail, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const Login = () => {
@@ -17,6 +18,13 @@ export const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // Estados de recuperação de senha
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoverySuccess, setRecoverySuccess] = useState('');
+  const [recoveryError, setRecoveryError] = useState('');
 
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
@@ -46,6 +54,30 @@ export const Login = () => {
     }
   };
 
+  const handleRecoverySubmit = async (e) => {
+    e.preventDefault();
+    if (!recoveryEmail) return;
+
+    setRecoveryLoading(true);
+    setRecoveryError('');
+    setRecoverySuccess('');
+
+    try {
+      const response = await relatorioService.recuperarSenha(recoveryEmail);
+      setRecoverySuccess(response.detail || 'Uma nova senha temporária foi enviada para o seu e-mail.');
+      setRecoveryEmail('');
+    } catch (err) {
+      console.error(err);
+      let msg = 'Erro ao solicitar nova senha.';
+      if (err.response && err.response.data && err.response.data.detail) {
+        msg = err.response.data.detail;
+      }
+      setRecoveryError(msg);
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-[#090d16] overflow-hidden font-sans">
@@ -66,7 +98,7 @@ export const Login = () => {
             <h2 className="text-2xl font-black tracking-tight text-white font-display">
               Inova Ceifa
             </h2>
-            <p className="text-xs text-slate-300 font-medium uppercase tracking-widest mt-1">
+            <p className="text-xs text-emerald-400 font-semibold uppercase tracking-widest mt-1">
               Agro Analytics Platform
             </p>
           </div>
@@ -141,9 +173,13 @@ export const Login = () => {
               </button>
             </div>
             <div className="flex justify-end pt-0.5">
-              <a href="#recuperar" className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors bg-transparent border-none cursor-pointer focus:outline-none"
+              >
                 Esqueceu a senha?
-              </a>
+              </button>
             </div>
           </div>
 
@@ -156,7 +192,7 @@ export const Login = () => {
                 onChange={() => setRememberMe(!rememberMe)}
                 className="w-4 h-4 rounded border-white/[0.08] bg-slate-950/50 text-emerald-500 focus:ring-emerald-500/30"
               />
-              <span className="text-xs text-slate-300 font-semibold">Lembrar-me neste aparelho</span>
+              <span className="text-xs text-slate-200 font-semibold">Lembrar-me neste aparelho</span>
             </label>
           </div>
 
@@ -182,6 +218,85 @@ export const Login = () => {
 
 
       </div>
+
+      {/* Modal de Recuperação de Senha */}
+      {showForgotModal && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm z-50 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-[420px] p-8 mx-4 rounded-3xl border border-white/[0.08] bg-slate-900 shadow-2xl shadow-black/80 animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center space-y-4 mb-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400">
+                <Lock className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Recuperar Senha</h3>
+                <p className="text-xs text-slate-200 mt-1">
+                  Digite seu e-mail cadastrado. Enviaremos uma nova senha temporária para você.
+                </p>
+              </div>
+            </div>
+
+            {recoveryError && (
+              <div className="mb-4 p-3 rounded-xl border border-rose-900/30 bg-rose-950/20 text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 block shrink-0" />
+                <p>{recoveryError}</p>
+              </div>
+            )}
+
+            {recoverySuccess && (
+              <div className="mb-4 p-3 rounded-xl border border-emerald-900/30 bg-emerald-950/20 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 block shrink-0" />
+                <p>{recoverySuccess}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleRecoverySubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-200 uppercase tracking-wider block">
+                  E-mail do Usuário
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    placeholder="nome@empresa.com.br"
+                    style={{ paddingLeft: '3.75rem', paddingRight: '1rem' }}
+                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 focus:bg-slate-950 rounded-xl py-3 pl-14 pr-4 text-sm text-white placeholder-slate-400 outline-none transition-all focus:ring-1 focus:ring-emerald-500/30"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(false);
+                    setRecoveryEmail('');
+                    setRecoverySuccess('');
+                    setRecoveryError('');
+                  }}
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-white/[0.08] text-slate-200 hover:text-white hover:bg-white/[0.02] font-semibold text-xs transition-colors cursor-pointer focus:outline-none"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={recoveryLoading || !recoveryEmail}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs py-2.5 px-4 shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 cursor-pointer focus:outline-none"
+                >
+                  {recoveryLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <span>Enviar E-mail</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

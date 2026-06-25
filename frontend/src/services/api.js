@@ -281,6 +281,11 @@ export const relatorioService = {
     return res.data;
   },
 
+  recuperarSenha: async (email) => {
+    const res = await api.post('/api/auth/recuperar-senha/', { email });
+    return res.data;
+  },
+
   getUsuario: () => {
     return requestHandler(
       () => api.get('/api/auth/me/'),

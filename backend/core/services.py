@@ -116,3 +116,36 @@ def create_operator_user_and_send_access_email(funcionario):
         password=password,
     )
     return usuario
+
+
+@transaction.atomic
+def recuperar_senha_por_email(email):
+    email = email.lower().strip()
+    user = Usuario.objects.filter(email__iexact=email).first()
+    if not user:
+        raise ValueError("Nenhum usuario encontrado com este e-mail.")
+    
+    password = generate_temporary_password()
+    user.set_password(password)
+    user.save()
+    
+    validate_real_email_settings()
+    subject = 'Recuperacao de Senha - InovaCeifa'
+    message = (
+        f'Ola, {user.get_full_name() or user.username}!\n\n'
+        f'Uma nova senha temporaria foi gerada para o seu acesso ao InovaCeifa.\n\n'
+        f'Seus novos dados de acesso:\n'
+        f'- Usuario: {user.email}\n'
+        f'- Nova Senha: {password}\n\n'
+        f'Recomendamos alterar sua senha apos o primeiro acesso.\n\n'
+        f'Atenciosamente,\n'
+        f'Equipe InovaCeifa'
+    )
+    send_mail(
+        subject=subject,
+        message=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+    return user

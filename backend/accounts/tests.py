@@ -92,3 +92,26 @@ class UserManagementTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('email', response.data)
         self.assertEqual(response.data['email'][0], "Já existe um usuário cadastrado com este e-mail.")
+
+    def test_recuperar_senha_success(self):
+        url = reverse('auth_recuperar_senha')
+        payload = {'email': 'prop@teste.com'}
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check if user's password was updated
+        user = Usuario.objects.get(email='prop@teste.com')
+        self.assertFalse(user.check_password('123'))
+        
+        # Check if email was sent
+        from django.core import mail
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Recuperacao de Senha', mail.outbox[0].subject)
+        self.assertEqual(mail.outbox[0].to, ['prop@teste.com'])
+
+    def test_recuperar_senha_user_not_found(self):
+        url = reverse('auth_recuperar_senha')
+        payload = {'email': 'nonexistent@teste.com'}
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['detail'], "Nenhum usuario encontrado com este e-mail.")

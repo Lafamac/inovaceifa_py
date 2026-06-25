@@ -96,3 +96,32 @@ from accounts.serializers import CustomTokenObtainPairSerializer
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+
+from core.services import recuperar_senha_por_email
+
+@extend_schema(
+    tags=["Autenticacao"],
+    responses={
+        200: OpenApiResponse(description="Nova senha enviada por e-mail."),
+        400: OpenApiResponse(description="Erro de solicitacao."),
+        500: OpenApiResponse(description="Erro no servidor SMTP."),
+    },
+    summary="Recuperar senha por e-mail",
+)
+@api_view(['POST'])
+@permission_classes([])
+def recuperar_senha(request):
+    email = request.data.get('email')
+    if not email:
+        return Response({"detail": "Informe o e-mail para recuperacao."}, status=400)
+    
+    try:
+        recuperar_senha_por_email(email)
+        return Response({"detail": "Uma nova senha temporaria foi enviada para o seu e-mail."})
+    except ValueError as e:
+        return Response({"detail": str(e)}, status=400)
+    except Exception as e:
+        return Response({
+            "detail": f"Erro ao processar recuperacao de senha: {str(e)}. Verifique as configuracoes de SMTP."
+        }, status=500)

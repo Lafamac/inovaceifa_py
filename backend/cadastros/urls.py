@@ -6,7 +6,7 @@ from cadastros.views import (
     FuncionarioViewSet, SalarioMensalViewSet,
     TerceirizadoViewSet, TurmaTerceirizadaViewSet,
     ProdutoViewSet, EstoqueMovimentoViewSet, EstoqueSaldoViewSet,
-    TransferenciaAtivoViewSet, LocacaoMaquinaViewSet
+    TransferenciaAtivoViewSet, LocacaoMaquinaViewSet, ManutencaoMaquinaViewSet
 )
 
 router = DefaultRouter()
@@ -23,6 +23,8 @@ router.register('estoque/movimentos', EstoqueMovimentoViewSet, basename='estoque
 router.register('estoque/saldos', EstoqueSaldoViewSet, basename='estoque-saldo')
 router.register('transferencias-ativos', TransferenciaAtivoViewSet, basename='transferencia-ativo')
 router.register('locacoes-maquinas', LocacaoMaquinaViewSet, basename='locacao-maquina')
+router.register('manutencoes-maquinas', ManutencaoMaquinaViewSet, basename='manutencao-maquina')
+
 
 urlpatterns = [
     path('', include(router.urls)),
