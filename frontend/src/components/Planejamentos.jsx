@@ -521,16 +521,20 @@ export const Planejamentos = () => {
                           {/* Insumos Planejados */}
                           <div className="space-y-1.5 border-t border-white/[0.02] pt-2">
                             <span className="block text-[9px] font-black text-slate-500 uppercase">Insumos e Doses Planejadas</span>
-                            {os.insumos_detalhe?.length > 0 ? (
+                            {((os.insumos_detalhe || os.insumos)?.length > 0) ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {os.insumos_detalhe.map(ins => (
-                                  <div key={ins.id} className="flex justify-between items-center rounded-lg bg-slate-900/60 p-2 border border-white/[0.02]">
-                                    <span className="text-[10px] text-white font-bold truncate max-w-[150px]">{ins.produto_nome}</span>
-                                    <span className="text-[9px] text-emerald-400 font-mono">
-                                      Dose: {Number(ins.dose_planejada).toLocaleString('pt-BR')} | Total: {Number(ins.quantidade_planejada).toLocaleString('pt-BR')} {ins.produto_unidade || 'un'}
-                                    </span>
-                                  </div>
-                                ))}
+                                {(os.insumos_detalhe || os.insumos).map(ins => {
+                                  const prodName = ins.produto_nome || ins.produto_detalhe?.nome_comercial || 'Insumo';
+                                  const prodUnit = ins.produto_unidade || ins.produto_detalhe?.unidade_sigla || 'un';
+                                  return (
+                                    <div key={ins.id} className="flex justify-between items-center rounded-lg bg-slate-900/60 p-2 border border-white/[0.02]">
+                                      <span className="text-[10px] text-white font-bold truncate max-w-[150px]">{prodName}</span>
+                                      <span className="text-[9px] text-emerald-400 font-mono">
+                                        Dose: {Number(ins.dose_planejada).toLocaleString('pt-BR')} | Total: {Number(ins.quantidade_planejada).toLocaleString('pt-BR')} {prodUnit}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             ) : (
                               <span className="text-[10px] text-slate-600">Nenhum insumo planejado para esta operação</span>

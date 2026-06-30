@@ -453,6 +453,11 @@ class EstoqueSaldoViewSet(viewsets.ViewSet):
     """
     permission_classes = [IsAuthenticated]
 
+    def initial(self, request, *args, **kwargs):
+        from planejamento.views import setup_tenant_context
+        setup_tenant_context(request)
+        super().initial(request, *args, **kwargs)
+
     @extend_schema(
         tags=["Cadastros"],
         responses={200: OpenApiResponse(response=OpenApiTypes.OBJECT)},

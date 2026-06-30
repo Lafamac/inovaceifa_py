@@ -1275,11 +1275,14 @@ export const OrdensServico = () => {
                               <span className="block text-[9px] font-black text-slate-500 uppercase flex items-center gap-1">
                                 <Tractor className="w-3 h-3 text-slate-500" /> Máquinas/Horímetros
                               </span>
-                              {apt.maquinas_detalhe?.length > 0 ? apt.maquinas_detalhe.map((m, i) => (
-                                <p key={i} className="text-[10px] text-slate-300 font-semibold">
-                                  {m.maquina_codigo}: {m.horimetro_inicial}h → {m.horimetro_final}h
-                                </p>
-                              )) : <p className="text-[10px] text-slate-600">Sem máquina apontada</p>}
+                              {((apt.maquinas_detalhe || apt.maquinas)?.length > 0) ? (apt.maquinas_detalhe || apt.maquinas).map((m, i) => {
+                                const maqCode = m.maquina_codigo || m.maquina_detalhe?.codigo || 'Máquina';
+                                return (
+                                  <p key={i} className="text-[10px] text-slate-300 font-semibold">
+                                    {maqCode}: {m.horimetro_inicial}h → {m.horimetro_final}h
+                                  </p>
+                                );
+                              }) : <p className="text-[10px] text-slate-600">Sem máquina apontada</p>}
                             </div>
 
                             {/* Pessoas / Operadores */}
@@ -1287,11 +1290,14 @@ export const OrdensServico = () => {
                               <span className="block text-[9px] font-black text-slate-500 uppercase flex items-center gap-1">
                                 <Users className="w-3 h-3 text-slate-500" /> Equipe / Operadores
                               </span>
-                              {apt.funcionarios_detalhe?.length > 0 ? apt.funcionarios_detalhe.map((f, i) => (
-                                <p key={i} className="text-[10px] text-slate-300 font-semibold">
-                                  {f.funcionario_nome}: {f.horas_trabalhadas}h reais
-                                </p>
-                              )) : <p className="text-[10px] text-slate-600">Sem operadores apontados</p>}
+                              {((apt.funcionarios_detalhe || apt.funcionarios)?.length > 0) ? (apt.funcionarios_detalhe || apt.funcionarios).map((f, i) => {
+                                const funcName = f.funcionario_nome || f.funcionario_detalhe?.nome || 'Operador';
+                                return (
+                                  <p key={i} className="text-[10px] text-slate-300 font-semibold">
+                                    {funcName}: {f.horas_trabalhadas}h reais
+                                  </p>
+                                );
+                              }) : <p className="text-[10px] text-slate-600">Sem operadores apontados</p>}
                             </div>
 
                             {/* Insumos / Diesel */}
@@ -1299,11 +1305,15 @@ export const OrdensServico = () => {
                               <span className="block text-[9px] font-black text-slate-500 uppercase flex items-center gap-1">
                                 <Package className="w-3 h-3 text-slate-500" /> Insumos / Produtos
                               </span>
-                              {apt.insumos_detalhe?.length > 0 ? apt.insumos_detalhe.map((ins, i) => (
-                                <p key={i} className="text-[10px] text-emerald-400 font-bold">
-                                  {ins.produto_nome}: {Number(ins.quantidade_total).toLocaleString('pt-BR')} {ins.produto_unidade}
-                                </p>
-                              )) : <p className="text-[10px] text-slate-600">Sem insumo apontado</p>}
+                              {((apt.insumos_detalhe || apt.insumos)?.length > 0) ? (apt.insumos_detalhe || apt.insumos).map((ins, i) => {
+                                const prodName = ins.produto_name || ins.produto_detalhe?.nome_comercial || 'Insumo';
+                                const prodUnit = ins.produto_unidade || ins.produto_detalhe?.unidade_sigla || '';
+                                return (
+                                  <p key={i} className="text-[10px] text-emerald-400 font-bold">
+                                    {prodName}: {Number(ins.quantidade_total).toLocaleString('pt-BR')} {prodUnit}
+                                  </p>
+                                );
+                              }) : <p className="text-[10px] text-slate-600">Sem insumo apontado</p>}
                             </div>
 
                           </div>

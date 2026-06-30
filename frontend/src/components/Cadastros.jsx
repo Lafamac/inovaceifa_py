@@ -637,6 +637,42 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           saldosEstoque = asList(res.data);
         } catch (e) {
           console.error("Erro ao carregar saldos de estoque:", e);
+          try {
+            const db = getFallbackDB();
+            const localMovements = asList(db.estoque);
+            const prodSaldos = {};
+            localMovements.forEach(m => {
+              const mFazenda = fieldId(m, 'fazenda');
+              const mSafra = fieldId(m, 'safra');
+              const mProduto = fieldId(m, 'produto');
+              
+              if (sameId(mFazenda, fazendaAtiva.id) && sameId(mSafra, currentSafraId) && m.ativo !== false) {
+                const qty = Number(m.quantidade || 0);
+                if (!prodSaldos[mProduto]) prodSaldos[mProduto] = 0;
+                
+                if (m.tipo_movimento === 'ENTRADA' || m.tipo_movimento === 'AJUSTE') {
+                  prodSaldos[mProduto] += qty;
+                } else if (m.tipo_movimento === 'SAIDA') {
+                  prodSaldos[mProduto] -= qty;
+                } else if (m.tipo_movimento === 'TRANSFERENCIA') {
+                  const mOrigem = fieldId(m, 'origem_transferencia');
+                  const mDestino = fieldId(m, 'destino_transferencia');
+                  if (sameId(mOrigem, fazendaAtiva.id)) {
+                    prodSaldos[mProduto] -= qty;
+                  }
+                  if (sameId(mDestino, fazendaAtiva.id)) {
+                    prodSaldos[mProduto] += qty;
+                  }
+                }
+              }
+            });
+            saldosEstoque = Object.entries(prodSaldos).map(([prodId, saldo]) => ({
+              produto_id: Number(prodId),
+              saldo: saldo
+            }));
+          } catch (localErr) {
+            console.error("Erro ao calcular saldos locais de estoque:", localErr);
+          }
         }
       }
 
@@ -934,13 +970,46 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         if (editingId) {
           const idx = db[fallbackKey].findIndex(x => String(x.id) === String(editingId));
           if (idx !== -1) {
-            db[fallbackKey][idx] = { ...db[fallbackKey][idx], ...payload };
+            let editPayload = { ...payload };
+            if (activeTab === 'produtos') {
+              const { quantidade_inicial, valor_unitario_inicial, ...cleaned } = payload;
+              editPayload = cleaned;
+            }
+            db[fallbackKey][idx] = { ...db[fallbackKey][idx], ...editPayload };
           }
         } else {
           localNewId = db[fallbackKey].length > 0 ? Math.max(...db[fallbackKey].map(x => x.id)) + 1 : 1;
-          db[fallbackKey].push({ id: localNewId, ativo: true, ...payload });
+          
+          let createPayload = { ...payload };
+          if (activeTab === 'produtos') {
+            const { quantidade_inicial, valor_unitario_inicial, ...cleaned } = payload;
+            createPayload = cleaned;
+          }
+          
+          db[fallbackKey].push({ id: localNewId, ativo: true, ...createPayload });
+          
           if (activeTab === 'fazendas') {
             createdFarmId = localNewId;
+          }
+
+          // Lançar estoque inicial automaticamente para novo produto se informado no fallback
+          if (activeTab === 'produtos' && payload.quantidade_inicial && Number(payload.quantidade_inicial) > 0) {
+            if (!db.estoque) db.estoque = [];
+            const movementId = db.estoque.length > 0 ? Math.max(...db.estoque.map(x => x.id)) + 1 : 1;
+            db.estoque.push({
+              id: movementId,
+              ativo: true,
+              fazenda: fazendaAtiva?.id || '',
+              safra: currentSafraId || '',
+              produto: localNewId,
+              tipo_movimento: 'ENTRADA',
+              quantidade: Number(payload.quantidade_inicial),
+              valor_unitario: Number(payload.valor_unitario_inicial || 0),
+              valor_total: Number(payload.quantidade_inicial) * Number(payload.valor_unitario_inicial || 0),
+              data_movimento: new Date().toISOString().slice(0, 10),
+              documento_referencia: 'ESTOQUE INICIAL',
+              observacao: 'LANÇAMENTO AUTOMÁTICO DE ESTOQUE INICIAL NO CADASTRO DO PRODUTO (OFFLINE).'
+            });
           }
         }
         localStorage.setItem('inovaceifa_db', JSON.stringify(db));
