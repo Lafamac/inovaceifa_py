@@ -249,14 +249,14 @@ export const Estoque = () => {
 
       {/* Floating Toast Notification */}
       {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-rose-500/30 bg-rose-950/95 p-4 text-xs font-semibold text-rose-300 shadow-2xl shadow-rose-950/20 flex items-center justify-between gap-4 animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-950/95 p-4 text-xs font-semibold text-rose-800 dark:text-rose-300 shadow-2xl shadow-rose-950/20 flex items-center justify-between gap-4 animate-in slide-in-from-bottom-5 duration-300">
           <div className="flex items-center gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 animate-bounce" />
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 animate-bounce" />
             <p className="leading-normal">{toastMessage}</p>
           </div>
           <button 
             onClick={() => setShowToast(false)} 
-            className="p-1 hover:bg-rose-900/50 rounded-lg text-rose-400 transition-colors shrink-0 cursor-pointer active:scale-90"
+            className="p-1 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded-lg text-rose-500 dark:text-rose-400 transition-colors shrink-0 cursor-pointer active:scale-90"
           >
             <X className="w-4 h-4" />
           </button>

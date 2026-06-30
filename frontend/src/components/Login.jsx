@@ -106,8 +106,8 @@ export const Login = () => {
 
         {/* Validation Errors */}
         {error && (
-          <div className="mb-6 p-3.5 rounded-xl border border-rose-900/30 bg-rose-950/20 text-rose-300 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 block shrink-0" />
+          <div className="mb-6 p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-950/20 text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-400 block shrink-0" />
             <p>{error}</p>
           </div>
         )}

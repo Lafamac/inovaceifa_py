@@ -54,7 +54,7 @@ urlpatterns = [
     path('api/', include('operacoes.urls')),
 
     # Rotas Financeiras e de Compras (Fase 6.5)
-    path('api/', include('financeiro.urls')),
+    path('api/financeiro/', include('financeiro.urls')),
 
     # Rotas de Relatórios
     path('api/', include('relatorios.urls')),

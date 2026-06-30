@@ -8,9 +8,9 @@ from .views import (
 router = DefaultRouter()
 router.register(r'pedidos-compra', PedidoCompraViewSet, basename='pedido-compra')
 router.register(r'itens-pedido-compra', ItemPedidoCompraViewSet, basename='item-pedido-compra')
-router.register(r'contas-a-pagar', ContasAPagarViewSet, basename='contas-a-pagar')
+router.register(r'contas-pagar', ContasAPagarViewSet, basename='contas-pagar')
 router.register(r'pedidos-venda', PedidoVendaViewSet, basename='pedido-venda')
-router.register(r'contas-a-receber', ContasAReceberViewSet, basename='contas-a-receber')
+router.register(r'contas-receber', ContasAReceberViewSet, basename='contas-receber')
 
 urlpatterns = [
     path('', include(router.urls)),
