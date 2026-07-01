@@ -3,7 +3,7 @@ from referencias.models import (
     Cultura, TipoItem, StatusCultivo, TipoIrrigacao, ResistenciaFerrugem,
     StatusOrdemServico, Modalidade, TipoRateio, ContaGerencial, TipoDestinacao,
     GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida,
-    AtividadeEducampo, CriterioRateio, TipoOperacao, TipoMaquina
+    AtividadeEducampo, CriterioRateio, TipoOperacao, TipoMaquina, EncargoFolha
 )
 from referencias.serializers import (
     CulturaSerializer, TipoItemSerializer, StatusCultivoSerializer,
@@ -12,7 +12,7 @@ from referencias.serializers import (
     ContaGerencialSerializer, TipoDestinacaoSerializer,
     GrupoTrabalhadorSerializer, ClassificacaoProdutoSerializer,
     GrupoQuimicoSerializer, UnidadeMedidaSerializer,
-    AtividadeEducampoSerializer, CriterioRateioSerializer, TipoOperacaoSerializer, TipoMaquinaSerializer
+    AtividadeEducampoSerializer, CriterioRateioSerializer, TipoOperacaoSerializer, TipoMaquinaSerializer, EncargoFolhaSerializer
 )
 from referencias.permissions import IsSuperUsuarioOrReadOnly
 
@@ -103,3 +103,7 @@ class TipoOperacaoViewSet(BaseReferenciaViewSet):
 class TipoMaquinaViewSet(BaseReferenciaViewSet):
     queryset = TipoMaquina.objects.all()
     serializer_class = TipoMaquinaSerializer
+
+class EncargoFolhaViewSet(BaseReferenciaViewSet):
+    queryset = EncargoFolha.objects.all()
+    serializer_class = EncargoFolhaSerializer

@@ -90,6 +90,8 @@ class Funcionario(BaseModel):
     grupo_trabalhador = models.ForeignKey(GrupoTrabalhador, on_delete=models.PROTECT)
     email = models.EmailField(max_length=255, null=True, blank=True)
     criar_usuario = models.BooleanField(default=False)
+    salario = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    encargos = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     class Meta:
         verbose_name = "Funcionário"
@@ -97,6 +99,47 @@ class Funcionario(BaseModel):
 
     def __str__(self):
         return self.nome
+
+    def save(self, *args, **kwargs):
+        # Calculate encargos dynamically
+        try:
+            from referencias.models import EncargoFolha
+            from decimal import Decimal
+            total_encargo_percent = EncargoFolha.objects.filter(ativo=True).aggregate(
+                total=models.Sum('valor')
+            )['total'] or Decimal('0.00')
+            self.encargos = self.salario * (total_encargo_percent / Decimal('100.00'))
+        except Exception:
+            pass
+
+        super().save(*args, **kwargs)
+
+        try:
+            from core.models import Safra
+            from cadastros.models import SalarioMensal
+            
+            safra = Safra.objects.filter(fazenda=self.fazenda, ativa=True, ativo=True).first()
+            if safra:
+                current_date = safra.data_inicio
+                end_date = safra.data_fim
+                while current_date <= end_date:
+                    SalarioMensal.objects.update_or_create(
+                        funcionario=self,
+                        safra=safra,
+                        mes=current_date.month,
+                        ano=current_date.year,
+                        defaults={
+                            'salario_base': self.salario,
+                            'encargos': self.encargos,
+                            'ativo': self.ativo
+                        }
+                    )
+                    if current_date.month == 12:
+                        current_date = current_date.replace(year=current_date.year + 1, month=1)
+                    else:
+                        current_date = current_date.replace(month=current_date.month + 1)
+        except Exception:
+            pass
 
 
 class SalarioMensal(BaseModel):
@@ -121,6 +164,8 @@ class Terceirizado(BaseModel):
     fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='terceirizados')
     nome = models.CharField(max_length=255)
     documento = models.CharField(max_length=20, null=True, blank=True) # CPF ou CNPJ
+    salario = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    encargos = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     class Meta:
         verbose_name = "Terceirizado"
@@ -128,6 +173,18 @@ class Terceirizado(BaseModel):
 
     def __str__(self):
         return self.nome
+
+    def save(self, *args, **kwargs):
+        try:
+            from referencias.models import EncargoFolha
+            from decimal import Decimal
+            total_encargo_percent = EncargoFolha.objects.filter(ativo=True).aggregate(
+                total=models.Sum('valor')
+            )['total'] or Decimal('0.00')
+            self.encargos = self.salario * (total_encargo_percent / Decimal('100.00'))
+        except Exception:
+            pass
+        super().save(*args, **kwargs)
 
 
 class TurmaTerceirizada(BaseModel):

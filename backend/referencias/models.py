@@ -110,3 +110,15 @@ class TipoMaquina(BaseModel):
 
     def __str__(self):
         return self.nome
+
+
+class EncargoFolha(BaseModel):
+    descricao = models.CharField(max_length=255, unique=True)
+    valor = models.DecimalField(max_digits=10, decimal_places=4, default=0.0000)
+
+    class Meta:
+        verbose_name = "Encargo da Folha"
+        verbose_name_plural = "Encargos da Folha"
+
+    def __str__(self):
+        return f"{self.descricao} ({self.valor})"

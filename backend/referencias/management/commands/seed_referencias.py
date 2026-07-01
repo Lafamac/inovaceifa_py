@@ -3,7 +3,7 @@ from referencias.models import (
     Cultura, TipoItem, StatusCultivo, TipoIrrigacao, ResistenciaFerrugem,
     StatusOrdemServico, Modalidade, TipoRateio, ContaGerencial, TipoDestinacao,
     GrupoTrabalhador, ClassificacaoProduto, GrupoQuimico, UnidadeMedida,
-    AtividadeEducampo, CriterioRateio, TipoOperacao, TipoMaquina
+    AtividadeEducampo, CriterioRateio, TipoOperacao, TipoMaquina, EncargoFolha
 )
 
 
@@ -196,5 +196,8 @@ class Command(BaseCommand):
         tipos_maquina = ["Trator", "Colhetadeira", "Caminhao"]
         for nome in tipos_maquina:
             TipoMaquina.objects.get_or_create(nome=nome)
+
+        # 19. EncargoFolha
+        EncargoFolha.objects.get_or_create(descricao="Encargos Sociais", defaults={"valor": 34.0000})
 
         self.stdout.write(self.style.SUCCESS("Referências semeadas com sucesso!"))

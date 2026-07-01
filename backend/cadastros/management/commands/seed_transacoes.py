@@ -77,7 +77,8 @@ class Command(BaseCommand):
             defaults={
                 "cpf": "222.333.444-55",
                 "cargo": "Operador de Colhedora",
-                "grupo_trabalhador": grupo_trat
+                "grupo_trabalhador": grupo_trat,
+                "salario": 2500.00
             }
         )
         SalarioMensal.objects.get_or_create(

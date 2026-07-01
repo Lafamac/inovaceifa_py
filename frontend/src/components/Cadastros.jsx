@@ -45,6 +45,7 @@ const ALL_REFERENCES = {
   atividadesEducampo: { label: 'Atividades Educampo', url: '/api/ref/atividades-educampo/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
   criteriosRateio: { label: 'Critérios de Rateio', url: '/api/ref/criterios-rateio/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
   tiposOperacao: { label: 'Tipos de Operação', url: '/api/ref/tipos-operacao/', fields: [{ name: 'nome', label: 'Nome', required: true }] },
+  encargosFolha: { label: 'Encargos da Folha', url: '/api/ref/encargos-folha/', fields: [{ name: 'descricao', label: 'Descrição', required: true }, { name: 'valor', label: 'Valor (%)', type: 'number', required: true }] },
 };
 
 const emptyForms = {
@@ -94,8 +95,9 @@ const emptyForms = {
     grupo_trabalhador: '',
     email: '',
     criar_usuario: false,
+    salario: '',
   },
-  terceirizados: { fazenda: '', nome: '', documento: '' },
+  terceirizados: { fazenda: '', nome: '', documento: '', salario: '' },
   turmas: { fazenda: '', nome: '', responsavel: '', qtd_pessoas: '' },
   produtos: {
     codigo: '',
@@ -186,6 +188,7 @@ const refEndpoints = {
   atividadesEducampo: '/api/ref/atividades-educampo/',
   criteriosRateio: '/api/ref/criterios-rateio/',
   tiposOperacao: '/api/ref/tipos-operacao/',
+  encargosFolha: '/api/ref/encargos-folha/',
 };
 
 const fallbackRefs = {
@@ -207,6 +210,7 @@ const fallbackRefs = {
   atividadesEducampo: [{ id: 1, nome: 'Outros' }],
   criteriosRateio: [{ id: 1, nome: 'Área' }],
   tiposOperacao: [{ id: 1, nome: 'Geral' }],
+  encargosFolha: [{ id: 1, descricao: 'Encargos Sociais', valor: 34.00 }],
 };
 
 const menuSections = [
@@ -1103,37 +1107,45 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const handleStartEdit = (item) => {
     setEditingId(item.id);
     const targetKey = activeTab === 'referencias' ? 'referencias' : activeTab;
-    const formFields = { ...emptyForms[targetKey] };
+    const formFields = {};
 
-    Object.keys(formFields).forEach(key => {
-      if (key === 'fazenda' && (item.fazenda_id || item.fazenda)) {
-        formFields.fazenda = item.fazenda_id || item.fazenda;
-      } else if (key === 'proprietario' && (item.proprietario_id || item.proprietario)) {
-        formFields.proprietario = item.proprietario_id || item.proprietario;
-      } else if (key === 'safra' && (item.safra_id || item.safra)) {
-        formFields.safra = item.safra_id || item.safra;
-      } else if (key === 'produto' && (item.produto_id || item.produto)) {
-        formFields.produto = item.produto_id || item.produto;
-      } else if (key === 'tipo_irrigacao' && (item.tipo_irrigacao_id || item.tipo_irrigacao)) {
-        formFields.tipo_irrigacao = item.tipo_irrigacao_id || item.tipo_irrigacao;
-      } else if (key === 'cultura' && (item.cultura_id || item.cultura)) {
-        formFields.cultura = item.cultura_id || item.cultura;
-      } else if (key === 'status_cultivo' && (item.status_cultivo_id || item.status_cultivo)) {
-        formFields.status_cultivo = item.status_cultivo_id || item.status_cultivo;
-      } else if (key === 'resistencia_ferrugem' && (item.resistencia_ferrugem_id || item.resistencia_ferrugem)) {
-        formFields.resistencia_ferrugem = item.resistencia_ferrugem_id || item.resistencia_ferrugem;
-      } else if (key === 'grupo_trabalhador' && (item.grupo_trabalhador_id || item.grupo_trabalhador)) {
-        formFields.grupo_trabalhador = item.grupo_trabalhador_id || item.grupo_trabalhador;
-      } else if (key === 'unidade' && (item.unidade_id || item.unidade)) {
-        formFields.unidade = item.unidade_id || item.unidade;
-      } else if (key === 'classificacao' && (item.classificacao_id || item.classificacao)) {
-        formFields.classificacao = item.classificacao_id || item.classificacao;
-      } else if (key === 'grupo_quimico' && (item.grupo_quimico_id || item.grupo_quimico)) {
-        formFields.grupo_quimico = item.grupo_quimico_id || item.grupo_quimico;
-      } else if (item[key] !== undefined) {
-        formFields[key] = item[key];
-      }
-    });
+    if (activeTab === 'referencias') {
+      const config = ALL_REFERENCES[selectedRefTab];
+      config.fields.forEach(field => {
+        formFields[field.name] = item[field.name] !== undefined ? item[field.name] : '';
+      });
+    } else {
+      Object.assign(formFields, emptyForms[targetKey]);
+      Object.keys(formFields).forEach(key => {
+        if (key === 'fazenda' && (item.fazenda_id || item.fazenda)) {
+          formFields.fazenda = item.fazenda_id || item.fazenda;
+        } else if (key === 'proprietario' && (item.proprietario_id || item.proprietario)) {
+          formFields.proprietario = item.proprietario_id || item.proprietario;
+        } else if (key === 'safra' && (item.safra_id || item.safra)) {
+          formFields.safra = item.safra_id || item.safra;
+        } else if (key === 'produto' && (item.produto_id || item.produto)) {
+          formFields.produto = item.produto_id || item.produto;
+        } else if (key === 'tipo_irrigacao' && (item.tipo_irrigacao_id || item.tipo_irrigacao)) {
+          formFields.tipo_irrigacao = item.tipo_irrigacao_id || item.tipo_irrigacao;
+        } else if (key === 'cultura' && (item.cultura_id || item.cultura)) {
+          formFields.cultura = item.cultura_id || item.cultura;
+        } else if (key === 'status_cultivo' && (item.status_cultivo_id || item.status_cultivo)) {
+          formFields.status_cultivo = item.status_cultivo_id || item.status_cultivo;
+        } else if (key === 'resistencia_ferrugem' && (item.resistencia_ferrugem_id || item.resistencia_ferrugem)) {
+          formFields.resistencia_ferrugem = item.resistencia_ferrugem_id || item.resistencia_ferrugem;
+        } else if (key === 'grupo_trabalhador' && (item.grupo_trabalhador_id || item.grupo_trabalhador)) {
+          formFields.grupo_trabalhador = item.grupo_trabalhador_id || item.grupo_trabalhador;
+        } else if (key === 'unidade' && (item.unidade_id || item.unidade)) {
+          formFields.unidade = item.unidade_id || item.unidade;
+        } else if (key === 'classificacao' && (item.classificacao_id || item.classificacao)) {
+          formFields.classificacao = item.classificacao_id || item.classificacao;
+        } else if (key === 'grupo_quimico' && (item.grupo_quimico_id || item.grupo_quimico)) {
+          formFields.grupo_quimico = item.grupo_quimico_id || item.grupo_quimico;
+        } else if (item[key] !== undefined) {
+          formFields[key] = item[key];
+        }
+      });
+    }
 
     setForms((prev) => ({
       ...prev,
@@ -1228,8 +1240,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       return showInactiveOnly ? !isItemActive : isItemActive;
     });
 
-    // Se for a aba de safras, talhões, máquinas ou locações, filtrar apenas registros da fazenda selecionada (tenant)
-    if ((key === 'safras' || key === 'talhoes' || key === 'maquinas' || key === 'locacoes_maquinas') && fazendaAtiva) {
+    // Se for a aba de safras, talhões, máquinas, locações, funcionários, terceirizados ou turmas, filtrar apenas registros da fazenda selecionada (tenant)
+    if ((key === 'safras' || key === 'talhoes' || key === 'maquinas' || key === 'locacoes_maquinas' || key === 'funcionarios' || key === 'terceirizados' || key === 'turmas') && fazendaAtiva) {
       baseList = baseList.filter(item => sameId(fieldId(item, 'fazenda'), fazendaAtiva.id));
     }
     if (key === 'transferencias' && fazendaAtiva) {
@@ -1470,6 +1482,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Cargo" value={currentForm.cargo} onChange={(value) => patchForm('cargo', value)} />
           <SelectField required label="Grupo Trabalhador" value={currentForm.grupo_trabalhador} onChange={(value) => patchForm('grupo_trabalhador', value)} options={refOptions('gruposTrabalhador')} />
           <InputField label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} />
+          <InputField required label="Salário Base / Custo Mensal (R$)" type="number" step="any" value={currentForm.salario} onChange={(value) => patchForm('salario', value)} />
           <div className="md:col-span-2">
             <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
               <input type="checkbox" checked={currentForm.criar_usuario || false} onChange={(event) => patchForm('criar_usuario', event.target.checked)} className="h-4 w-4 rounded border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/50 text-emerald-500" />
@@ -1482,11 +1495,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'terceirizados') {
       return (
-        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Nome / Empresa" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField label="CPF / CNPJ" value={currentForm.documento} onChange={(value) => patchForm('documento', value)} />
-        </>
+          <InputField required label="Salário / Custo Mensal (R$)" type="number" step="any" value={currentForm.salario} onChange={(value) => patchForm('salario', value)} />
+        </div>
       );
     }
 
@@ -1570,6 +1584,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               <InputField
                 required={field.required}
                 label={field.label}
+                type={field.type || 'text'}
+                step={field.type === 'number' ? 'any' : undefined}
                 value={currentForm[field.name] || ''}
                 onChange={(value) => patchForm(field.name, value)}
               />
@@ -1757,7 +1773,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               </span>
             )}
           </td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">{item.grupo_trabalhador_nome || 'Trabalhador Regular'}</td>
+          <td className="py-3 px-5 text-right">
+            <div className="text-[10px] text-slate-600 dark:text-slate-455">{item.grupo_trabalhador_nome || 'Trabalhador Regular'}</div>
+            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">Salário: R$ {money(item.salario)}</div>
+            <div className="text-[10px] font-semibold text-emerald-650 dark:text-emerald-450">Encargos: R$ {money(item.encargos)}</div>
+          </td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
@@ -1776,7 +1796,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
           </td>
           <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.documento || '-'}</td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-450">{item.ativo === false ? 'Inativo' : 'Ativo'}</td>
+          <td className="py-3 px-5 text-right">
+            <div className="text-[10px] text-slate-650 dark:text-slate-455">{item.ativo === false ? 'Inativo' : 'Ativo'}</div>
+            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">Salário: R$ {money(item.salario)}</div>
+            <div className="text-[10px] font-semibold text-emerald-650 dark:text-emerald-450">Encargos: R$ {money(item.encargos)}</div>
+          </td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
@@ -1867,20 +1891,25 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         if (selectedRefTab === 'contasGerenciais') {
           return `${item.codigo} ${item.nome}`;
         }
-        return item.nome || '';
+        if (selectedRefTab === 'encargosFolha') {
+          return `${item.descricao} ${item.valor}`;
+        }
+        return item.nome || item.descricao || '';
       });
 
       return list.map((item) => (
         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
           <td className="py-3 px-5">
             <p className="text-xs font-black text-slate-800 dark:text-white">
-              {item.nome || ''}
+              {item.nome || item.descricao || ''}
             </p>
           </td>
           <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300 font-mono">
-            {selectedRefTab === 'unidadesMedida' ? `SIGLA: ${item.sigla || '-'}` : (selectedRefTab === 'contasGerenciais' ? `CÓDIGO: ${item.codigo || '-'}` : '-')}
+            {selectedRefTab === 'unidadesMedida' ? `SIGLA: ${item.sigla || '-'}` : 
+             selectedRefTab === 'contasGerenciais' ? `CÓDIGO: ${item.codigo || '-'}` : 
+             selectedRefTab === 'encargosFolha' ? `VALOR: ${Number(item.valor || 0).toLocaleString('pt-BR')}%` : '-'}
           </td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-300">
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-300 font-bold">
             {item.ativo !== false ? 'ATIVO' : 'INATIVO'}
           </td>
           <td className="py-3 px-5 text-center">
@@ -2244,7 +2273,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
+          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias' || activeTab === 'funcionarios' || activeTab === 'terceirizados') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
 
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">

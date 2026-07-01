@@ -189,7 +189,8 @@ class Command(BaseCommand):
             defaults={
                 "cpf": "111.222.333-44",
                 "cargo": "Tratorista",
-                "grupo_trabalhador": grupo_trat
+                "grupo_trabalhador": grupo_trat,
+                "salario": 2200.00
             }
         )
 

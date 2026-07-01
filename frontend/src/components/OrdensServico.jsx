@@ -249,7 +249,7 @@ export const OrdensServico = () => {
 
       setTalhoes(filterByFazenda(resTalhoes.data?.results || resTalhoes.data || []));
       setMaquinas(filterByProprietario(resMaquinas.data?.results || resMaquinas.data || []));
-      setFuncionarios(filterByProprietario(resFuncs.data?.results || resFuncs.data || []));
+      setFuncionarios(filterByFazenda(resFuncs.data?.results || resFuncs.data || []));
       setProdutos(resProds.data?.results || resProds.data || []);
       setCriteriosRateio(resCriterios.data?.results || resCriterios.data || []);
       setContasGerenciais(resContas.data?.results || resContas.data || []);

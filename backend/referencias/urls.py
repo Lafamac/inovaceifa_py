@@ -6,7 +6,7 @@ from referencias.views import (
     TipoRateioViewSet, ContaGerencialViewSet, TipoDestinacaoViewSet,
     GrupoTrabalhadorViewSet, ClassificacaoProdutoViewSet, GrupoQuimicoViewSet,
     UnidadeMedidaViewSet, AtividadeEducampoViewSet, CriterioRateioViewSet,
-    TipoOperacaoViewSet, TipoMaquinaViewSet
+    TipoOperacaoViewSet, TipoMaquinaViewSet, EncargoFolhaViewSet
 )
 
 router = DefaultRouter()
@@ -28,6 +28,7 @@ router.register('ref/atividades-educampo', AtividadeEducampoViewSet, basename='r
 router.register('ref/criterios-rateio', CriterioRateioViewSet, basename='ref-criterio-rateio')
 router.register('ref/tipos-operacao', TipoOperacaoViewSet, basename='ref-tipo-operacao')
 router.register('ref/tipos-maquina', TipoMaquinaViewSet, basename='ref-tipo-maquina')
+router.register('ref/encargos-folha', EncargoFolhaViewSet, basename='ref-encargo-folha')
 
 urlpatterns = [
     path('', include(router.urls)),
