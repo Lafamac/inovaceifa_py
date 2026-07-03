@@ -11,7 +11,8 @@ import {
   ClipboardList, 
   AlertCircle,
   TrendingUp,
-  Loader2
+  Loader2,
+  HelpCircle
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -108,7 +109,17 @@ export const GestaoAVista = () => {
         {/* Hectares Cultivados */}
         <div className="glass-panel rounded-2xl border border-slate-200/50 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/50 p-5 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Hectares Cultivados</span>
+            <div className="flex items-center gap-1.5 group relative">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Hectares Cultivados</span>
+              <div className="relative inline-block cursor-help">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 transition-colors" />
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 transition-all duration-200 bg-slate-900/95 dark:bg-slate-950/95 text-white text-[10px] rounded-lg p-2.5 shadow-xl z-50 text-center font-normal leading-relaxed">
+                  Área total de talhões ativos cadastrados para esta fazenda.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900/95 dark:border-t-slate-950/95"></div>
+                </div>
+              </div>
+            </div>
             <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-2.5 text-emerald-600 dark:text-emerald-400">
               <Map className="w-5 h-5" />
             </div>
@@ -122,7 +133,17 @@ export const GestaoAVista = () => {
         {/* Produção Esperada */}
         <div className="glass-panel rounded-2xl border border-slate-200/50 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/50 p-5 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Produção Esperada</span>
+            <div className="flex items-center gap-1.5 group relative">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Produção Esperada</span>
+              <div className="relative inline-block cursor-help">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 transition-colors" />
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 transition-all duration-200 bg-slate-900/95 dark:bg-slate-950/95 text-white text-[10px] rounded-lg p-2.5 shadow-xl z-50 text-center font-normal leading-relaxed">
+                  Total de sacas estimado para a safra ativa, calculado a partir da produtividade esperada de cada talhão.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900/95 dark:border-t-slate-950/95"></div>
+                </div>
+              </div>
+            </div>
             <div className="rounded-xl bg-teal-50 dark:bg-teal-950/40 p-2.5 text-teal-600 dark:text-teal-400">
               <Sprout className="w-5 h-5" />
             </div>
@@ -136,7 +157,17 @@ export const GestaoAVista = () => {
         {/* Orçamento COE */}
         <div className="glass-panel rounded-2xl border border-slate-200/50 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/50 p-5 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Custo COE Realizado</span>
+            <div className="flex items-center gap-1.5 group relative">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Custo COE Realizado</span>
+              <div className="relative inline-block cursor-help">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 transition-colors" />
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 transition-all duration-200 bg-slate-900/95 dark:bg-slate-950/95 text-white text-[10px] rounded-lg p-2.5 shadow-xl z-50 text-center font-normal leading-relaxed">
+                  Custo Operacional Efetivo realizado na safra, somando Contas a Pagar, Salários, Custos de Máquinas e Consumo de Estoque.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900/95 dark:border-t-slate-950/95"></div>
+                </div>
+              </div>
+            </div>
             <div className="rounded-xl bg-blue-50 dark:bg-blue-950/40 p-2.5 text-blue-600 dark:text-blue-400">
               <DollarSign className="w-5 h-5" />
             </div>
@@ -150,7 +181,17 @@ export const GestaoAVista = () => {
         {/* Eficiência Operacional */}
         <div className="glass-panel rounded-2xl border border-slate-200/50 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/50 p-5 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Rendimento Médio</span>
+            <div className="flex items-center gap-1.5 group relative">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Rendimento Médio</span>
+              <div className="relative inline-block cursor-help">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 hover:text-slate-400 dark:hover:text-slate-400 transition-colors" />
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 scale-95 opacity-0 pointer-events-none group-hover:scale-100 group-hover:opacity-100 transition-all duration-200 bg-slate-900/95 dark:bg-slate-950/95 text-white text-[10px] rounded-lg p-2.5 shadow-xl z-50 text-center font-normal leading-relaxed">
+                  Média de hectares trabalhados por hora em operações de campo concluídas nesta safra.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900/95 dark:border-t-slate-950/95"></div>
+                </div>
+              </div>
+            </div>
             <div className="rounded-xl bg-purple-50 dark:bg-purple-950/40 p-2.5 text-purple-600 dark:text-purple-400">
               <Zap className="w-5 h-5" />
             </div>
