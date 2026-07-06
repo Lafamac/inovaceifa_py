@@ -661,10 +661,211 @@ export const relatorioService = {
   getFluxoCaixa: (safraId, dataInicio = '', dataFim = '') => {
     const url = `/api/relatorios/fluxo-caixa/?safra_id=${safraId}&data_inicio=${dataInicio}&data_fim=${dataFim}`;
     return requestHandler(
-      () => api.get(url),
+      async () => {
+        const res = await api.get(url);
+        if (res.data) {
+          const transacoes = (res.data.transacoes || []).map(t => ({
+            ...t,
+            tipo: t.tipo === 'SAIDA' ? 'DESPESA' : (t.tipo === 'ENTRADA' ? 'RECEITA' : t.tipo),
+            vencimento: t.data_vencimento || t.data,
+            valor: Number(t.valor)
+          }));
+          
+          let accReal = 0;
+          let accPrev = 0;
+          const grouped = (res.data.grafico || []).map(item => {
+            const entReal = Number(item.entradas_realizadas || 0);
+            const saiReal = Number(item.saidas_realizadas || 0);
+            const entPrev = Number(item.entradas_previstas || 0);
+            const saiPrev = Number(item.saidas_previstas || 0);
+
+            accReal += (entReal - saiReal);
+            accPrev += (entReal + entPrev - saiReal - saiPrev);
+
+            return {
+              ...item,
+              periodo: item.mes || item.periodo,
+              entradas_realizadas: entReal,
+              saidas_realizadas: saiReal,
+              entradas_previstas: entPrev,
+              saidas_previstas: saiPrev,
+              saldo_realizado: accReal,
+              saldo_previsto: accPrev
+            };
+          });
+
+          res.data = {
+            resumo: {
+              entradas_realizadas: Number(res.data.resumo?.entradas_realizadas || 0),
+              saidas_realizadas: Number(res.data.resumo?.saidas_realizadas || 0),
+              saldo_realizado: Number(res.data.resumo?.saldo_realizado || 0),
+              entradas_previstas: Number(res.data.resumo?.entradas_previstas || 0),
+              saidas_previstas: Number(res.data.resumo?.saidas_previstas || 0),
+              saldo_projetado: Number(res.data.resumo?.saldo_projetado || 0),
+            },
+            grouped,
+            ledger: transacoes
+          };
+        }
+        return res;
+      },
       () => {
         const db = getDB();
-        return db.fluxoCaixa[safraId] || { grouped: [], ledger: [] };
+        const contasPagar = (db.contas_a_pagar || []).filter(c => c.safra === Number(safraId) && c.ativo !== false);
+        const contasReceber = (db.contas_a_receber || []).filter(c => c.safra === Number(safraId) && c.ativo !== false);
+
+        const safra = (db.safras || []).find(s => s.id === Number(safraId));
+        const inicioStr = dataInicio || (safra ? safra.data_inicio : '2020-01-01');
+        const fimStr = dataFim || (safra ? safra.data_fim : '2030-12-31');
+
+        const dateInicio = new Date(inicioStr);
+        const dateFim = new Date(fimStr);
+        const today = new Date();
+
+        const transacoes = [];
+
+        contasPagar.forEach(item => {
+          if (item.status === 'PAGO' && item.data_pagamento) {
+            const dp = new Date(item.data_pagamento);
+            if (dp >= dateInicio && dp <= dateFim) {
+              transacoes.push({
+                id: `pag_real_${item.id}`,
+                tipo: "DESPESA",
+                categoria: "Realizado",
+                descricao: item.descricao,
+                valor: Number(item.valor),
+                vencimento: item.data_pagamento,
+                status: item.status,
+                atrasado: false
+              });
+            }
+          } else if (item.status === 'PENDENTE') {
+            const dv = new Date(item.data_vencimento);
+            if (dv >= dateInicio && dv <= dateFim) {
+              transacoes.push({
+                id: `pag_prev_${item.id}`,
+                tipo: "DESPESA",
+                categoria: "Previsto",
+                descricao: item.descricao,
+                valor: Number(item.valor),
+                vencimento: item.data_vencimento,
+                status: item.status,
+                atrasado: dv < today
+              });
+            }
+          }
+        });
+
+        contasReceber.forEach(item => {
+          if (item.status === 'RECEBIDO' && item.data_recebimento) {
+            const dr = new Date(item.data_recebimento);
+            if (dr >= dateInicio && dr <= dateFim) {
+              transacoes.push({
+                id: `rec_real_${item.id}`,
+                tipo: "RECEITA",
+                categoria: "Realizado",
+                descricao: item.descricao,
+                valor: Number(item.valor),
+                vencimento: item.data_recebimento,
+                status: item.status,
+                atrasado: false
+              });
+            }
+          } else if (item.status === 'PENDENTE') {
+            const dv = new Date(item.data_vencimento);
+            if (dv >= dateInicio && dv <= dateFim) {
+              transacoes.push({
+                id: `rec_prev_${item.id}`,
+                tipo: "RECEITA",
+                categoria: "Previsto",
+                descricao: item.descricao,
+                valor: Number(item.valor),
+                vencimento: item.data_vencimento,
+                status: item.status,
+                atrasado: dv < today
+              });
+            }
+          }
+        });
+
+        transacoes.sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento));
+
+        let entradas_realizadas = 0;
+        let saidas_realizadas = 0;
+        let entradas_previstas = 0;
+        let saidas_previstas = 0;
+
+        transacoes.forEach(t => {
+          if (t.tipo === 'RECEITA' && t.categoria === 'Realizado') {
+            entradas_realizadas += t.valor;
+          } else if (t.tipo === 'DESPESA' && t.categoria === 'Realizado') {
+            saidas_realizadas += t.valor;
+          } else if (t.tipo === 'RECEITA' && t.categoria === 'Previsto') {
+            entradas_previstas += t.valor;
+          } else if (t.tipo === 'DESPESA' && t.categoria === 'Previsto') {
+            saidas_previstas += t.valor;
+          }
+        });
+
+        const chartMap = {};
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        
+        transacoes.forEach(t => {
+          const dt = new Date(t.vencimento);
+          const year = dt.getFullYear();
+          const monthIdx = dt.getMonth();
+          const key = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+          const label = `${monthNames[monthIdx]}/${String(year).substring(2)}`;
+
+          if (!chartMap[key]) {
+            chartMap[key] = {
+              periodo: label,
+              entradas_realizadas: 0,
+              saidas_realizadas: 0,
+              entradas_previstas: 0,
+              saidas_previstas: 0,
+              saldo_realizado: 0,
+              saldo_previsto: 0
+            };
+          }
+
+          if (t.tipo === 'RECEITA' && t.categoria === 'Realizado') {
+            chartMap[key].entradas_realizadas += t.valor;
+          } else if (t.tipo === 'DESPESA' && t.categoria === 'Realizado') {
+            chartMap[key].saidas_realizadas += t.valor;
+          } else if (t.tipo === 'RECEITA' && t.categoria === 'Previsto') {
+            chartMap[key].entradas_previstas += t.valor;
+          } else if (t.tipo === 'DESPESA' && t.categoria === 'Previsto') {
+            chartMap[key].saidas_previstas += t.valor;
+          }
+        });
+
+        const sortedKeys = Object.keys(chartMap).sort();
+        let accRealizado = 0;
+        let accPrevisto = 0;
+        const grouped = sortedKeys.map(key => {
+          const item = chartMap[key];
+          accRealizado += (item.entradas_realizadas - item.saidas_realizadas);
+          accPrevisto += (item.entradas_realizadas + item.entradas_previstas - item.saidas_realizadas - item.saidas_previstas);
+          return {
+            ...item,
+            saldo_realizado: accRealizado,
+            saldo_previsto: accPrevisto
+          };
+        });
+
+        return {
+          resumo: {
+            entradas_realizadas,
+            saidas_realizadas,
+            saldo_realizado: (entradas_realizadas - saidas_realizadas),
+            entradas_previstas,
+            saidas_previstas,
+            saldo_projetado: (entradas_realizadas + entradas_previstas - saidas_realizadas - saidas_previstas)
+          },
+          grouped,
+          ledger: transacoes
+        };
       }
     );
   },
