@@ -1481,6 +1481,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   >
                     <option value="RASCUNHO" className="bg-slate-900 text-white">RASCUNHO</option>
                     <option value="APROVADO" className="bg-slate-900 text-white">APROVADO</option>
+                    <option value="RECEBIDO" className="bg-slate-900 text-white">RECEBIDO</option>
+                    <option value="CANCELADO" className="bg-slate-900 text-white">CANCELADO</option>
                   </select>
                 </div>
               </div>
@@ -1918,6 +1920,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   >
                     <option value="RASCUNHO">RASCUNHO</option>
                     <option value="CONFIRMADO">CONFIRMADO</option>
+                    <option value="ENTREGUE">ENTREGUE</option>
+                    <option value="CANCELADO">CANCELADO</option>
                   </select>
                 </div>
               </div>
