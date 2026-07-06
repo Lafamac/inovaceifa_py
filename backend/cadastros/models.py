@@ -405,3 +405,25 @@ class ManutencaoMaquina(BaseModel):
         return f"Manutenção {self.maquina.codigo} - {self.data}"
 
 
+class Fornecedor(BaseModel):
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='fornecedores')
+    nome = models.CharField(max_length=255)
+    documento = models.CharField(max_length=20, null=True, blank=True) # CNPJ / CPF
+    endereco = models.CharField(max_length=255, null=True, blank=True)
+    bairro = models.CharField(max_length=100, null=True, blank=True)
+    cidade = models.CharField(max_length=100, null=True, blank=True)
+    estado = models.CharField(max_length=2, null=True, blank=True)
+    telefone = models.CharField(max_length=20, null=True, blank=True)
+    email = models.EmailField(max_length=255, null=True, blank=True)
+    data_ultima_compra = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Fornecedor"
+        verbose_name_plural = "Fornecedores"
+        unique_together = ('fazenda', 'nome', 'ativo')
+
+    def __str__(self):
+        return self.nome
+
+
+

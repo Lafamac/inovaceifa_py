@@ -6,11 +6,13 @@ from cadastros.views import (
     FuncionarioViewSet, SalarioMensalViewSet,
     TerceirizadoViewSet, TurmaTerceirizadaViewSet,
     ProdutoViewSet, EstoqueMovimentoViewSet, EstoqueSaldoViewSet,
-    TransferenciaAtivoViewSet, LocacaoMaquinaViewSet, ManutencaoMaquinaViewSet
+    TransferenciaAtivoViewSet, LocacaoMaquinaViewSet, ManutencaoMaquinaViewSet,
+    FornecedorViewSet
 )
 
 router = DefaultRouter()
 router.register('talhoes', TalhaoViewSet, basename='talhao')
+router.register('fornecedores', FornecedorViewSet, basename='fornecedor')
 router.register('talhoes/estimativas', EstimativaProducaoTalhaoViewSet, basename='talhao-estimativa')
 router.register('maquinas', MaquinaViewSet, basename='maquina')
 router.register('maquinas/custos-mensais', CustoMensalMaquinaViewSet, basename='maquina-custo-mensal')

@@ -99,6 +99,7 @@ const emptyForms = {
   },
   terceirizados: { fazenda: '', nome: '', documento: '', salario: '' },
   turmas: { fazenda: '', nome: '', responsavel: '', qtd_pessoas: '' },
+  fornecedores: { fazenda: '', nome: '', documento: '', endereco: '', bairro: '', cidade: '', estado: '', telefone: '', email: '', data_ultima_compra: '' },
   produtos: {
     codigo: '',
     nome_comercial: '',
@@ -162,6 +163,7 @@ const endpoints = {
   terceirizados: '/api/terceirizados/',
   turmas: '/api/turmas-terceirizadas/',
   produtos: '/api/produtos/',
+  fornecedores: '/api/fornecedores/',
   estoque: '/api/estoque/movimentos/',
   usuarios: '/api/accounts/usuarios/',
   locacoes_maquinas: '/api/locacoes-maquinas/',
@@ -236,6 +238,7 @@ const menuSections = [
     description: 'Produtos e estoque',
     items: [
       { id: 'produtos', label: 'Produtos e Insumos', icon: Package },
+      { id: 'fornecedores', label: 'Fornecedores', icon: Users },
       { id: 'estoque', label: 'Movimentações', icon: Warehouse },
       { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList },
     ],
@@ -315,6 +318,21 @@ const formatMask = (val, mask) => {
       return digits;
     } else {
       return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    }
+  }
+  if (mask === 'documento') {
+    const digits = val.replace(/\D/g, '');
+    if (digits.length <= 11) {
+      if (digits.length <= 3) return digits;
+      if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+      if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+    } else {
+      const truncated = digits.slice(0, 14);
+      if (truncated.length <= 12) {
+        return `${truncated.slice(0, 2)}.${truncated.slice(2, 5)}.${truncated.slice(5, 8)}/${truncated.slice(8)}`;
+      }
+      return `${truncated.slice(0, 2)}.${truncated.slice(2, 5)}.${truncated.slice(5, 8)}/${truncated.slice(8, 12)}-${truncated.slice(12, 14)}`;
     }
   }
   return val;
@@ -420,6 +438,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     terceirizados: [],
     turmas: [],
     produtos: [],
+    fornecedores: [],
     estoque: [],
     usuarios: [],
     perfis: [],
@@ -441,6 +460,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const [editingId, setEditingId] = useState(null);
   const [showInactiveOnly, setShowInactiveOnly] = useState(false);
   const [selectedRefTab, setSelectedRefTab] = useState('culturas');
+
+  // Filtros de Movimentações de Estoque
+  const [selectedEstoqueProduto, setSelectedEstoqueProduto] = useState('');
+  const [estoqueDataInicio, setEstoqueDataInicio] = useState('');
+  const [estoqueDataFim, setEstoqueDataFim] = useState('');
 
   // Variáveis para modal de cópia de produtos entre safras
   const [showCopyModal, setShowCopyModal] = useState(false);
@@ -764,6 +788,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       terceirizados: ['fazenda', 'nome'],
       turmas: ['fazenda', 'nome'],
       produtos: ['nome_comercial', 'unidade', 'classificacao'],
+      fornecedores: ['nome'],
       estoque: ['fazenda', 'safra', 'produto', 'tipo_movimento', 'quantidade', 'data_movimento'],
       usuarios: ['username', 'email', 'first_name', 'perfil_id'],
       locacoes_maquinas: ['maquina', 'tipo_cobranca', 'quantidade', 'valor_unitario', 'data_inicio', 'data_fim', 'data_vencimento'],
@@ -1241,11 +1266,34 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     });
 
     // Se for a aba de safras, talhões, máquinas, locações, funcionários, terceirizados ou turmas, filtrar apenas registros da fazenda selecionada (tenant)
-    if ((key === 'safras' || key === 'talhoes' || key === 'maquinas' || key === 'locacoes_maquinas' || key === 'funcionarios' || key === 'terceirizados' || key === 'turmas') && fazendaAtiva) {
+    if ((key === 'safras' || key === 'talhoes' || key === 'maquinas' || key === 'locacoes_maquinas' || key === 'funcionarios' || key === 'terceirizados' || key === 'turmas' || key === 'fornecedores') && fazendaAtiva) {
       baseList = baseList.filter(item => sameId(fieldId(item, 'fazenda'), fazendaAtiva.id));
     }
     if (key === 'transferencias' && fazendaAtiva) {
       baseList = baseList.filter(item => sameId(fieldId(item, 'origem'), fazendaAtiva.id) || sameId(fieldId(item, 'destino'), fazendaAtiva.id));
+    }
+
+    if (key === 'estoque') {
+      if (fazendaAtiva) {
+        baseList = baseList.filter(item => 
+          sameId(fieldId(item, 'fazenda'), fazendaAtiva.id) ||
+          (item.tipo_movimento === 'TRANSFERENCIA' && (
+            sameId(fieldId(item, 'origem_transferencia'), fazendaAtiva.id) ||
+            sameId(fieldId(item, 'destino_transferencia'), fazendaAtiva.id)
+          ))
+        );
+      }
+      if (selectedEstoqueProduto) {
+        baseList = baseList.filter(item => sameId(fieldId(item, 'produto'), selectedEstoqueProduto));
+      } else {
+        baseList = [];
+      }
+      if (estoqueDataInicio) {
+        baseList = baseList.filter(item => item.data_movimento >= estoqueDataInicio);
+      }
+      if (estoqueDataFim) {
+        baseList = baseList.filter(item => item.data_movimento <= estoqueDataFim);
+      }
     }
 
     if (!query) return baseList;
@@ -1270,6 +1318,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         return (item) => `${item.nome} ${item.documento || ''}`;
       case 'turmas':
         return (item) => `${item.nome} ${item.responsavel || ''}`;
+      case 'fornecedores':
+        return (item) => `${item.nome} ${item.documento || ''} ${item.email || ''}`;
       case 'produtos':
         return (item) => `${item.codigo || ''} ${item.nome_comercial}`;
       case 'usuarios':
@@ -1531,6 +1581,24 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               <InputField label="Quantidade Inicial em Estoque" type="number" value={currentForm.quantidade_inicial || ''} onChange={(value) => patchForm('quantidade_inicial', value)} />
               <InputField label="Valor Unitário Inicial (R$)" type="number" value={currentForm.valor_unitario_inicial || ''} onChange={(value) => patchForm('valor_unitario_inicial', value)} />
             </>
+          )}
+        </div>
+      );
+    }
+
+    if (activeTab === 'fornecedores') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField required label="Razão Social / Nome" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField label="CNPJ / CPF" value={currentForm.documento} onChange={(value) => patchForm('documento', value)} mask="documento" maxLength={18} placeholder="00.000.000/0000-00" />
+          <InputField label="Endereço" value={currentForm.endereco} onChange={(value) => patchForm('endereco', value)} />
+          <InputField label="Bairro" value={currentForm.bairro} onChange={(value) => patchForm('bairro', value)} />
+          <InputField label="Cidade" value={currentForm.cidade} onChange={(value) => patchForm('cidade', value)} />
+          <InputField label="Estado (UF)" maxLength={2} value={currentForm.estado} onChange={(value) => patchForm('estado', value)} placeholder="MG" />
+          <InputField label="Celular / Telefone" mask="telefone" value={currentForm.telefone} onChange={(value) => patchForm('telefone', value)} maxLength={15} placeholder="(00) 00000-0000" />
+          <InputField label="E-mail" type="email" value={currentForm.email} onChange={(value) => patchForm('email', value)} placeholder="fornecedor@empresa.com" />
+          {editingId && (
+            <InputField label="Data da Última Compra" type="date" disabled value={currentForm.data_ultima_compra || ''} onChange={() => {}} />
           )}
         </div>
       );
@@ -1859,6 +1927,31 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       });
     }
 
+    if (activeTab === 'fornecedores') {
+      return filteredRows('fornecedores', (item) => `${item.nome} ${item.documento || ''} ${item.email || ''}`).map((item) => (
+        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+          <td className="py-3 px-5">
+            <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">Última compra: {item.data_ultima_compra ? new Date(item.data_ultima_compra + 'T00:00:00').toLocaleDateString('pt-BR') : 'Nenhuma compra'}</p>
+          </td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+            <p className="font-semibold">{item.documento ? formatMask(item.documento, 'documento') : 'Sem documento'}</p>
+            <p className="text-[9px] text-slate-450 dark:text-slate-400 mt-0.5">{[item.cidade, item.estado].filter(Boolean).join(' - ')}</p>
+          </td>
+          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-300 font-medium">
+            <p className="font-medium text-slate-700 dark:text-slate-300">{item.telefone ? formatMask(item.telefone, 'telefone') : 'Sem telefone'}</p>
+            <p className="text-[9px] text-slate-455 dark:text-slate-400 mt-0.5">{item.email || 'Sem e-mail'}</p>
+          </td>
+          <td className="py-3 px-5 text-center">
+            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            </button>
+          </td>
+        </tr>
+      ));
+    }
+
     if (activeTab === 'usuarios') {
       return filteredRows('usuarios', (item) => `${item.username} ${item.email} ${item.first_name} ${item.last_name}`).map((item) => (
         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
@@ -2113,6 +2206,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                                 setActiveTab(item.id);
                                 setSearchQuery('');
                                 setShowInactiveOnly(false); // Reset to active list on tab change
+                                setSelectedEstoqueProduto('');
+                                setEstoqueDataInicio('');
+                                setEstoqueDataFim('');
                               }}
                               className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer ${isActive ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300' : 'border border-transparent text-slate-600 hover:text-slate-900 hover:bg-white dark:text-slate-350 dark:hover:text-white dark:hover:bg-slate-850'}`}
                             >
@@ -2182,6 +2278,80 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             )}
           </div>
 
+          {/* Painel de Filtros de Movimentação de Estoque */}
+          {activeTab === 'estoque' && (
+            <div className="glass-panel p-4 rounded-2xl border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 shadow-md grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-200">
+              
+              {/* Produto Select */}
+              <div className="sm:col-span-2 lg:col-span-2">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-400 mb-1.5">
+                  Produto para consulta
+                </label>
+                <select
+                  value={selectedEstoqueProduto}
+                  onChange={(e) => setSelectedEstoqueProduto(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-xs text-slate-800 dark:text-white outline-none transition-all font-bold cursor-pointer h-10"
+                >
+                  <option value="" className="text-slate-450 dark:text-slate-500">SELECIONE O PRODUTO...</option>
+                  {(records.produtos || [])
+                    .filter(p => p.ativo !== false)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome_comercial} {p.codigo ? `(${p.codigo})` : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Safra Select */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-400 mb-1.5">
+                  Cultura / Safra
+                </label>
+                <select
+                  value={safraAtiva?.id || ''}
+                  onChange={(e) => {
+                    const selected = (records.safras || []).find(s => sameId(s.id, e.target.value));
+                    if (selected) selecionarSafra(selected);
+                  }}
+                  className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-xs text-slate-800 dark:text-white outline-none transition-all font-bold cursor-pointer h-10"
+                >
+                  {safrasOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Período */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-400 mb-1.5 truncate">
+                    De
+                  </label>
+                  <input
+                    type="date"
+                    value={estoqueDataInicio}
+                    onChange={(e) => setEstoqueDataInicio(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-xs text-slate-800 dark:text-white outline-none transition-all h-10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-450 dark:text-slate-400 mb-1.5 truncate">
+                    Até
+                  </label>
+                  <input
+                    type="date"
+                    value={estoqueDataFim}
+                    onChange={(e) => setEstoqueDataFim(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-xs text-slate-800 dark:text-white outline-none transition-all h-10"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Search, Filter Tabs and Controls */}
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex flex-col md:flex-row gap-4 w-full md:max-w-xl">
@@ -2245,35 +2415,47 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           </div>
 
           {/* Unified Full-Width Table */}
-          <div className="glass-panel border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 rounded-2xl overflow-x-auto shadow-xl">
-            <table className="w-full min-w-[768px] text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-450 dark:text-slate-405 font-black">
-                  <th className="py-4 px-5">Registro</th>
-                  <th className="py-4 px-5">Detalhe</th>
-                  <th className="py-4 px-5 text-right">Informações / Valor</th>
-                  <th className="py-4 px-5 text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
-                {loading ? (
-                  <tr><td colSpan="4" className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 font-semibold">Carregando dados dos cadastros...</td></tr>
-                ) : (
-                  renderRows()
-                )}
-                 {!loading && filteredRows(activeTab, getActiveTabGetText(activeTab)).length === 0 && (
-                  <tr><td colSpan="4" className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 font-medium italic">Nenhum registro localizado para os filtros informados.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {activeTab === 'estoque' && !selectedEstoqueProduto ? (
+            <div className="glass-panel p-8 text-center rounded-2xl border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 shadow-xl backdrop-blur-md max-w-2xl mx-auto py-12 animate-in fade-in duration-200">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500 mx-auto mb-4">
+                <Warehouse className="h-6 w-6" />
+              </div>
+              <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-2">Consulta de Movimentações</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-md mx-auto">
+                Selecione um produto no painel de filtros acima para visualizar o histórico detalhado de movimentações (entradas, saídas, ajustes e transferências) no período desejado.
+              </p>
+            </div>
+          ) : (
+            <div className="glass-panel border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 rounded-2xl overflow-x-auto shadow-xl">
+              <table className="w-full min-w-[768px] text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-450 dark:text-slate-405 font-black">
+                    <th className="py-4 px-5">Registro</th>
+                    <th className="py-4 px-5">Detalhe</th>
+                    <th className="py-4 px-5 text-right">Informações / Valor</th>
+                    <th className="py-4 px-5 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
+                  {loading ? (
+                    <tr><td colSpan="4" className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 font-semibold">Carregando dados dos cadastros...</td></tr>
+                  ) : (
+                    renderRows()
+                  )}
+                   {!loading && filteredRows(activeTab, getActiveTabGetText(activeTab)).length === 0 && (
+                    <tr><td colSpan="4" className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 font-medium italic">Nenhum registro localizado para os filtros informados.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </main>
       </div>
 
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias' || activeTab === 'funcionarios' || activeTab === 'terceirizados') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
+          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias' || activeTab === 'funcionarios' || activeTab === 'terceirizados' || activeTab === 'fornecedores') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
 
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">

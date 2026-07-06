@@ -13,7 +13,7 @@ from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
     Funcionario, SalarioMensal, Terceirizado, TurmaTerceirizada,
     Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina,
-    ManutencaoMaquina
+    ManutencaoMaquina, Fornecedor
 )
 from cadastros.serializers import (
     TalhaoSerializer, EstimativaProducaoTalhaoSerializer,
@@ -22,7 +22,7 @@ from cadastros.serializers import (
     TerceirizadoSerializer, TurmaTerceirizadaSerializer,
     ProdutoSerializer, EstoqueMovimentoSerializer,
     TransferenciaAtivoSerializer, LocacaoMaquinaSerializer,
-    ManutencaoMaquinaSerializer
+    ManutencaoMaquinaSerializer, FornecedorSerializer
 )
 
 
@@ -558,4 +558,15 @@ class ManutencaoMaquinaViewSet(BaseTenantViewSet):
             serializer.save(safra=self.request.safra_ativa)
         else:
             serializer.save()
+
+
+class FornecedorViewSet(BaseTenantViewSet):
+    queryset = Fornecedor.objects.all()
+    serializer_class = FornecedorSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            fazenda__in=self.request.fazendas_permitidas
+        )
+
 

@@ -1,6 +1,6 @@
 from django.db import models
 from core.models import BaseModel, Fazenda, Safra
-from cadastros.models import Produto
+from cadastros.models import Produto, Fornecedor
 
 class PedidoCompra(BaseModel):
     STATUS_CHOICES = [
@@ -12,7 +12,7 @@ class PedidoCompra(BaseModel):
 
     fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='pedidos_compra')
     safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='pedidos_compra')
-    fornecedor = models.CharField(max_length=255)
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.PROTECT, related_name='pedidos_compra')
     data_pedido = models.DateField()
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='RASCUNHO')
@@ -21,8 +21,17 @@ class PedidoCompra(BaseModel):
         verbose_name = "Pedido de Compra"
         verbose_name_plural = "Pedidos de Compra"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.fornecedor:
+            forn = self.fornecedor
+            if not forn.data_ultima_compra or self.data_pedido > forn.data_ultima_compra:
+                forn.data_ultima_compra = self.data_pedido
+                forn.save()
+
     def __str__(self):
-        return f"Pedido {self.id} - {self.fornecedor} ({self.status})"
+        return f"Pedido {self.id} - {self.fornecedor.nome} ({self.status})"
+
 
 
 class ItemPedidoCompra(BaseModel):

@@ -35,20 +35,49 @@ class PedidoCompraViewSet(BaseTenantPlanejamentoViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        parcelas = request.data.get('parcelas', [])
+        
+        if parcelas:
+            try:
+                from decimal import Decimal
+                sum_parcelas = sum(Decimal(str(p['valor'])) for p in parcelas)
+                if abs(sum_parcelas - pedido.valor_total) > Decimal('0.05'):
+                    return Response(
+                        {"detail": f"A soma das parcelas (R$ {sum_parcelas}) deve ser igual ao valor total do pedido (R$ {pedido.valor_total})."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except Exception as e:
+                return Response(
+                    {"detail": f"Erro na estrutura das parcelas: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         with transaction.atomic():
             pedido.status = 'RECEBIDO'
             pedido.save()
 
-            # 1. Criar Contas a Pagar correspondente ao valor total do pedido
-            ContasAPagar.objects.create(
-                fazenda=pedido.fazenda,
-                safra=pedido.safra,
-                pedido_compra=pedido,
-                descricao=f"Compra do fornecedor: {pedido.fornecedor} (Ref. Pedido #{pedido.id})",
-                valor=pedido.valor_total,
-                data_vencimento=pedido.data_pedido,  # data base de vencimento
-                status='PENDENTE'
-            )
+            # 1. Criar Contas a Pagar (uma por parcela, ou parcela única se não informadas)
+            if parcelas:
+                for idx, p_data in enumerate(parcelas):
+                    ContasAPagar.objects.create(
+                        fazenda=pedido.fazenda,
+                        safra=pedido.safra,
+                        pedido_compra=pedido,
+                        descricao=f"Compra do fornecedor: {pedido.fornecedor.nome} (Ref. Pedido #{pedido.id}) - Parcela {idx+1}/{len(parcelas)}",
+                        valor=p_data['valor'],
+                        data_vencimento=p_data['data_vencimento'],
+                        status='PENDENTE'
+                    )
+            else:
+                ContasAPagar.objects.create(
+                    fazenda=pedido.fazenda,
+                    safra=pedido.safra,
+                    pedido_compra=pedido,
+                    descricao=f"Compra do fornecedor: {pedido.fornecedor.nome} (Ref. Pedido #{pedido.id})",
+                    valor=pedido.valor_total,
+                    data_vencimento=pedido.data_pedido,
+                    status='PENDENTE'
+                )
 
             # 2. Gerar movimentos de ENTRADA no estoque para cada item do pedido
             for item in pedido.itens.filter(ativo=True):

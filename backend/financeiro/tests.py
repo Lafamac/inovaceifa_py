@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from core.models import Fazenda, Safra, Proprietario
 from referencias.models import UnidadeMedida, ClassificacaoProduto, TipoOperacao
-from cadastros.models import Produto, EstoqueMovimento
+from cadastros.models import Produto, EstoqueMovimento, Fornecedor
 from financeiro.models import PedidoCompra, ItemPedidoCompra, ContasAPagar, PedidoVenda, ContasAReceber
 from operacoes.models import OrdemServico, ApontamentoOperacao
 from accounts.models import Perfil
@@ -33,6 +33,12 @@ class FinanceiroAPITests(APITestCase):
             unidade=self.unidade,
             classificacao=self.classificacao
         )
+        self.fornecedor = Fornecedor.objects.create(
+            fazenda=self.fazenda,
+            nome="Fornecedor Teste Ltda",
+            documento="12345678901",
+            email="fornecedor@teste.com"
+        )
 
         # 3. Autenticação e Headers do DRF
         self.client.force_authenticate(user=self.user)
@@ -44,7 +50,7 @@ class FinanceiroAPITests(APITestCase):
         pedido_data = {
             "fazenda": self.fazenda.id,
             "safra": self.safra.id,
-            "fornecedor": "Fornecedor Teste Ltda",
+            "fornecedor": self.fornecedor.id,
             "data_pedido": "2026-05-19",
             "status": "RASCUNHO"
         }
@@ -84,7 +90,7 @@ class FinanceiroAPITests(APITestCase):
         pedido = PedidoCompra.objects.create(
             fazenda=self.fazenda,
             safra=self.safra,
-            fornecedor="Fornecedor Parceria",
+            fornecedor=self.fornecedor,
             data_pedido="2026-05-19",
             status="APROVADO"
         )

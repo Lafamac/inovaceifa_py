@@ -139,10 +139,14 @@
     - [x] Terceirizados
     - [x] Turmas de Trabalho
     - [x] Produtos e Insumos
-    - [x] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo e filtro de safras pela fazenda ativa no modal)
-    - [x] Contas a Pagar (Gestão financeira integrada)
+    - [x] Fornecedores (com layout de duas colunas, navegação Enter/Tab, máscara de CPF/CNPJ, histórico da última compra e seleção integrada no Pedido de Compra com listagem dinâmica de produtos carregada da API)
+    - [x] Pedido de Compra editável (suporte a gravação de itens aninhados/writable nested serializer no backend, edição restrita a status "RASCUNHO", botão para "APROVAR" rascunhos, navegação facilitada com Enter nos campos e nome do produto com fonte de alto contraste no modal)
+    - [x] Recebimento parcelado de Pedidos de Compra (modal interativo de parcelamento antes da criação do contas a pagar, com definição do vencimento inicial, geração automática distribuída em até 12x, edição de datas/valores individuais e validação de soma total)
+    - [x] Movimentações de Estoque (Lançamentos de Entrada/Saída e Ajustes de Produtos com alertas visuais de saldo negativo e filtro de safras pela fazenda ativa no modal; consulta reestruturada por seleção de produto com filtros de período de datas e safra)
+    - [x] Contas a Pagar (Gestão financeira integrada, com botão de edição habilitado para lançamentos com status "PENDENTE" tanto no fluxo de pagar quanto de receber)
     - [x] Ordens de Serviço (Cadastro, listagem e apontamentos operacionais em campo)
     - [x] Correção de alinhamento no campo de busca/pesquisa (jogando texto para a direita e centralizando ícone da lupa verticalmente)
+    - [x] Ajuste do texto institucional do rodapé (Footer) para "Inova Ceifa"
   - [x] **Planejamento de Safra (Apenas perfil 1)**:
     - [x] Interface intuitiva para criação, edição e aprovação de planejamentos (talhões, adubação, insumos, mão de obra terceirizada, rateios).
     - [x] Fluxo e botão para **Geração de Ordens de Serviço Reais** (`POST /api/planejamentos/{id}/gerar-ordens-servico/`).
@@ -190,6 +194,7 @@
 - [x] `GET/POST /api/terceirizados/`
 - [x] `GET/POST /api/turmas-terceirizadas/`
 - [x] `GET/POST /api/produtos/`
+- [x] `GET/POST /api/fornecedores/`
 - [x] `GET/POST /api/estoque/movimentos/` (Entradas, Saídas, Ajustes, Transferências)
 - [x] `GET /api/estoque/saldos/`
 

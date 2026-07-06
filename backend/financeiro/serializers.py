@@ -8,16 +8,42 @@ class ItemPedidoCompraSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemPedidoCompra
         fields = '__all__'
-        read_only_fields = ['valor_total']
+        read_only_fields = ['valor_total', 'pedido_compra']
 
 
 class PedidoCompraSerializer(serializers.ModelSerializer):
-    itens = ItemPedidoCompraSerializer(many=True, read_only=True)
+    itens = ItemPedidoCompraSerializer(many=True, required=False)
+    fornecedor_nome = serializers.ReadOnlyField(source='fornecedor.nome')
 
     class Meta:
         model = PedidoCompra
         fields = '__all__'
         read_only_fields = ['valor_total']
+
+    def create(self, validated_data):
+        itens_data = validated_data.pop('itens', [])
+        pedido = PedidoCompra.objects.create(**validated_data)
+        for item_data in itens_data:
+            ItemPedidoCompra.objects.create(pedido_compra=pedido, **item_data)
+        return pedido
+
+    def update(self, instance, validated_data):
+        itens_data = validated_data.pop('itens', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if itens_data is not None:
+            instance.itens.all().delete()
+            for item_data in itens_data:
+                ItemPedidoCompra.objects.create(pedido_compra=instance, **item_data)
+            
+            from django.db.models import Sum
+            total = instance.itens.filter(ativo=True).aggregate(total=Sum('valor_total'))['total'] or 0
+            instance.valor_total = total
+            instance.save()
+            
+        return instance
 
 
 class ContasAPagarSerializer(serializers.ModelSerializer):

@@ -4,7 +4,7 @@ from cadastros.models import (
     Talhao, EstimativaProducaoTalhao, Maquina, CustoMensalMaquina,
     Funcionario, SalarioMensal, Terceirizado, TurmaTerceirizada,
     Produto, EstoqueMovimento, TransferenciaAtivo, LocacaoMaquina,
-    ManutencaoMaquina
+    ManutencaoMaquina, Fornecedor
 )
 
 class EstimativaProducaoTalhaoSerializer(serializers.ModelSerializer):
@@ -169,4 +169,11 @@ class ManutencaoMaquinaSerializer(serializers.ModelSerializer):
     class Meta:
         model = ManutencaoMaquina
         fields = '__all__'
+
+
+class FornecedorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Fornecedor
+        fields = '__all__'
+
 

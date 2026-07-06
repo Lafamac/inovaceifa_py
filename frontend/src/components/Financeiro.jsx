@@ -19,7 +19,8 @@ import {
   Boxes,
   FileCheck,
   ShoppingBag,
-  ListOrdered
+  ListOrdered,
+  Pencil
 } from 'lucide-react';
 import { relatorioService } from '../services/api';
 
@@ -37,6 +38,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   const [pedidosVenda, setPedidosVenda] = useState([]);
   const [contasAReceber, setContasAReceber] = useState([]);
   const [produtos, setProdutos] = useState([]);
+  const [fornecedores, setFornecedores] = useState([]);
   
   // Modals & UI States
   const [loading, setLoading] = useState(false);
@@ -56,13 +58,23 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   const [selectedVenda, setSelectedVenda] = useState(null);
   const [pagamentoDate, setPagamentoDate] = useState(new Date().toISOString().slice(0, 10));
   
-  // Filter states
   const [statusFilter, setStatusFilter] = useState('TODOS');
-  
+  const [editingCompraId, setEditingCompraId] = useState(null);
+  const [editingPagarId, setEditingPagarId] = useState(null);
+  const [editingReceberId, setEditingReceberId] = useState(null);
+
+  // New States for Custom Installments on Recebimento
+  const [showReceberFormModal, setShowReceberFormModal] = useState(false);
+  const [compraToReceive, setCompraToReceive] = useState(null);
+  const [receberBaseDate, setReceberBaseDate] = useState('');
+  const [receberQtdParcelas, setReceberQtdParcelas] = useState(1);
+  const [receberParcelas, setReceberParcelas] = useState([]);
+
   // Forms State
   const [newCompra, setNewCompra] = useState({
     fornecedor: '',
     data_pedido: new Date().toISOString().slice(0, 10),
+    status: 'RASCUNHO',
     itens: []
   });
   
@@ -110,27 +122,41 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
     try {
       // Fetch Products for the purchase form dropdown
       try {
-        const dbStr = localStorage.getItem('inovaceifa_db');
-        if (dbStr) {
-          const db = JSON.parse(dbStr);
-          setProdutos(db.produtos || []);
-        }
+        const prodData = await relatorioService.getProdutos();
+        setProdutos(prodData || []);
       } catch (err) {
-        console.error("Erro ao carregar produtos:", err);
+        console.error("Erro ao carregar produtos da API:", err);
+        try {
+          const dbStr = localStorage.getItem('inovaceifa_db');
+          if (dbStr) {
+            const db = JSON.parse(dbStr);
+            setProdutos(db.produtos || []);
+          }
+        } catch (localErr) {
+          console.error("Erro ao carregar produtos do localStorage:", localErr);
+        }
       }
 
-      const [comprasData, pagarData, vendasData, receberData] = await Promise.all([
+      const [comprasData, pagarData, vendasData, receberData, fornecedoresData] = await Promise.all([
         relatorioService.getPedidosCompra(),
         relatorioService.getContasAPagar(),
         relatorioService.getPedidosVenda(),
-        relatorioService.getContasAReceber()
+        relatorioService.getContasAReceber(),
+        relatorioService.getFornecedores()
       ]);
 
       // Filter by farm and active crop
       const filterByTenant = (items) => {
-        return items.filter(item => 
+        return (items || []).filter(item => 
           String(item.fazenda_id || item.fazenda) === String(fazendaAtiva.id) &&
           (!safraAtiva || String(item.safra_id || item.safra) === String(safraAtiva.id))
+        );
+      };
+
+      // Filter suppliers by farm only
+      const filterSuppliersByFarm = (items) => {
+        return (items || []).filter(item => 
+          String(item.fazenda_id || item.fazenda) === String(fazendaAtiva.id)
         );
       };
 
@@ -138,6 +164,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
       setContasAPagar(filterByTenant(pagarData));
       setPedidosVenda(filterByTenant(vendasData));
       setContasAReceber(filterByTenant(receberData));
+      setFornecedores(filterSuppliersByFarm(fornecedoresData));
     } catch (err) {
       console.error(err);
       setError('Falha ao carregar dados financeiros da API.');
@@ -162,6 +189,61 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
       setError('');
       setSuccess('');
     }, 4000);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      const tagName = event.target.tagName;
+      const type = event.target.type;
+      if (type === 'submit' || event.target.id === 'btn-add-item' || event.target.tagName === 'BUTTON') {
+        return;
+      }
+      event.preventDefault();
+      const form = event.target.form;
+      if (form) {
+        const index = Array.prototype.indexOf.call(form, event.target);
+        if (index > -1) {
+          let nextIndex = index + 1;
+          while (nextIndex < form.elements.length) {
+            const nextEl = form.elements[nextIndex];
+            if (nextEl && !nextEl.disabled && nextEl.tabIndex !== -1 && nextEl.type !== 'hidden') {
+              if (['INPUT', 'SELECT', 'TEXTAREA'].includes(nextEl.tagName)) {
+                nextEl.focus();
+                if (nextEl.select) nextEl.select();
+                break;
+              }
+            }
+            nextIndex++;
+          }
+        }
+      }
+    }
+  };
+
+  const handleAprovarCompra = async (p) => {
+    setSaving(true);
+    try {
+      const payload = {
+        fazenda: p.fazenda_id || p.fazenda,
+        safra: p.safra_id || p.safra,
+        fornecedor: p.fornecedor,
+        data_pedido: p.data_pedido,
+        status: 'APROVADO',
+        itens: (p.itens || []).map(i => ({
+          produto: i.produto_id || i.produto,
+          quantidade: Number(i.quantidade),
+          valor_unitario: Number(i.valor_unitario)
+        }))
+      };
+      await relatorioService.updatePedidoCompra(p.id, payload);
+      showAlert('success', 'Pedido de Compra aprovado com sucesso!');
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Falha ao aprovar o Pedido de Compra.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Pedidos de Compra handlers
@@ -199,6 +281,34 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
     }));
   };
 
+  const handleStartEditCompra = (p) => {
+    setEditingCompraId(p.id);
+    setNewCompra({
+      fornecedor: p.fornecedor_id || p.fornecedor,
+      data_pedido: p.data_pedido,
+      status: p.status,
+      itens: (p.itens || []).map(i => ({
+        produto: i.produto_id || i.produto,
+        produto_nome: i.produto_nome || (produtos.find(prod => prod.id === (i.produto_id || i.produto))?.nome_comercial) || 'Produto',
+        quantidade: Number(i.quantidade),
+        valor_unitario: Number(i.valor_unitario),
+        valor_total: Number(i.valor_total)
+      }))
+    });
+    setShowNewCompraModal(true);
+  };
+
+  const handleCloseNewCompraModal = () => {
+    setShowNewCompraModal(false);
+    setEditingCompraId(null);
+    setNewCompra({
+      fornecedor: '',
+      data_pedido: new Date().toISOString().slice(0, 10),
+      status: 'RASCUNHO',
+      itens: []
+    });
+  };
+
   const handleCreateCompra = async (e) => {
     e.preventDefault();
     if (!newCompra.fornecedor) {
@@ -217,21 +327,22 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
         safra: safraAtiva?.id,
         fornecedor: newCompra.fornecedor,
         data_pedido: newCompra.data_pedido,
-        status: 'APROVADO', // Facilitamos gerando APROVADO por padrão para permitir recebimento rápido
+        status: newCompra.status || 'RASCUNHO',
         itens: newCompra.itens
       };
 
-      await relatorioService.createPedidoCompra(payload);
-      showAlert('success', 'Pedido de Compra registrado e aprovado com sucesso!');
-      setShowNewCompraModal(false);
-      setNewCompra({
-        fornecedor: '',
-        data_pedido: new Date().toISOString().slice(0, 10),
-        itens: []
-      });
+      if (editingCompraId) {
+        await relatorioService.updatePedidoCompra(editingCompraId, payload);
+        showAlert('success', 'Pedido de Compra atualizado com sucesso!');
+      } else {
+        await relatorioService.createPedidoCompra(payload);
+        showAlert('success', 'Pedido de Compra registrado com sucesso!');
+      }
+      
+      handleCloseNewCompraModal();
       loadAllData();
     } catch (err) {
-      showAlert('error', 'Erro ao salvar o Pedido de Compra.');
+      showAlert('error', editingCompraId ? 'Erro ao atualizar o Pedido de Compra.' : 'Erro ao salvar o Pedido de Compra.');
     } finally {
       setSaving(false);
     }
@@ -244,6 +355,80 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
       loadAllData();
     } catch (err) {
       showAlert('error', err.message || 'Falha ao processar recebimento da compra.');
+    }
+  };
+
+  const handleOpenReceberCompraModal = (pedido) => {
+    setCompraToReceive(pedido);
+    const today = new Date().toISOString().slice(0, 10);
+    setReceberBaseDate(pedido.data_pedido || today);
+    setReceberQtdParcelas(1);
+    setReceberParcelas([{
+      data_vencimento: pedido.data_pedido || today,
+      valor: Number(pedido.valor_total)
+    }]);
+    setShowReceberFormModal(true);
+  };
+
+  const recalculateParcelas = (qtd, baseDate, totalVal) => {
+    const numInstallments = Number(qtd) || 1;
+    const base = new Date(baseDate + 'T00:00:00');
+    const totalValNum = Number(totalVal) || 0;
+    
+    const baseValue = Math.floor((totalValNum / numInstallments) * 100) / 100;
+    const remainder = Math.round((totalValNum - (baseValue * numInstallments)) * 100) / 100;
+    
+    const newParcelas = [];
+    for (let i = 0; i < numInstallments; i++) {
+      const pDate = new Date(base.getTime());
+      pDate.setMonth(base.getMonth() + i);
+      const dateStr = pDate.toISOString().slice(0, 10);
+      const pVal = i === numInstallments - 1 ? (baseValue + remainder) : baseValue;
+      
+      newParcelas.push({
+        data_vencimento: dateStr,
+        valor: Number(pVal.toFixed(2))
+      });
+    }
+    setReceberParcelas(newParcelas);
+  };
+
+  const handleUpdateParcela = (idx, field, value) => {
+    setReceberParcelas(prev => prev.map((p, i) => {
+      if (i === idx) {
+        return {
+          ...p,
+          [field]: field === 'valor' ? Number(value) : value
+        };
+      }
+      return p;
+    }));
+  };
+
+  const handleConfirmarRecebimentoCompra = async (e) => {
+    e.preventDefault();
+    if (!compraToReceive) return;
+    
+    const sumParcelas = receberParcelas.reduce((sum, curr) => sum + Number(curr.valor || 0), 0);
+    if (Math.abs(sumParcelas - compraToReceive.valor_total) > 0.05) {
+      showAlert('error', `A soma das parcelas (R$ ${sumParcelas.toFixed(2)}) deve ser igual ao valor total do pedido (R$ ${Number(compraToReceive.valor_total).toFixed(2)}).`);
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      await relatorioService.receberPedidoCompra(compraToReceive.id, {
+        parcelas: receberParcelas
+      });
+      showAlert('success', 'Pedido recebido com sucesso! Contas a pagar e estoque gerados.');
+      setShowReceberFormModal(false);
+      setCompraToReceive(null);
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', err.message || 'Falha ao processar recebimento da compra.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -342,6 +527,31 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
     }
   };
 
+  const handleStartEditPagar = (conta) => {
+    setEditingPagarId(conta.id);
+    setNewPagar({
+      descricao: conta.descricao,
+      valor: conta.valor,
+      data_vencimento: conta.data_vencimento,
+      status: conta.status,
+      data_pagamento: conta.data_pagamento || ''
+    });
+    setShowNewPagarModal(true);
+  };
+
+  const handleStartEditReceber = (conta) => {
+    setEditingReceberId(conta.id);
+    setNewReceber({
+      descricao: conta.descricao,
+      categoria_receita: conta.categoria_receita || 'OUTROS',
+      valor: conta.valor,
+      data_vencimento: conta.data_vencimento,
+      status: conta.status,
+      data_recebimento: conta.data_recebimento || ''
+    });
+    setShowNewReceberModal(true);
+  };
+
   const handleCreatePagar = async (e) => {
     e.preventDefault();
     if (!newPagar.descricao || !newPagar.valor || !newPagar.data_vencimento) {
@@ -359,9 +569,15 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
         status: newPagar.status,
         data_pagamento: newPagar.status === 'PAGO' ? (newPagar.data_pagamento || newPagar.data_vencimento) : null
       };
-      await relatorioService.createContasAPagar(payload);
-      showAlert('success', 'Lançamento de Contas a Pagar realizado com sucesso!');
+      if (editingPagarId) {
+        await relatorioService.updateContasAPagar(editingPagarId, payload);
+        showAlert('success', 'Lançamento de Contas a Pagar atualizado com sucesso!');
+      } else {
+        await relatorioService.createContasAPagar(payload);
+        showAlert('success', 'Lançamento de Contas a Pagar realizado com sucesso!');
+      }
       setShowNewPagarModal(false);
+      setEditingPagarId(null);
       loadAllData();
     } catch (err) {
       showAlert('error', 'Erro ao salvar o Lançamento.');
@@ -388,9 +604,15 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
         status: newReceber.status,
         data_recebimento: newReceber.status === 'RECEBIDO' ? (newReceber.data_recebimento || newReceber.data_vencimento) : null
       };
-      await relatorioService.createContasAReceber(payload);
-      showAlert('success', 'Lançamento de Contas a Receber realizado com sucesso!');
+      if (editingReceberId) {
+        await relatorioService.updateContasAReceber(editingReceberId, payload);
+        showAlert('success', 'Lançamento de Contas a Receber atualizado com sucesso!');
+      } else {
+        await relatorioService.createContasAReceber(payload);
+        showAlert('success', 'Lançamento de Contas a Receber realizado com sucesso!');
+      }
       setShowNewReceberModal(false);
+      setEditingReceberId(null);
       loadAllData();
     } catch (err) {
       showAlert('error', 'Erro ao salvar o Lançamento.');
@@ -655,6 +877,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
           {activeSubTab === 'pagar' && (
             <button
               onClick={() => {
+                setEditingPagarId(null);
                 setNewPagar({
                   descricao: '',
                   valor: '',
@@ -674,6 +897,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
           {activeSubTab === 'receber' && (
             <button
               onClick={() => {
+                setEditingReceberId(null);
                 setNewReceber({
                   descricao: '',
                   categoria_receita: 'OUTROS',
@@ -729,7 +953,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                       <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01] transition-all">
                         <td className="py-4 px-6 font-bold">
                           <span className="block text-[10px] text-slate-400">Pedido #{p.id}</span>
-                          <span className="text-slate-800 dark:text-slate-200">{p.fornecedor}</span>
+                          <span className="text-slate-800 dark:text-slate-200">{p.fornecedor_nome || p.fornecedor}</span>
                         </td>
                         <td className="py-4 px-6 text-slate-600 dark:text-slate-300">
                           <span className="block">{p.data_pedido}</span>
@@ -764,20 +988,42 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-center">
-                          {p.status === 'APROVADO' && (
-                            <button
-                              onClick={() => handleReceberCompra(p.id)}
-                              className="px-3.5 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                            >
-                              Receber Compra
-                            </button>
-                          )}
-                          {p.status === 'RECEBIDO' && (
-                            <span className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1">
-                              <FileCheck className="w-4 h-4 text-emerald-500" />
-                              <span>Recebido</span>
-                            </span>
-                          )}
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            {p.status === 'RASCUNHO' && (
+                              <>
+                                <button
+                                  onClick={() => handleStartEditCompra(p)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 cursor-pointer inline-flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                  title="Editar Pedido"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  <span>Editar</span>
+                                </button>
+                                <button
+                                  onClick={() => handleAprovarCompra(p)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 cursor-pointer inline-flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                  title="Aprovar Pedido"
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                  <span>Aprovar</span>
+                                </button>
+                              </>
+                            )}
+                            {p.status === 'APROVADO' && (
+                              <button
+                                onClick={() => handleOpenReceberCompraModal(p)}
+                                className="px-3.5 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                Receber Compra
+                              </button>
+                            )}
+                            {p.status === 'RECEBIDO' && (
+                              <span className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1">
+                                <FileCheck className="w-4 h-4 text-emerald-500" />
+                                <span>Recebido</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -846,20 +1092,32 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-center">
-                          {c.status === 'PENDENTE' && (
-                            <button
-                              onClick={() => handleOpenPagamento(c)}
-                              className="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                            >
-                              Pagar Conta
-                            </button>
-                          )}
-                          {c.status === 'PAGO' && (
-                            <span className="text-[10px] font-bold text-emerald-500 flex items-center justify-center gap-1">
-                              <CheckCircle className="w-4 h-4" />
-                              <span>Quitado</span>
-                            </span>
-                          )}
+                          <div className="flex items-center justify-center gap-2">
+                            {c.status === 'PENDENTE' && (
+                              <>
+                                <button
+                                  onClick={() => handleStartEditPagar(c)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 cursor-pointer inline-flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                  title="Editar Conta"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  <span>Editar</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenPagamento(c)}
+                                  className="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                                >
+                                  Pagar Conta
+                                </button>
+                              </>
+                            )}
+                            {c.status === 'PAGO' && (
+                              <span className="text-[10px] font-bold text-emerald-500 flex items-center justify-center gap-1">
+                                <CheckCircle className="w-4 h-4" />
+                                <span>Quitado</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1004,20 +1262,32 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-center">
-                          {c.status === 'PENDENTE' && (
-                            <button
-                              onClick={() => handleOpenRecebimento(c)}
-                              className="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                            >
-                              Receber
-                            </button>
-                          )}
-                          {c.status === 'RECEBIDO' && (
-                            <span className="text-[10px] font-bold text-emerald-500 flex items-center justify-center gap-1">
-                              <CheckCircle className="w-4 h-4" />
-                              <span>Recebido</span>
-                            </span>
-                          )}
+                          <div className="flex items-center justify-center gap-2">
+                            {c.status === 'PENDENTE' && (
+                              <>
+                                <button
+                                  onClick={() => handleStartEditReceber(c)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 cursor-pointer inline-flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                  title="Editar Receita"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  <span>Editar</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenRecebimento(c)}
+                                  className="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                                >
+                                  Receber
+                                </button>
+                              </>
+                            )}
+                            {c.status === 'RECEBIDO' && (
+                              <span className="text-[10px] font-bold text-emerald-500 flex items-center justify-center gap-1">
+                                <CheckCircle className="w-4 h-4" />
+                                <span>Recebido</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1038,24 +1308,28 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-emerald-500" />
-                <span>Registrar Novo Pedido de Compra</span>
+                <span>{editingCompraId ? 'Editar Pedido de Compra' : 'Registrar Novo Pedido de Compra'}</span>
               </h3>
-              <button onClick={() => setShowNewCompraModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
+              <button type="button" onClick={handleCloseNewCompraModal} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
             
             <form onSubmit={handleCreateCompra} className="p-6 space-y-6">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Fornecedor / Parceiro *</label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="Ex: Yara Fertilizantes do Brasil"
                     value={newCompra.fornecedor}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewCompra(prev => ({ ...prev, fornecedor: e.target.value }))}
                     className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
-                  />
+                  >
+                    <option value="">Selecione um fornecedor...</option>
+                    {fornecedores.map(f => (
+                      <option key={f.id} value={f.id} className="bg-slate-900 text-white">{f.nome}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Data do Pedido *</label>
@@ -1063,9 +1337,23 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                     type="date"
                     required
                     value={newCompra.data_pedido}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewCompra(prev => ({ ...prev, data_pedido: e.target.value }))}
                     className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                   />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Status *</label>
+                  <select
+                    required
+                    value={newCompra.status || 'RASCUNHO'}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewCompra(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2.5 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  >
+                    <option value="RASCUNHO" className="bg-slate-900 text-white">RASCUNHO</option>
+                    <option value="APROVADO" className="bg-slate-900 text-white">APROVADO</option>
+                  </select>
                 </div>
               </div>
 
@@ -1082,6 +1370,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                     <label className="block text-[9px] font-black uppercase text-slate-500 mb-1.5">Insumo / Produto</label>
                     <select
                       value={tempItem.produto}
+                      onKeyDown={handleKeyDown}
                       onChange={(e) => setTempItem(prev => ({ ...prev, produto: e.target.value }))}
                       className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                     >
@@ -1098,6 +1387,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                       step="any"
                       placeholder="Ex: 500"
                       value={tempItem.quantidade}
+                      onKeyDown={handleKeyDown}
                       onChange={(e) => setTempItem(prev => ({ ...prev, quantidade: e.target.value }))}
                       className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                     />
@@ -1109,6 +1399,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                       step="any"
                       placeholder="Ex: 4.50"
                       value={tempItem.valor_unitario}
+                      onKeyDown={handleKeyDown}
                       onChange={(e) => setTempItem(prev => ({ ...prev, valor_unitario: e.target.value }))}
                       className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                     />
@@ -1133,8 +1424,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                       <div key={index} className="flex items-center justify-between gap-4 p-2.5 rounded-lg bg-slate-950 border border-white/[0.03] text-[11px]">
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold text-slate-300">{item.produto_nome}</span>
-                          <span className="text-slate-500">| {money(item.quantidade)} un x R$ {money(item.valor_unitario)}/un</span>
+                          <span className="font-bold text-white">{item.produto_nome}</span>
+                          <span className="text-slate-300">| {money(item.quantidade)} un x R$ {money(item.valor_unitario)}/un</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-black text-white">R$ {money(item.valor_total)}</span>
@@ -1165,7 +1456,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                 <button
                   type="button"
                   tabIndex="-1"
-                  onClick={() => setShowNewCompraModal(false)}
+                  onClick={handleCloseNewCompraModal}
                   className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
                   Cancelar
@@ -1175,10 +1466,136 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   disabled={saving}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
-                  {saving ? 'Registrando...' : 'Salvar Pedido'}
+                  {saving ? 'Salvando...' : (editingCompraId ? 'Atualizar Pedido' : 'Salvar Pedido')}
                 </button>
               </div>
 
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL: CONDIÇÕES DE RECEBIMENTO (PARCELAS) --- */}
+      {showReceberFormModal && (
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-lg bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-emerald-500" />
+                <span>Condições de Pagamento e Recebimento</span>
+              </h3>
+              <button type="button" onClick={() => { setShowReceberFormModal(false); setCompraToReceive(null); }} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
+            </div>
+            
+            <form onSubmit={handleConfirmarRecebimentoCompra} className="p-6 space-y-6">
+              <div className="bg-slate-950/50 p-4 rounded-xl border border-white/[0.04] text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Fornecedor:</span>
+                  <span className="font-bold text-white">{compraToReceive?.fornecedor_nome}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Total do Pedido:</span>
+                  <span className="font-black text-emerald-400">R$ {money(compraToReceive?.valor_total)}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Data Vencimento Inicial / Base *</label>
+                  <input
+                    type="date"
+                    required
+                    value={receberBaseDate}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setReceberBaseDate(newDate);
+                      recalculateParcelas(receberQtdParcelas, newDate, compraToReceive?.valor_total);
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Número de Parcelas *</label>
+                  <select
+                    value={receberQtdParcelas}
+                    onChange={(e) => {
+                      const newQtd = Number(e.target.value);
+                      setReceberQtdParcelas(newQtd);
+                      recalculateParcelas(newQtd, receberBaseDate, compraToReceive?.valor_total);
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2.5 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                      <option key={n} value={n} className="bg-slate-900 text-white">{n}x</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Listagem Dinâmica de Parcelas */}
+              <div className="space-y-3">
+                <span className="block text-[10px] font-black uppercase text-slate-400">Detalhamento das Parcelas</span>
+                <div className="max-h-48 overflow-y-auto space-y-2.5 pr-1">
+                  {receberParcelas.map((parc, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-slate-950/40 p-3 rounded-xl border border-white/[0.04]">
+                      <span className="text-[10px] font-black text-slate-500 shrink-0 w-8">#{idx+1}</span>
+                      <div className="flex-1">
+                        <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Vencimento</label>
+                        <input
+                          type="date"
+                          required
+                          value={parc.data_vencimento}
+                          onChange={(e) => handleUpdateParcela(idx, 'data_vencimento', e.target.value)}
+                          className="w-full bg-slate-950 border border-white/[0.06] rounded-lg py-1.5 px-2 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                        />
+                      </div>
+                      <div className="w-1/2">
+                        <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Valor (R$)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={parc.valor}
+                          onChange={(e) => handleUpdateParcela(idx, 'valor', e.target.value)}
+                          className="w-full bg-slate-950 border border-white/[0.06] rounded-lg py-1.5 px-2 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-mono"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total Check */}
+              <div className="flex justify-between items-center bg-slate-950/60 p-3.5 rounded-xl border border-white/[0.04] mt-4">
+                <div className="text-[10px] font-black uppercase text-slate-400">
+                  <span>Soma das Parcelas:</span>
+                  <span className="block text-[8px] font-bold mt-0.5 text-slate-500">Diferença: R$ {Math.abs(receberParcelas.reduce((s, c) => s + Number(c.valor || 0), 0) - (compraToReceive?.valor_total || 0)).toFixed(2)}</span>
+                </div>
+                <span className={`text-sm font-black ${
+                  Math.abs(receberParcelas.reduce((s, c) => s + Number(c.valor || 0), 0) - (compraToReceive?.valor_total || 0)) <= 0.05
+                    ? 'text-emerald-400'
+                    : 'text-rose-400'
+                }`}>
+                  R$ {receberParcelas.reduce((s, c) => s + Number(c.valor || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowReceberFormModal(false); setCompraToReceive(null); }}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
+                >
+                  {saving ? 'Processando...' : 'Confirmar Recebimento'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -1408,9 +1825,9 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <WalletCards className="w-5 h-5 text-emerald-500" />
-                <span>Lançar Contas a Pagar Manual</span>
+                <span>{editingPagarId ? 'Editar Contas a Pagar' : 'Lançar Contas a Pagar Manual'}</span>
               </h3>
-              <button onClick={() => setShowNewPagarModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
+              <button onClick={() => { setShowNewPagarModal(false); setEditingPagarId(null); }} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
             
             <form onSubmit={handleCreatePagar} className="p-6 space-y-4">
@@ -1597,7 +2014,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   disabled={saving}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
-                  {saving ? 'Salvando...' : 'Confirmar'}
+                  {saving ? 'Salvando...' : (editingPagarId ? 'Atualizar Lançamento' : 'Confirmar')}
                 </button>
               </div>
             </form>
@@ -1612,9 +2029,9 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <WalletCards className="w-5 h-5 text-emerald-500" />
-                <span>Lançar Contas a Receber Manual</span>
+                <span>{editingReceberId ? 'Editar Contas a Receber' : 'Lançar Contas a Receber Manual'}</span>
               </h3>
-              <button onClick={() => setShowNewReceberModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
+              <button onClick={() => { setShowNewReceberModal(false); setEditingReceberId(null); }} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
             
             <form onSubmit={handleCreateReceber} className="p-6 space-y-4">
@@ -1837,7 +2254,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   disabled={saving}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
-                  {saving ? 'Salvando...' : 'Confirmar'}
+                  {saving ? 'Salvando...' : (editingReceberId ? 'Atualizar Lançamento' : 'Confirmar')}
                 </button>
               </div>
             </form>

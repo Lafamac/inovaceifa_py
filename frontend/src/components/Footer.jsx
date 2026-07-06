@@ -9,7 +9,7 @@ export const Footer = () => {
         
         <div className="flex items-center space-x-1.5">
           <span className="text-emerald-500 dark:text-emerald-600">●</span>
-          <span>© {currentYear} Inova Ceifa Agronegócios S.A.</span>
+          <span>© {currentYear} Inova Ceifa</span>
         </div>
 
         <div className="flex items-center space-x-4">

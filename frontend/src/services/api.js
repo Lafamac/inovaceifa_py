@@ -213,9 +213,13 @@ const getInitialDB = () => {
       101: { grouped: [{ periodo: "Jun/24", saldo_realizado: 60000, saldo_previsto: 60000 }], ledger: [] },
       103: { grouped: [{ periodo: "Jun/26", saldo_realizado: 0, saldo_previsto: 200000 }], ledger: [] }
     },
+    fornecedores: [
+      { id: 1, fazenda: 1, nome: "YARA FERTILIZANTES", documento: "00.000.000/0001-00", email: "yara@fertilizantes.com", telefone: "(35) 99999-9999", data_ultima_compra: "2025-05-10", ativo: true },
+      { id: 2, fazenda: 1, nome: "SYNGENTA DEFENSIVOS", documento: "11.111.111/0001-11", email: "syngenta@defensivos.com", telefone: "(35) 88888-8888", data_ultima_compra: "2025-05-15", ativo: true }
+    ],
     pedidos_compra: [
-      { id: 701, fazenda: 1, safra: 102, fornecedor: "Yara Fertilizantes", data_pedido: "2025-05-10", valor_total: 15400.00, status: "APROVADO" },
-      { id: 702, fazenda: 1, safra: 102, fornecedor: "Syngenta Defensivos", data_pedido: "2025-05-15", valor_total: 8200.00, status: "RASCUNHO" }
+      { id: 701, fazenda: 1, safra: 102, fornecedor: 1, data_pedido: "2025-05-10", valor_total: 15400.00, status: "APROVADO" },
+      { id: 702, fazenda: 1, safra: 102, fornecedor: 2, data_pedido: "2025-05-15", valor_total: 8200.00, status: "RASCUNHO" }
     ],
     itens_pedido_compra: [
       { id: 1, pedido_compra: 701, pedido_compra_id: 701, produto: 1, quantidade: 2000.0000, valor_unitario: 5.2000, valor_total: 10400.00 },
@@ -298,6 +302,77 @@ export const relatorioService = {
       () => api.get('/api/proprietarios/'),
       () => getDB().proprietarios || []
     );
+  },
+
+  getFornecedores: () => {
+    return requestHandler(
+      () => api.get('/api/fornecedores/'),
+      () => getDB().fornecedores || []
+    );
+  },
+
+  getProdutos: () => {
+    return requestHandler(
+      () => api.get('/api/produtos/'),
+      () => getDB().produtos || []
+    );
+  },
+
+  createFornecedor: async (data) => {
+    try {
+      const res = await api.post('/api/fornecedores/', data);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.fornecedores) db.fornecedores = [];
+      const newId = db.fornecedores.length > 0 ? Math.max(...db.fornecedores.map(f => f.id)) + 1 : 1;
+      const newFornecedor = {
+        id: newId,
+        ativo: true,
+        ...data
+      };
+      db.fornecedores.push(newFornecedor);
+      saveDB(db);
+      return newFornecedor;
+    }
+  },
+
+  updateFornecedor: async (id, data) => {
+    try {
+      const res = await api.put(`/api/fornecedores/${id}/`, data);
+      return res.data;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const idx = db.fornecedores?.findIndex(f => f.id === Number(id));
+      if (idx !== -1 && idx !== undefined) {
+        db.fornecedores[idx] = { ...db.fornecedores[idx], ...data };
+        saveDB(db);
+        return db.fornecedores[idx];
+      }
+      throw error;
+    }
+  },
+
+  deleteFornecedor: async (id) => {
+    try {
+      await api.delete(`/api/fornecedores/${id}/`);
+      return true;
+    } catch (error) {
+      if (error.response) throw error;
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const idx = db.fornecedores?.findIndex(f => f.id === Number(id));
+      if (idx !== -1 && idx !== undefined) {
+        db.fornecedores[idx].ativo = false;
+        saveDB(db);
+        return true;
+      }
+      throw error;
+    }
   },
 
   createProprietario: async (proprietarioData) => {
@@ -1264,10 +1339,14 @@ export const relatorioService = {
       () => api.get('/api/financeiro/pedidos-compra/'),
       () => {
         const db = getDB();
-        return (db.pedidos_compra || []).map(p => ({
-          ...p,
-          itens: (db.itens_pedido_compra || []).filter(item => Number(item.pedido_compra_id || item.pedido_compra) === Number(p.id))
-        }));
+        return (db.pedidos_compra || []).map(p => {
+          const forn = (db.fornecedores || []).find(f => Number(f.id) === Number(p.fornecedor));
+          return {
+            ...p,
+            fornecedor_nome: forn ? forn.nome : (p.fornecedor_nome || String(p.fornecedor)),
+            itens: (db.itens_pedido_compra || []).filter(item => Number(item.pedido_compra_id || item.pedido_compra) === Number(p.id))
+          };
+        });
       }
     );
   },
@@ -1287,7 +1366,7 @@ export const relatorioService = {
         id: newId,
         fazenda: Number(data.fazenda),
         safra: Number(data.safra),
-        fornecedor: data.fornecedor,
+        fornecedor: Number(data.fornecedor),
         data_pedido: data.data_pedido,
         status: data.status || 'RASCUNHO',
         valor_total: 0
@@ -1312,14 +1391,68 @@ export const relatorioService = {
 
       newPedido.valor_total = calculatedTotal;
       db.pedidos_compra.push(newPedido);
+
+      // Atualizar data de última compra no fornecedor
+      const forn = db.fornecedores?.find(f => Number(f.id) === Number(data.fornecedor));
+      if (forn) {
+        if (!forn.data_ultima_compra || data.data_pedido > forn.data_ultima_compra) {
+          forn.data_ultima_compra = data.data_pedido;
+        }
+      }
+
       saveDB(db);
       return { ...newPedido, itens: (db.itens_pedido_compra).filter(i => i.pedido_compra_id === newId) };
     }
   },
 
-  receberPedidoCompra: async (id) => {
+  updatePedidoCompra: async (id, data) => {
     try {
-      const res = await api.post(`/api/financeiro/pedidos-compra/${id}/receber/`);
+      const res = await api.put(`/api/financeiro/pedidos-compra/${id}/`, data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      const idx = db.pedidos_compra?.findIndex(p => Number(p.id) === Number(id));
+      if (idx === -1) throw new Error("Pedido não encontrado");
+      
+      const oldPedido = db.pedidos_compra[idx];
+      const updatedPedido = {
+        ...oldPedido,
+        fornecedor: Number(data.fornecedor),
+        data_pedido: data.data_pedido,
+        status: data.status || oldPedido.status
+      };
+
+      db.itens_pedido_compra = (db.itens_pedido_compra || []).filter(i => Number(i.pedido_compra || i.pedido_compra_id) !== Number(id));
+
+      let calculatedTotal = 0;
+      if (data.itens && Array.isArray(data.itens)) {
+        data.itens.forEach((item, index) => {
+          const itemTotal = Number(item.quantidade) * Number(item.valor_unitario);
+          calculatedTotal += itemTotal;
+          db.itens_pedido_compra.push({
+            id: db.itens_pedido_compra.length > 0 ? Math.max(...db.itens_pedido_compra.map(i => i.id)) + 1 + index : 1,
+            pedido_compra: Number(id),
+            pedido_compra_id: Number(id),
+            produto: Number(item.produto),
+            quantidade: Number(item.quantidade),
+            valor_unitario: Number(item.valor_unitario),
+            valor_total: itemTotal
+          });
+        });
+      }
+
+      updatedPedido.valor_total = calculatedTotal;
+      db.pedidos_compra[idx] = updatedPedido;
+
+      saveDB(db);
+      return { ...updatedPedido, itens: (db.itens_pedido_compra).filter(i => Number(i.pedido_compra_id) === Number(id)) };
+    }
+  },
+
+  receberPedidoCompra: async (id, payload = {}) => {
+    try {
+      const res = await api.post(`/api/financeiro/pedidos-compra/${id}/receber/`, payload);
       return res.data;
     } catch (error) {
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -1331,23 +1464,44 @@ export const relatorioService = {
         throw new Error("Apenas pedidos com status 'APROVADO' podem ser recebidos.");
       }
 
+      const parcelas = payload.parcelas || [];
+
       pedido.status = 'RECEBIDO';
       
       // 1. Criar Contas a Pagar
       if (!db.contas_a_pagar) db.contas_a_pagar = [];
-      const newCPId = db.contas_a_pagar.length > 0 ? Math.max(...db.contas_a_pagar.map(c => c.id)) + 1 : 801;
-      db.contas_a_pagar.push({
-        id: newCPId,
-        fazenda: pedido.fazenda,
-        safra: pedido.safra,
-        pedido_compra: pedido.id,
-        pedido_compra_id: pedido.id,
-        descricao: `Compra do fornecedor: ${pedido.fornecedor} (Ref. Pedido #${pedido.id})`,
-        valor: pedido.valor_total,
-        data_vencimento: pedido.data_pedido,
-        status: 'PENDENTE',
-        data_pagamento: null
-      });
+      
+      if (parcelas.length > 0) {
+        parcelas.forEach((p_data, idx) => {
+          const newCPId = db.contas_a_pagar.length > 0 ? Math.max(...db.contas_a_pagar.map(c => c.id)) + 1 : 801;
+          db.contas_a_pagar.push({
+            id: newCPId,
+            fazenda: pedido.fazenda,
+            safra: pedido.safra,
+            pedido_compra: pedido.id,
+            pedido_compra_id: pedido.id,
+            descricao: `Compra do fornecedor: ${pedido.fornecedor} (Ref. Pedido #${pedido.id}) - Parcela ${idx+1}/${parcelas.length}`,
+            valor: Number(p_data.valor),
+            data_vencimento: p_data.data_vencimento,
+            status: 'PENDENTE',
+            data_pagamento: null
+          });
+        });
+      } else {
+        const newCPId = db.contas_a_pagar.length > 0 ? Math.max(...db.contas_a_pagar.map(c => c.id)) + 1 : 801;
+        db.contas_a_pagar.push({
+          id: newCPId,
+          fazenda: pedido.fazenda,
+          safra: pedido.safra,
+          pedido_compra: pedido.id,
+          pedido_compra_id: pedido.id,
+          descricao: `Compra do fornecedor: ${pedido.fornecedor} (Ref. Pedido #${pedido.id})`,
+          valor: pedido.valor_total,
+          data_vencimento: pedido.data_pedido,
+          status: 'PENDENTE',
+          data_pagamento: null
+        });
+      }
 
       // 2. Movimentos de Entrada no Estoque
       if (!db.estoque) db.estoque = [];
@@ -1566,6 +1720,59 @@ export const relatorioService = {
       db.contas_a_receber.push(newConta);
       saveDB(db);
       return newConta;
+    }
+  },
+
+  updateContasAPagar: async (id, data) => {
+    try {
+      const res = await api.put(`/api/financeiro/contas-pagar/${id}/`, data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.contas_a_pagar) db.contas_a_pagar = [];
+      const idx = db.contas_a_pagar.findIndex(c => c.id === Number(id));
+      if (idx > -1) {
+        const updated = {
+          ...db.contas_a_pagar[idx],
+          descricao: data.descricao,
+          valor: Number(data.valor),
+          data_vencimento: data.data_vencimento,
+          status: data.status,
+          data_pagamento: data.status === 'PAGO' ? (data.data_pagamento || data.data_vencimento) : null
+        };
+        db.contas_a_pagar[idx] = updated;
+        saveDB(db);
+        return updated;
+      }
+      throw new Error("Conta a pagar não encontrada");
+    }
+  },
+
+  updateContasAReceber: async (id, data) => {
+    try {
+      const res = await api.put(`/api/financeiro/contas-receber/${id}/`, data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.contas_a_receber) db.contas_a_receber = [];
+      const idx = db.contas_a_receber.findIndex(c => c.id === Number(id));
+      if (idx > -1) {
+        const updated = {
+          ...db.contas_a_receber[idx],
+          descricao: data.descricao,
+          categoria_receita: data.categoria_receita,
+          valor: Number(data.valor),
+          data_vencimento: data.data_vencimento,
+          status: data.status,
+          data_recebimento: data.status === 'RECEBIDO' ? (data.data_recebimento || data.data_vencimento) : null
+        };
+        db.contas_a_receber[idx] = updated;
+        saveDB(db);
+        return updated;
+      }
+      throw new Error("Conta a receber não encontrada");
     }
   },
 
