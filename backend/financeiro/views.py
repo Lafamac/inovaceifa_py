@@ -148,6 +148,23 @@ class PedidoVendaViewSet(BaseTenantPlanejamentoViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        parcelas = request.data.get('parcelas', [])
+        
+        if parcelas:
+            try:
+                from decimal import Decimal
+                sum_parcelas = sum(Decimal(str(p['valor'])) for p in parcelas)
+                if abs(sum_parcelas - pedido.valor_total) > Decimal('0.05'):
+                    return Response(
+                        {"detail": f"A soma das parcelas (R$ {sum_parcelas}) deve ser igual ao valor total do pedido de venda (R$ {pedido.valor_total})."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except Exception as e:
+                return Response(
+                    {"detail": f"Erro na estrutura das parcelas: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         with transaction.atomic():
             pedido.status = 'CONFIRMADO'
             pedido.save()
@@ -161,17 +178,30 @@ class PedidoVendaViewSet(BaseTenantPlanejamentoViewSet):
             }
             categoria = categoria_map.get(pedido.tipo_produto, 'OUTROS')
 
-            # 1. Criar Contas a Receber correspondente ao valor total do pedido
-            ContasAReceber.objects.create(
-                fazenda=pedido.fazenda,
-                safra=pedido.safra,
-                pedido_venda=pedido,
-                descricao=f"Venda para o cliente: {pedido.cliente} (Ref. Pedido #{pedido.id})",
-                categoria_receita=categoria,
-                valor=pedido.valor_total,
-                data_vencimento=pedido.data_venda,  # data base de vencimento
-                status='PENDENTE'
-            )
+            # 1. Criar Contas a Receber (uma por parcela, ou parcela única se não informadas)
+            if parcelas:
+                for idx, p_data in enumerate(parcelas):
+                    ContasAReceber.objects.create(
+                        fazenda=pedido.fazenda,
+                        safra=pedido.safra,
+                        pedido_venda=pedido,
+                        descricao=f"Venda para o cliente: {pedido.cliente} (Ref. Pedido #{pedido.id}) - Parcela {idx+1}/{len(parcelas)}",
+                        categoria_receita=categoria,
+                        valor=p_data['valor'],
+                        data_vencimento=p_data['data_vencimento'],
+                        status='PENDENTE'
+                    )
+            else:
+                ContasAReceber.objects.create(
+                    fazenda=pedido.fazenda,
+                    safra=pedido.safra,
+                    pedido_venda=pedido,
+                    descricao=f"Venda para o cliente: {pedido.cliente} (Ref. Pedido #{pedido.id})",
+                    categoria_receita=categoria,
+                    valor=pedido.valor_total,
+                    data_vencimento=pedido.data_venda,
+                    status='PENDENTE'
+                )
 
         return Response(
             {"status": "Pedido de venda confirmado com sucesso. Contas a receber gerado.", "id": pedido.id},

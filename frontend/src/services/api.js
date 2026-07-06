@@ -1593,9 +1593,38 @@ export const relatorioService = {
     }
   },
 
-  confirmarPedidoVenda: async (id) => {
+  updatePedidoVenda: async (id, data) => {
     try {
-      const res = await api.post(`/api/financeiro/pedidos-venda/${id}/confirmar/`);
+      const res = await api.put(`/api/financeiro/pedidos-venda/${id}/`, data);
+      return res.data;
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const db = getDB();
+      if (!db.pedidos_venda) db.pedidos_venda = [];
+      const idx = db.pedidos_venda.findIndex(p => p.id === Number(id));
+      if (idx > -1) {
+        const valTotal = Number(data.quantidade_sacas) * Number(data.preco_unitario);
+        const updated = {
+          ...db.pedidos_venda[idx],
+          cliente: data.cliente,
+          data_venda: data.data_venda,
+          tipo_produto: data.tipo_produto,
+          quantidade_sacas: Number(data.quantidade_sacas),
+          preco_unitario: Number(data.preco_unitario),
+          valor_total: valTotal,
+          status: data.status || 'RASCUNHO'
+        };
+        db.pedidos_venda[idx] = updated;
+        saveDB(db);
+        return updated;
+      }
+      throw new Error("Pedido de venda não encontrado");
+    }
+  },
+
+  confirmarPedidoVenda: async (id, payload = {}) => {
+    try {
+      const res = await api.post(`/api/financeiro/pedidos-venda/${id}/confirmar/`, payload);
       return res.data;
     } catch (error) {
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -1606,6 +1635,8 @@ export const relatorioService = {
       if (pedido.status !== 'RASCUNHO') {
         throw new Error("Apenas pedidos com status 'RASCUNHO' podem ser confirmados.");
       }
+
+      const parcelas = payload.parcelas || [];
 
       pedido.status = 'CONFIRMADO';
       
@@ -1620,20 +1651,40 @@ export const relatorioService = {
 
       // Criar Contas a Receber
       if (!db.contas_a_receber) db.contas_a_receber = [];
-      const newCRId = db.contas_a_receber.length > 0 ? Math.max(...db.contas_a_receber.map(c => c.id)) + 1 : 1001;
-      db.contas_a_receber.push({
-        id: newCRId,
-        fazenda: pedido.fazenda,
-        safra: pedido.safra,
-        pedido_venda: pedido.id,
-        pedido_venda_id: pedido.id,
-        descricao: `Venda para o cliente: ${pedido.cliente} (Ref. Pedido #${pedido.id})`,
-        categoria_receita: categoria,
-        valor: pedido.valor_total,
-        data_vencimento: pedido.data_venda,
-        status: 'PENDENTE',
-        data_recebimento: null
-      });
+      
+      if (parcelas.length > 0) {
+        parcelas.forEach((p_data, idx) => {
+          const newCRId = db.contas_a_receber.length > 0 ? Math.max(...db.contas_a_receber.map(c => c.id)) + 1 : 1001;
+          db.contas_a_receber.push({
+            id: newCRId,
+            fazenda: pedido.fazenda,
+            safra: pedido.safra,
+            pedido_venda: pedido.id,
+            pedido_venda_id: pedido.id,
+            descricao: `Venda para o cliente: ${pedido.cliente} (Ref. Pedido #${pedido.id}) - Parcela ${idx+1}/${parcelas.length}`,
+            categoria_receita: categoria,
+            valor: Number(p_data.valor),
+            data_vencimento: p_data.data_vencimento,
+            status: 'PENDENTE',
+            data_recebimento: null
+          });
+        });
+      } else {
+        const newCRId = db.contas_a_receber.length > 0 ? Math.max(...db.contas_a_receber.map(c => c.id)) + 1 : 1001;
+        db.contas_a_receber.push({
+          id: newCRId,
+          fazenda: pedido.fazenda,
+          safra: pedido.safra,
+          pedido_venda: pedido.id,
+          pedido_venda_id: pedido.id,
+          descricao: `Venda para o cliente: ${pedido.cliente} (Ref. Pedido #{pedido.id})`,
+          categoria_receita: categoria,
+          valor: pedido.valor_total,
+          data_vencimento: pedido.data_venda,
+          status: 'PENDENTE',
+          data_recebimento: null
+        });
+      }
 
       saveDB(db);
       return { status: "Pedido de venda confirmado com sucesso. Contas a receber gerado.", id: pedido.id };

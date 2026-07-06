@@ -62,6 +62,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   const [editingCompraId, setEditingCompraId] = useState(null);
   const [editingPagarId, setEditingPagarId] = useState(null);
   const [editingReceberId, setEditingReceberId] = useState(null);
+  const [editingVendaId, setEditingVendaId] = useState(null);
 
   // New States for Custom Installments on Recebimento
   const [showReceberFormModal, setShowReceberFormModal] = useState(false);
@@ -69,6 +70,13 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   const [receberBaseDate, setReceberBaseDate] = useState('');
   const [receberQtdParcelas, setReceberQtdParcelas] = useState(1);
   const [receberParcelas, setReceberParcelas] = useState([]);
+
+  // New States for Custom Installments on Confirmar Venda
+  const [showConfirmarVendaModal, setShowConfirmarVendaModal] = useState(false);
+  const [vendaToConfirm, setVendaToConfirm] = useState(null);
+  const [confirmarVendaBaseDate, setConfirmarVendaBaseDate] = useState('');
+  const [confirmarVendaQtdParcelas, setConfirmarVendaQtdParcelas] = useState(1);
+  const [confirmarVendaParcelas, setConfirmarVendaParcelas] = useState([]);
 
   // Forms State
   const [newCompra, setNewCompra] = useState({
@@ -456,6 +464,93 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   };
 
   // Pedidos de Venda handlers
+  const handleStartEditVenda = (venda) => {
+    setEditingVendaId(venda.id);
+    setNewVenda({
+      cliente: venda.cliente,
+      data_venda: venda.data_venda,
+      tipo_produto: venda.tipo_produto,
+      quantidade_sacas: venda.quantidade_sacas,
+      preco_unitario: venda.preco_unitario,
+      status: venda.status || 'RASCUNHO'
+    });
+    setShowNewVendaModal(true);
+  };
+
+  const handleOpenConfirmarVendaModal = (pedido) => {
+    setVendaToConfirm(pedido);
+    const today = new Date().toISOString().slice(0, 10);
+    setConfirmarVendaBaseDate(pedido.data_venda || today);
+    setConfirmarVendaQtdParcelas(1);
+    setConfirmarVendaParcelas([{
+      data_vencimento: pedido.data_venda || today,
+      valor: Number(pedido.valor_total)
+    }]);
+    setShowConfirmarVendaModal(true);
+  };
+
+  const recalculateConfirmarVendaParcelas = (qtd, baseDate, totalVal) => {
+    const numInstallments = Number(qtd) || 1;
+    const base = new Date(baseDate + 'T00:00:00');
+    const totalValNum = Number(totalVal) || 0;
+    
+    const baseValue = Math.floor((totalValNum / numInstallments) * 100) / 100;
+    const remainder = Math.round((totalValNum - (baseValue * numInstallments)) * 100) / 100;
+    
+    const newParcelas = [];
+    for (let i = 0; i < numInstallments; i++) {
+      const pDate = new Date(base.getTime());
+      pDate.setMonth(base.getMonth() + i);
+      const dateStr = pDate.toISOString().slice(0, 10);
+      const pVal = i === numInstallments - 1 ? (baseValue + remainder) : baseValue;
+      
+      newParcelas.push({
+        data_vencimento: dateStr,
+        valor: Number(pVal.toFixed(2))
+      });
+    }
+    setConfirmarVendaParcelas(newParcelas);
+  };
+
+  const handleUpdateConfirmarVendaParcela = (idx, field, value) => {
+    setConfirmarVendaParcelas(prev => prev.map((p, i) => {
+      if (i === idx) {
+        return {
+          ...p,
+          [field]: field === 'valor' ? Number(value) : value
+        };
+      }
+      return p;
+    }));
+  };
+
+  const handleConfirmarRecebimentoVenda = async (e) => {
+    e.preventDefault();
+    if (!vendaToConfirm) return;
+    
+    const sumParcelas = confirmarVendaParcelas.reduce((sum, curr) => sum + Number(curr.valor || 0), 0);
+    if (Math.abs(sumParcelas - vendaToConfirm.valor_total) > 0.05) {
+      showAlert('error', `A soma das parcelas (R$ ${sumParcelas.toFixed(2)}) deve ser igual ao valor total da venda (R$ ${Number(vendaToConfirm.valor_total).toFixed(2)}).`);
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      await relatorioService.confirmarPedidoVenda(vendaToConfirm.id, {
+        parcelas: confirmarVendaParcelas
+      });
+      showAlert('success', 'Pedido de Venda confirmado! Contas a receber gerada no financeiro.');
+      setShowConfirmarVendaModal(false);
+      setVendaToConfirm(null);
+      loadAllData();
+    } catch (err) {
+      console.error(err);
+      showAlert('error', err.message || 'Falha ao processar confirmação de venda.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCreateVenda = async (e) => {
     e.preventDefault();
     if (!newVenda.cliente || !newVenda.quantidade_sacas || !newVenda.preco_unitario) {
@@ -468,23 +563,31 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
       const payload = {
         fazenda: fazendaAtiva.id,
         safra: safraAtiva?.id,
-        cliente: newVenda.cliente,
+        cliente: newVenda.cliente.toUpperCase(),
         data_venda: newVenda.data_venda,
         tipo_produto: newVenda.tipo_produto,
         quantidade_sacas: Number(newVenda.quantidade_sacas),
         preco_unitario: Number(newVenda.preco_unitario),
-        status: 'RASCUNHO'
+        status: newVenda.status || 'RASCUNHO'
       };
 
-      await relatorioService.createPedidoVenda(payload);
-      showAlert('success', 'Pedido de Venda criado como Rascunho com sucesso!');
+      if (editingVendaId) {
+        await relatorioService.updatePedidoVenda(editingVendaId, payload);
+        showAlert('success', 'Pedido de Venda atualizado com sucesso!');
+      } else {
+        await relatorioService.createPedidoVenda(payload);
+        showAlert('success', 'Pedido de Venda criado como Rascunho com sucesso!');
+      }
+
       setShowNewVendaModal(false);
+      setEditingVendaId(null);
       setNewVenda({
         cliente: '',
         data_venda: new Date().toISOString().slice(0, 10),
         tipo_produto: 'CAFE',
         quantidade_sacas: '',
-        preco_unitario: ''
+        preco_unitario: '',
+        status: 'RASCUNHO'
       });
       loadAllData();
     } catch (err) {
@@ -866,8 +969,19 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
 
           {activeSubTab === 'vendas' && (
             <button
-              onClick={() => setShowNewVendaModal(true)}
-              className="flex items-center gap-1.5 px-4.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10"
+              onClick={() => {
+                setEditingVendaId(null);
+                setNewVenda({
+                  cliente: '',
+                  data_venda: new Date().toISOString().slice(0, 10),
+                  tipo_produto: 'CAFE',
+                  quantidade_sacas: '',
+                  preco_unitario: '',
+                  status: 'RASCUNHO'
+                });
+                setShowNewVendaModal(true);
+              }}
+              className="flex items-center gap-1.5 px-4.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Nova Venda</span>
@@ -1174,20 +1288,34 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-center">
-                          {v.status === 'RASCUNHO' && (
-                            <button
-                              onClick={() => handleConfirmarVenda(v.id)}
-                              className="px-3.5 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                            >
-                              Confirmar Venda
-                            </button>
-                          )}
-                          {v.status === 'CONFIRMADO' && (
-                            <span className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1">
-                              <CheckCircle className="w-4 h-4 text-teal-500" />
-                              <span>Confirmado</span>
-                            </span>
-                          )}
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            {v.status === 'RASCUNHO' && (
+                              <>
+                                <button
+                                  onClick={() => handleStartEditVenda(v)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 cursor-pointer inline-flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                  title="Editar Venda"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  <span>Editar</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenConfirmarVendaModal(v)}
+                                  className="px-3 py-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-teal-500/30 hover:bg-teal-500/10 text-teal-600 dark:text-teal-400 cursor-pointer inline-flex items-center gap-1 text-[10px] font-black uppercase transition-all"
+                                  title="Confirmar Venda"
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                  <span>Confirmar</span>
+                                </button>
+                              </>
+                            )}
+                            {v.status === 'CONFIRMADO' && (
+                              <span className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1">
+                                <CheckCircle className="w-4 h-4 text-teal-500" />
+                                <span>Confirmado</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1601,6 +1729,132 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
         </div>
       )}
 
+      {/* --- MODAL: CONDIÇÕES DE RECEBIMENTO DO PEDIDO DE VENDA (PARCELAS) --- */}
+      {showConfirmarVendaModal && (
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-lg bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-emerald-500" />
+                <span>Condições de Recebimento da Venda</span>
+              </h3>
+              <button type="button" onClick={() => { setShowConfirmarVendaModal(false); setVendaToConfirm(null); }} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
+            </div>
+            
+            <form onSubmit={handleConfirmarRecebimentoVenda} className="p-6 space-y-6">
+              <div className="bg-slate-950/50 p-4 rounded-xl border border-white/[0.04] text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Cliente:</span>
+                  <span className="font-bold text-white">{vendaToConfirm?.cliente}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Total Negociado:</span>
+                  <span className="font-black text-emerald-400">R$ {money(vendaToConfirm?.valor_total)}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Data Vencimento Inicial / Base *</label>
+                  <input
+                    type="date"
+                    required
+                    value={confirmarVendaBaseDate}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setConfirmarVendaBaseDate(newDate);
+                      recalculateConfirmarVendaParcelas(confirmarVendaQtdParcelas, newDate, vendaToConfirm?.valor_total);
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Número de Parcelas *</label>
+                  <select
+                    value={confirmarVendaQtdParcelas}
+                    onChange={(e) => {
+                      const newQtd = Number(e.target.value);
+                      setConfirmarVendaQtdParcelas(newQtd);
+                      recalculateConfirmarVendaParcelas(newQtd, confirmarVendaBaseDate, vendaToConfirm?.valor_total);
+                    }}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2.5 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                      <option key={n} value={n} className="bg-slate-900 text-white">{n}x</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Listagem Dinâmica de Parcelas */}
+              <div className="space-y-3">
+                <span className="block text-[10px] font-black uppercase text-slate-400">Detalhamento das Parcelas</span>
+                <div className="max-h-48 overflow-y-auto space-y-2.5 pr-1">
+                  {confirmarVendaParcelas.map((parc, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-slate-950/40 p-3 rounded-xl border border-white/[0.04]">
+                      <span className="text-[10px] font-black text-slate-500 shrink-0 w-8">#{idx+1}</span>
+                      <div className="flex-1">
+                        <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Vencimento</label>
+                        <input
+                          type="date"
+                          required
+                          value={parc.data_vencimento}
+                          onChange={(e) => handleUpdateConfirmarVendaParcela(idx, 'data_vencimento', e.target.value)}
+                          className="w-full bg-slate-950 border border-white/[0.06] rounded-lg py-1.5 px-2 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                        />
+                      </div>
+                      <div className="w-1/2">
+                        <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Valor (R$)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={parc.valor}
+                          onChange={(e) => handleUpdateConfirmarVendaParcela(idx, 'valor', e.target.value)}
+                          className="w-full bg-slate-950 border border-white/[0.06] rounded-lg py-1.5 px-2 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-mono"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total Check */}
+              <div className="flex justify-between items-center bg-slate-950/60 p-3.5 rounded-xl border border-white/[0.04] mt-4">
+                <div className="text-[10px] font-black uppercase text-slate-400">
+                  <span>Soma das Parcelas:</span>
+                  <span className="block text-[8px] font-bold mt-0.5 text-slate-500">Diferença: R$ {Math.abs(confirmarVendaParcelas.reduce((s, c) => s + Number(c.valor || 0), 0) - (vendaToConfirm?.valor_total || 0)).toFixed(2)}</span>
+                </div>
+                <span className={`text-sm font-black ${
+                  Math.abs(confirmarVendaParcelas.reduce((s, c) => s + Number(c.valor || 0), 0) - (vendaToConfirm?.valor_total || 0)) <= 0.05
+                    ? 'text-emerald-400'
+                    : 'text-rose-400'
+                }`}>
+                  R$ {confirmarVendaParcelas.reduce((s, c) => s + Number(c.valor || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowConfirmarVendaModal(false); setVendaToConfirm(null); }}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
+                >
+                  {saving ? 'Processando...' : 'Confirmar Venda'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* --- MODAL: NOVA VENDA --- */}
       {showNewVendaModal && (
         <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1608,9 +1862,9 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <ListOrdered className="w-5 h-5 text-emerald-500" />
-                <span>Registrar Novo Pedido de Venda</span>
+                <span>{editingVendaId ? 'Editar Pedido de Venda' : 'Registrar Novo Pedido de Venda'}</span>
               </h3>
-              <button onClick={() => setShowNewVendaModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-mono font-bold">X</button>
+              <button onClick={() => { setShowNewVendaModal(false); setEditingVendaId(null); }} className="text-slate-400 hover:text-white transition-all text-xs font-mono font-bold">X</button>
             </div>
             
             <form onSubmit={handleCreateVenda} className="p-6 space-y-4">
@@ -1622,18 +1876,20 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   required
                   placeholder="Ex: Cooxupé Cooperativa"
                   value={newVenda.cliente}
+                  onKeyDown={handleKeyDown}
                   onChange={(e) => setNewVenda(prev => ({ ...prev, cliente: e.target.value }))}
                   className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Data da Venda *</label>
                   <input
                     type="date"
                     required
                     value={newVenda.data_venda}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewVenda(prev => ({ ...prev, data_venda: e.target.value }))}
                     className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                   />
@@ -1642,13 +1898,26 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Tipo de Produto *</label>
                   <select
                     value={newVenda.tipo_produto}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewVenda(prev => ({ ...prev, tipo_produto: e.target.value }))}
-                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-semibold"
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-semibold font-semibold"
                   >
                     <option value="CAFE">Café</option>
                     <option value="CEREAIS">Cereais</option>
                     <option value="SUCATA">Sucata</option>
                     <option value="OUTROS">Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Status *</label>
+                  <select
+                    value={newVenda.status || 'RASCUNHO'}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewVenda(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2.5 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all font-semibold"
+                  >
+                    <option value="RASCUNHO">RASCUNHO</option>
+                    <option value="CONFIRMADO">CONFIRMADO</option>
                   </select>
                 </div>
               </div>
@@ -1662,6 +1931,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                     required
                     placeholder="Ex: 120"
                     value={newVenda.quantidade_sacas}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewVenda(prev => ({ ...prev, quantidade_sacas: e.target.value }))}
                     className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                   />
@@ -1674,6 +1944,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                     required
                     placeholder="Ex: 950.00"
                     value={newVenda.preco_unitario}
+                    onKeyDown={handleKeyDown}
                     onChange={(e) => setNewVenda(prev => ({ ...prev, preco_unitario: e.target.value }))}
                     className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                   />
@@ -1691,8 +1962,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                 <button
                   type="button"
                   tabIndex="-1"
-                  onClick={() => setShowNewVendaModal(false)}
-                  className="px-4 px-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
+                  onClick={() => { setShowNewVendaModal(false); setEditingVendaId(null); }}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
                   Cancelar
                 </button>
@@ -1701,7 +1972,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                   disabled={saving}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
-                  {saving ? 'Gravando...' : 'Salvar Venda'}
+                  {saving ? 'Gravando...' : (editingVendaId ? 'Atualizar Venda' : 'Salvar Venda')}
                 </button>
               </div>
 
