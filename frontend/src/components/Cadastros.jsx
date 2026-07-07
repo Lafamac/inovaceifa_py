@@ -97,7 +97,7 @@ const emptyForms = {
     criar_usuario: false,
     salario: '',
   },
-  terceirizados: { fazenda: '', nome: '', documento: '', salario: '' },
+  terceirizados: { fazenda: '', nome: '', cargo: '', documento: '', salario: '' },
   turmas: { fazenda: '', nome: '', responsavel: '', qtd_pessoas: '' },
   fornecedores: { fazenda: '', nome: '', documento: '', endereco: '', bairro: '', cidade: '', estado: '', telefone: '', email: '', data_ultima_compra: '' },
   produtos: {
@@ -728,6 +728,32 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       setActiveTab('fazendas');
     }
   }, [user, isSuperUsuario, activeTab]);
+
+  useEffect(() => {
+    if (!editingId) {
+      setForms((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach((tab) => {
+          if (updated[tab]) {
+            const patch = {};
+            if (fazendaAtiva && 'fazenda' in updated[tab]) {
+              patch.fazenda = fazendaAtiva.id;
+            }
+            if (fazendaAtiva && 'origem' in updated[tab]) {
+              patch.origem = fazendaAtiva.id;
+            }
+            if (safraAtiva && 'safra' in updated[tab]) {
+              patch.safra = safraAtiva.id;
+            }
+            if (Object.keys(patch).length > 0) {
+              updated[tab] = { ...updated[tab], ...patch };
+            }
+          }
+        });
+        return updated;
+      });
+    }
+  }, [fazendaAtiva, safraAtiva, editingId]);
 
   const patchForm = (key, value) => {
     setForms((prev) => ({
@@ -1546,8 +1572,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'terceirizados') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Nome / Empresa" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
+          <InputField label="Cargo / Função" value={currentForm.cargo} onChange={(value) => patchForm('cargo', value)} />
           <InputField label="CPF / CNPJ" value={currentForm.documento} onChange={(value) => patchForm('documento', value)} />
           <InputField required label="Salário / Custo Mensal (R$)" type="number" step="any" value={currentForm.salario} onChange={(value) => patchForm('salario', value)} />
         </div>
@@ -1557,7 +1583,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'turmas') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Nome da Turma" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField label="Responsável" value={currentForm.responsavel} onChange={(value) => patchForm('responsavel', value)} />
           <InputField label="Quantidade de Pessoas" type="number" value={currentForm.qtd_pessoas} onChange={(value) => patchForm('qtd_pessoas', value)} />
@@ -1566,6 +1591,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     }
 
     if (activeTab === 'produtos') {
+      const saldoItem = (records.saldos || []).find((s) => sameId(s.produto_id, editingId));
+      const currentStockQty = saldoItem ? Number(saldoItem.saldo) : 0;
+
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputField label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
@@ -1576,7 +1604,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Concentração" value={currentForm.concentracao} onChange={(value) => patchForm('concentracao', value)} />
           <InputField label="Período de Carência (dias)" type="number" value={currentForm.periodo_carencia} onChange={(value) => patchForm('periodo_carencia', value)} />
           <InputField label="Alvo" value={currentForm.alvo} onChange={(value) => patchForm('alvo', value)} />
-          {!editingId && (
+          {editingId ? (
+            <InputField label="Quantidade Atual em Estoque" type="number" value={currentStockQty} disabled onChange={() => {}} />
+          ) : (
             <>
               <InputField label="Quantidade Inicial em Estoque" type="number" value={currentForm.quantidade_inicial || ''} onChange={(value) => patchForm('quantidade_inicial', value)} />
               <InputField label="Valor Unitário Inicial (R$)" type="number" value={currentForm.valor_unitario_inicial || ''} onChange={(value) => patchForm('valor_unitario_inicial', value)} />
@@ -1659,6 +1689,39 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               />
             </div>
           ))}
+        </div>
+      );
+    }
+
+    if (activeTab === 'estoque') {
+      const activeFarmId = fazendaAtiva?.id;
+      const filteredProdutos = records.produtos.filter((item) => {
+        const itemFarmId = item.fazenda_id || item.fazenda;
+        return !itemFarmId || sameId(itemFarmId, activeFarmId);
+      });
+
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SelectField required label="Safra" value={currentForm.safra} onChange={(value) => patchForm('safra', value)} options={safrasOptions} />
+          <SelectField required label="Produto" value={currentForm.produto} onChange={(value) => patchForm('produto', value)} options={filteredProdutos.map((item) => ({ value: item.id, label: item.nome_comercial }))} />
+          <SelectField required label="Tipo Movimento" value={currentForm.tipo_movimento} onChange={(value) => patchForm('tipo_movimento', value)} options={[
+            { value: 'ENTRADA', label: 'Entrada' },
+            { value: 'SAIDA', label: 'Saída' },
+            { value: 'AJUSTE', label: 'Ajuste' },
+            { value: 'TRANSFERENCIA', label: 'Transferência' },
+          ]} />
+          <InputField required label="Quantidade" type="number" value={currentForm.quantidade} onChange={(value) => patchForm('quantidade', value)} />
+          <InputField label="Valor Unitário" type="number" value={currentForm.valor_unitario} onChange={(value) => patchForm('valor_unitario', value)} />
+          <InputField required label="Data Movimento" type="date" value={currentForm.data_movimento} onChange={(value) => patchForm('data_movimento', value)} />
+          <div className="md:col-span-2">
+            <InputField label="Documento" value={currentForm.documento_referencia} onChange={(value) => patchForm('documento_referencia', value)} />
+          </div>
+          {currentForm.tipo_movimento === 'TRANSFERENCIA' && (
+            <>
+              <SelectField label="Origem" value={currentForm.origem_transferencia} onChange={(value) => patchForm('origem_transferencia', value)} options={fazendasOptions} />
+              <SelectField label="Destino" value={currentForm.destino_transferencia} onChange={(value) => patchForm('destino_transferencia', value)} options={fazendasOptions} />
+            </>
+          )}
         </div>
       );
     }
@@ -1857,13 +1920,16 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     }
 
     if (activeTab === 'terceirizados') {
-      return filteredRows('terceirizados', (item) => `${item.nome} ${item.documento || ''}`).map((item) => (
+      return filteredRows('terceirizados', (item) => `${item.nome} ${item.documento || ''} ${item.cargo || ''}`).map((item) => (
         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
           <td className="py-3 px-5">
             <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
             <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
           </td>
-          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.documento || '-'}</td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+            <p className="font-semibold">{item.documento || '-'}</p>
+            {item.cargo && <p className="text-slate-450 dark:text-slate-400 mt-0.5">{item.cargo}</p>}
+          </td>
           <td className="py-3 px-5 text-right">
             <div className="text-[10px] text-slate-650 dark:text-slate-455">{item.ativo === false ? 'Inativo' : 'Ativo'}</div>
             <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">Salário: R$ {money(item.salario)}</div>
@@ -1888,9 +1954,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           </td>
           <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
             <p>Responsável: {item.responsavel || '-'}</p>
-            <p className="text-slate-500 dark:text-slate-400 mt-0.5">Pessoas na Panha: {item.qtd_pessoas || 0}</p>
           </td>
-          <td className="py-3 px-5 text-right text-[10px] text-slate-600 dark:text-slate-455">{item.integrantes_detalhe?.length || 0} integrantes</td>
+          <td className="py-3 px-5 text-right text-xs font-bold text-slate-800 dark:text-white">
+            {item.qtd_pessoas || 0}
+            <p className="text-[9px] text-slate-450 dark:text-slate-500 font-normal">Pessoas na Panha</p>
+          </td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
@@ -2455,7 +2523,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias' || activeTab === 'funcionarios' || activeTab === 'terceirizados' || activeTab === 'fornecedores') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
+          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias' || activeTab === 'funcionarios' || activeTab === 'terceirizados' || activeTab === 'fornecedores' || activeTab === 'produtos' || activeTab === 'estoque') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
 
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">

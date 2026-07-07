@@ -146,8 +146,8 @@ class FluxoCaixaView(BaseRelatorioView):
             return response
 
         try:
-            data_inicio = date.fromisoformat(request.query_params["data_inicio"]) if "data_inicio" in request.query_params else None
-            data_fim = date.fromisoformat(request.query_params["data_fim"]) if "data_fim" in request.query_params else None
+            data_inicio = date.fromisoformat(request.query_params["data_inicio"]) if request.query_params.get("data_inicio") else None
+            data_fim = date.fromisoformat(request.query_params["data_fim"]) if request.query_params.get("data_fim") else None
         except ValueError:
             return Response({"detail": "Formato de data invalido. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 

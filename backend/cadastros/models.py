@@ -164,6 +164,7 @@ class Terceirizado(BaseModel):
     fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='terceirizados')
     nome = models.CharField(max_length=255)
     documento = models.CharField(max_length=20, null=True, blank=True) # CPF ou CNPJ
+    cargo = models.CharField(max_length=100, null=True, blank=True)
     salario = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     encargos = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 

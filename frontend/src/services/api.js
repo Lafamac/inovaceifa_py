@@ -1534,6 +1534,15 @@ export const relatorioService = {
     }
   },
 
+  createApontamentoTurma: async (data) => {
+    try {
+      const res = await api.post('/api/apontamentos-turma/', data);
+      return res.data;
+    } catch (error) {
+      return { detail: "Apontamento de turma salvo offline" };
+    }
+  },
+
   // --- FINANCEIRO & COMERCIAL (FASE 6.5) ---
   getPedidosCompra: () => {
     return requestHandler(

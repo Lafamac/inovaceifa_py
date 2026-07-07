@@ -1,7 +1,7 @@
 from django.db import models
 from core.models import BaseModel, Fazenda, Safra
 from referencias.models import TipoOperacao, GrupoTrabalhador, CriterioRateio, ContaGerencial, AtividadeEducampo
-from cadastros.models import Talhao, Produto, Maquina, Funcionario
+from cadastros.models import Talhao, Produto, Maquina, Funcionario, TurmaTerceirizada
 
 class OrdemServico(BaseModel):
     STATUS_CHOICES = [
@@ -270,3 +270,44 @@ class RateioOperacional(BaseModel):
 
     def __str__(self):
         return f"Rateio {self.id} em {self.data} - {self.atividade_educampo.nome}"
+
+
+class ApontamentoTurma(BaseModel):
+    apontamento = models.ForeignKey(ApontamentoOperacao, on_delete=models.CASCADE, related_name='turmas')
+    turma = models.ForeignKey(TurmaTerceirizada, on_delete=models.PROTECT)
+    valor_total = models.DecimalField(max_digits=12, decimal_places=2)
+    data_vencimento = models.DateField(help_text="Data de vencimento para o Contas a Pagar")
+    contas_a_pagar = models.ForeignKey('financeiro.ContasAPagar', on_delete=models.SET_NULL, null=True, blank=True, related_name='apontamento_turma')
+
+    class Meta:
+        verbose_name = "Apontamento de Turma Terceirizada"
+        verbose_name_plural = "Apontamentos de Turmas Terceirizadas"
+
+    def save(self, *args, **kwargs):
+        from financeiro.models import ContasAPagar
+        desc = f"PAGAMENTO TURMA: {self.turma.nome} - OS #{self.apontamento.ordem_servico.id}"
+        
+        if not self.contas_a_pagar:
+            cp = ContasAPagar.objects.create(
+                descricao=desc.upper(),
+                valor=self.valor_total,
+                data_vencimento=self.data_vencimento,
+                status='PENDENTE',
+                fazenda=self.apontamento.ordem_servico.fazenda,
+                safra=self.apontamento.ordem_servico.safra
+            )
+            self.contas_a_pagar = cp
+        else:
+            cp = self.contas_a_pagar
+            cp.descricao = desc.upper()
+            cp.valor = self.valor_total
+            cp.data_vencimento = self.data_vencimento
+            cp.fazenda = self.apontamento.ordem_servico.fazenda
+            cp.safra = self.apontamento.ordem_servico.safra
+            cp.ativo = self.ativo
+            cp.save()
+            
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.turma.nome} - R$ {self.valor_total} (Apt {self.apontamento.id})"

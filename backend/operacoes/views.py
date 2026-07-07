@@ -7,14 +7,14 @@ from .models import (
     OrdemServico, ApontamentoOperacao, ApontamentoInsumo,
     ApontamentoMaquina, ApontamentoFuncionario, AuditoriaOrdemServico,
     GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina,
-    RateioOperacional
+    RateioOperacional, ApontamentoTurma
 )
 from .serializers import (
     OrdemServicoSerializer, ApontamentoOperacaoSerializer,
     ApontamentoInsumoSerializer, ApontamentoMaquinaSerializer,
     ApontamentoFuncionarioSerializer, AuditoriaOrdemServicoSerializer,
     GastoRateioRealizadoSerializer, RateioTalhaoSerializer, AbastecimentoMaquinaSerializer,
-    RateioOperacionalSerializer
+    RateioOperacionalSerializer, ApontamentoTurmaSerializer
 )
 from planejamento.views import BaseTenantPlanejamentoViewSet
 
@@ -190,5 +190,18 @@ class RateioOperacionalViewSet(BaseTenantPlanejamentoViewSet):
         instance.save()
         from .services import remover_movimento_rateio_diesel
         remover_movimento_rateio_diesel(instance)
+
+
+class ApontamentoTurmaViewSet(BaseTenantPlanejamentoViewSet):
+    queryset = ApontamentoTurma.objects.all()
+    serializer_class = ApontamentoTurmaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        instance.ativo = False
+        instance.save()
+        if instance.contas_a_pagar:
+            instance.contas_a_pagar.ativo = False
+            instance.contas_a_pagar.save()
 
 

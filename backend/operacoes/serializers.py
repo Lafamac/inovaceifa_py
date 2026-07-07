@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from cadastros.models import Talhao
-from cadastros.serializers import FuncionarioSerializer, MaquinaSerializer, ProdutoSerializer, TalhaoSerializer
+from cadastros.serializers import FuncionarioSerializer, MaquinaSerializer, ProdutoSerializer, TalhaoSerializer, TurmaTerceirizadaSerializer
 from .models import (
     OrdemServico, OrdemServicoTalhao, ItemInsumoOSReal,
     ApontamentoOperacao, ApontamentoInsumo, ApontamentoMaquina,
     ApontamentoFuncionario, AuditoriaOrdemServico,
     GastoRateioRealizado, RateioTalhao, AbastecimentoMaquina,
-    RateioOperacional
+    RateioOperacional, ApontamentoTurma
 )
 
 class ApontamentoInsumoSerializer(serializers.ModelSerializer):
@@ -30,10 +30,18 @@ class ApontamentoFuncionarioSerializer(serializers.ModelSerializer):
         model = ApontamentoFuncionario
         fields = '__all__'
 
+class ApontamentoTurmaSerializer(serializers.ModelSerializer):
+    turma_detalhe = TurmaTerceirizadaSerializer(source='turma', read_only=True)
+
+    class Meta:
+        model = ApontamentoTurma
+        fields = '__all__'
+
 class ApontamentoOperacaoSerializer(serializers.ModelSerializer):
     insumos = ApontamentoInsumoSerializer(many=True, read_only=True)
     maquinas = ApontamentoMaquinaSerializer(many=True, read_only=True)
     funcionarios = ApontamentoFuncionarioSerializer(many=True, read_only=True)
+    turmas = ApontamentoTurmaSerializer(many=True, read_only=True)
 
     class Meta:
         model = ApontamentoOperacao

@@ -245,6 +245,77 @@ class OperacoesAPITests(APITestCase):
         mov = EstoqueMovimento.objects.filter(documento_referencia=f"ABASTECIMENTO #{ab_id}")
         self.assertFalse(mov.filter(ativo=True).exists())
 
+    def test_apontamento_turma_contas_a_pagar_sync(self):
+        from cadastros.models import TurmaTerceirizada
+        from financeiro.models import ContasAPagar
+        from operacoes.models import ApontamentoTurma
+        
+        # 1. Criar Turma Terceirizada
+        turma = TurmaTerceirizada.objects.create(
+            fazenda=self.fazenda,
+            nome="TURMA DO CAFE TESTE",
+            responsavel="LIDER TESTE",
+            qtd_pessoas=10
+        )
+        
+        # 2. Iniciar OS
+        url_iniciar = reverse('operacao-ordem-servico-iniciar', args=[self.os_real.id])
+        self.client.post(url_iniciar, format='json')
+        
+        # 3. Criar Apontamento
+        ap_id = self.client.post(reverse('operacao-apontamento-list'), {
+            "ordem_servico": self.os_real.id, "data_apontamento": "2026-06-01"
+        }, format='json').data['id']
+        
+        # 4. Registrar Apontamento de Turma via API
+        url_turma = reverse('operacao-apontamento-turma-list')
+        data = {
+            "apontamento": ap_id,
+            "turma": turma.id,
+            "valor_total": "1500.00",
+            "data_vencimento": "2026-06-15"
+        }
+        res = self.client.post(url_turma, data, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        apt_turma_id = res.data['id']
+        
+        # 5. Verificar se Contas a Pagar correspondente foi criado automaticamente
+        cp_qs = ContasAPagar.objects.filter(
+            descricao=f"PAGAMENTO TURMA: {turma.nome} - OS #{self.os_real.id}".upper(),
+            ativo=True
+        )
+        self.assertTrue(cp_qs.exists())
+        cp_inst = cp_qs.first()
+        self.assertEqual(float(cp_inst.valor), 1500.00)
+        self.assertEqual(str(cp_inst.data_vencimento), "2026-06-15")
+        
+        # 6. Atualizar Apontamento de Turma
+        url_detail = reverse('operacao-apontamento-turma-detail', args=[apt_turma_id])
+        update_data = {
+            "apontamento": ap_id,
+            "turma": turma.id,
+            "valor_total": "1800.00",
+            "data_vencimento": "2026-06-20"
+        }
+        res_put = self.client.put(url_detail, update_data, format='json')
+        self.assertEqual(res_put.status_code, status.HTTP_200_OK)
+        
+        # Verificar se Contas a Pagar foi atualizado
+        cp_inst.refresh_from_db()
+        self.assertEqual(float(cp_inst.valor), 1800.00)
+        self.assertEqual(str(cp_inst.data_vencimento), "2026-06-20")
+        
+        # 7. Excluir/Soft-delete Apontamento de Turma
+        res_del = self.client.delete(url_detail)
+        self.assertEqual(res_del.status_code, status.HTTP_204_NO_CONTENT)
+        
+        # Verificar se tanto ApontamentoTurma quanto ContasAPagar foram inativados
+        apt_turma = ApontamentoTurma.objects.get(id=apt_turma_id)
+        self.assertFalse(apt_turma.ativo)
+        
+        cp_inst.refresh_from_db()
+        self.assertFalse(cp_inst.ativo)
+
     def test_rateio_distribuicao_area(self):
         # 1. Setup criterio, conta, and 2 talhões
         criterio_area = CriterioRateio.objects.create(nome="Área (Hectares)")

@@ -4,11 +4,15 @@ from .models import PedidoCompra, ItemPedidoCompra, ContasAPagar, PedidoVenda, C
 
 class ItemPedidoCompraSerializer(serializers.ModelSerializer):
     produto_detalhe = ProdutoSerializer(source='produto', read_only=True)
+    pedido_compra = serializers.PrimaryKeyRelatedField(
+        queryset=PedidoCompra.objects.all(),
+        required=False
+    )
 
     class Meta:
         model = ItemPedidoCompra
         fields = '__all__'
-        read_only_fields = ['valor_total', 'pedido_compra']
+        read_only_fields = ['valor_total']
 
 
 class PedidoCompraSerializer(serializers.ModelSerializer):

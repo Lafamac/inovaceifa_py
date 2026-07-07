@@ -128,6 +128,7 @@ export const OrdensServico = () => {
   const [produtos, setProdutos] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
+  const [turmas, setTurmas] = useState([]);
   const [auditorias, setAuditorias] = useState([]);
 
   // Modais
@@ -151,13 +152,15 @@ export const OrdensServico = () => {
     observacao: '',
     maquinas: [], // array de { maquina_id, horimetro_inicial, horimetro_final }
     funcionarios: [], // array de { funcionario_id, horas_trabalhadas }
-    insumos: [] // array de { produto_id, quantidade_total, dose_realizada }
+    insumos: [], // array de { produto_id, quantidade_total, dose_realizada }
+    turmas: [] // array de { turma_id, valor_total, data_vencimento }
   });
 
   // Temporários para adicionar ao Apontamento
   const [tempInsumoReal, setTempInsumoReal] = useState({ produto_id: '', quantidade_total: '', dose_realizada: '' });
   const [tempMaquinaReal, setTempMaquinaReal] = useState({ maquina_id: '', horimetro_inicial: '', horimetro_final: '' });
   const [tempFuncionarioReal, setTempFuncionarioReal] = useState({ funcionario_id: '', horas_trabalhadas: '' });
+  const [tempTurmaReal, setTempTurmaReal] = useState({ turma_id: '', valor_total: '', data_vencimento: new Date().toISOString().slice(0, 10) });
 
   const showAlert = (type, message) => {
     if (type === 'error') {
@@ -219,7 +222,7 @@ export const OrdensServico = () => {
 
   const loadReferences = useCallback(async () => {
     try {
-      const [resOps, resTalhoes, resProds, resMaquinas, resFuncs, resCriterios, resContas, resEducampo] = await Promise.all([
+      const [resOps, resTalhoes, resProds, resMaquinas, resFuncs, resCriterios, resContas, resEducampo, resTurmas] = await Promise.all([
         api.get('/api/ref/tipos-operacao/'),
         api.get('/api/talhoes/'),
         api.get('/api/produtos/'),
@@ -227,7 +230,8 @@ export const OrdensServico = () => {
         api.get('/api/funcionarios/'),
         api.get('/api/ref/criterios-rateio/'),
         api.get('/api/ref/contas-gerenciais/'),
-        api.get('/api/ref/atividades-educampo/')
+        api.get('/api/ref/atividades-educampo/'),
+        api.get('/api/turmas-terceirizadas/')
       ]);
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
@@ -250,6 +254,7 @@ export const OrdensServico = () => {
       setTalhoes(filterByFazenda(resTalhoes.data?.results || resTalhoes.data || []));
       setMaquinas(filterByProprietario(resMaquinas.data?.results || resMaquinas.data || []));
       setFuncionarios(filterByFazenda(resFuncs.data?.results || resFuncs.data || []));
+      setTurmas(filterByFazenda(resTurmas.data?.results || resTurmas.data || []));
       setProdutos(resProds.data?.results || resProds.data || []);
       setCriteriosRateio(resCriterios.data?.results || resCriterios.data || []);
       setContasGerenciais(resContas.data?.results || resContas.data || []);
@@ -404,6 +409,14 @@ export const OrdensServico = () => {
       }
     }
 
+    for (const tur of (aptForm.turmas || [])) {
+      const val = Number(tur.valor_total || 0);
+      if (val < 0) {
+        showAlert('error', 'O valor total pago à turma não pode ser negativo.');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       // 1. Criar o Apontamento Geral da Operação
@@ -445,6 +458,16 @@ export const OrdensServico = () => {
         })
       ));
 
+      // 5. Criar sub-apontamentos de Turmas
+      await Promise.all((aptForm.turmas || []).map(tur => 
+        relatorioService.createApontamentoTurma({
+          apontamento: aptId,
+          turma: Number(tur.turma_id),
+          valor_total: Number(tur.valor_total),
+          data_vencimento: tur.data_vencimento
+        })
+      ));
+
       showAlert('success', 'Apontamento operacional registrado com sucesso!');
       setShowAptModal(false);
       setAptForm({
@@ -453,7 +476,8 @@ export const OrdensServico = () => {
         observacao: '',
         maquinas: [],
         funcionarios: [],
-        insumos: []
+        insumos: [],
+        turmas: []
       });
       await fetchOrdensServico();
     } catch (err) {
@@ -523,6 +547,22 @@ export const OrdensServico = () => {
       funcionarios: [...prev.funcionarios, { ...tempFuncionarioReal }]
     }));
     setTempFuncionarioReal({ funcionario_id: '', horas_trabalhadas: '' });
+  };
+
+  const addTempTurmaReal = () => {
+    if (!tempTurmaReal.turma_id || !tempTurmaReal.valor_total || !tempTurmaReal.data_vencimento) return;
+
+    const valor = Number(tempTurmaReal.valor_total || 0);
+    if (valor < 0) {
+      showAlert('error', 'O valor total não pode ser negativo.');
+      return;
+    }
+
+    setAptForm(prev => ({
+      ...prev,
+      turmas: [...prev.turmas, { ...tempTurmaReal }]
+    }));
+    setTempTurmaReal({ turma_id: '', valor_total: '', data_vencimento: new Date().toISOString().slice(0, 10) });
   };
 
   // Funções de Cálculo do Estado "ATRASADA" on-the-fly
@@ -1268,7 +1308,7 @@ export const OrdensServico = () => {
                             <p className="text-[10px] text-slate-400 bg-slate-900/40 p-2 rounded-lg">{apt.observacao}</p>
                           )}
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
                             
                             {/* Tratores / Máquinas */}
                             <div className="space-y-1">
@@ -1298,6 +1338,21 @@ export const OrdensServico = () => {
                                   </p>
                                 );
                               }) : <p className="text-[10px] text-slate-600">Sem operadores apontados</p>}
+                            </div>
+
+                            {/* Turmas Terceirizadas */}
+                            <div className="space-y-1">
+                              <span className="block text-[9px] font-black text-slate-500 uppercase flex items-center gap-1">
+                                <Users className="w-3 h-3 text-slate-500" /> Turmas Terceirizadas
+                              </span>
+                              {((apt.turmas_detalhe || apt.turmas)?.length > 0) ? (apt.turmas_detalhe || apt.turmas).map((t, i) => {
+                                const turmaName = t.turma_nome || t.turma_detalhe?.nome || 'Turma';
+                                return (
+                                  <p key={i} className="text-[10px] text-slate-300 font-semibold">
+                                    {turmaName}: R$ {Number(t.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </p>
+                                );
+                              }) : <p className="text-[10px] text-slate-600">Sem turmas apontadas</p>}
                             </div>
 
                             {/* Insumos / Diesel */}
@@ -1907,6 +1962,77 @@ export const OrdensServico = () => {
                   </div>
                   <div className="md:col-span-1">
                     <button type="button" onClick={addTempFuncionarioReal} className="w-full flex h-8 items-center justify-center rounded-lg bg-emerald-500 text-white font-bold cursor-pointer"><Plus className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-Apontamento: Turmas Terceirizadas */}
+              <div className="space-y-3 border-t border-white/[0.06] pt-4">
+                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  Turmas Terceirizadas Contratadas
+                </span>
+
+                {(aptForm.turmas || []).length > 0 && (
+                  <div className="space-y-2">
+                    {(aptForm.turmas || []).map((t, i) => (
+                      <div key={i} className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-xl text-xs border border-white/[0.04]">
+                        <span className="text-white font-bold">
+                          {lookup(turmas, t.turma_id, 'nome')}
+                        </span>
+                        <div className="flex items-center gap-3 text-slate-400">
+                          <span>Valor: R$ {Number(t.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Vencimento: {new Date(t.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                          <button type="button" onClick={() => setAptForm(prev => ({ ...prev, turmas: prev.turmas.filter((_, idx) => idx !== i) }))} className="text-rose-400 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-950/20 p-3 rounded-xl border border-white/[0.04]">
+                  <div className="md:col-span-5">
+                    <label className="block space-y-1">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase">Escolher Turma</span>
+                      <select
+                        value={tempTurmaReal.turma_id}
+                        onKeyDown={handleKeyDown}
+                        onChange={(e) => setTempTurmaReal(prev => ({ ...prev, turma_id: e.target.value }))}
+                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                      >
+                        <option value="">Selecione...</option>
+                        {turmas.map(tur => (
+                          <option key={tur.id} value={tur.id} className="bg-slate-900">{tur.nome} (Resp: {tur.responsavel || '-'})</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block space-y-1">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase">Valor Total (R$)</span>
+                      <input
+                        type="number"
+                        placeholder="Ex: 1200"
+                        value={tempTurmaReal.valor_total}
+                        onKeyDown={handleKeyDown}
+                        onChange={(e) => setTempTurmaReal(prev => ({ ...prev, valor_total: e.target.value }))}
+                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block space-y-1">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase">Vencimento</span>
+                      <input
+                        type="date"
+                        value={tempTurmaReal.data_vencimento}
+                        onKeyDown={handleKeyDown}
+                        onChange={(e) => setTempTurmaReal(prev => ({ ...prev, data_vencimento: e.target.value }))}
+                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                      />
+                    </label>
+                  </div>
+                  <div className="md:col-span-1">
+                    <button type="button" onClick={addTempTurmaReal} className="w-full flex h-8 items-center justify-center rounded-lg bg-emerald-500 text-white font-bold cursor-pointer"><Plus className="w-4 h-4" /></button>
                   </div>
                 </div>
               </div>

@@ -33,6 +33,15 @@
 - [x] Ao cadastrar um `Proprietario`, o backend cria automaticamente um `Usuario` com perfil `2` (Proprietário), gera senha temporária e envia os dados de acesso por e-mail.
 - [x] O cadastro de proprietário falha com erro claro caso o SMTP real não esteja configurado ou o envio do e-mail não seja concluído, evitando criar usuário sem entregar senha.
 - [x] Ao entrar como superusuário, o acesso a dados de fazendas, safras, talhões, máquinas, funcionários e transações é restrito ao proprietário da fazenda selecionada no cabeçalho (top bar).
+- [x] Corrigido crash no endpoint do relatório de Fluxo de Caixa ao receber datas vazias nos filtros (`?data_inicio=&data_fim=`), restabelecendo a exibição de lançamentos financeiros no painel.
+- [x] Ao registrar novas movimentações de estoque, a fazenda ativa global é assumida automaticamente e a seleção manual de fazenda é ocultada no formulário.
+- [x] A listagem de produtos selecionáveis no modal de estoque é filtrada dinamicamente exibindo apenas itens da fazenda ativa atual (ou produtos globais).
+- [x] O cadastro de produtos agora exibe a quantidade atual em estoque na listagem e na edição (como campo somente leitura e desabilitado, atualizado apenas via transações reais).
+- [x] O modal de edição de produtos e de estoque foi ajustado para `max-w-2xl` para exibição ideal em grid de duas colunas.
+- [x] No formulário de terceirizados, a fazenda ativa global é assumida automaticamente (ocultando a seleção manual) e foi adicionado o campo "Cargo / Função" na ficha e na listagem.
+- [x] No formulário de turmas, a fazenda ativa global é assumida automaticamente, ocultando a seleção manual de fazenda no cadastro. A coluna "Informações / Valor" agora exibe o total de pessoas na panha de forma destacada.
+- [x] Implementado apontamento de Turmas Terceirizadas no registro de execução da OS, informando valor total pago e vencimento, com criação automática do Contas a Pagar correspondente no financeiro.
+
 
 ### 🚀 Fase 1: Fundação do Backend e Autenticação (`accounts`)
 - [x] Inicializar repositório e configurar Django, PostgreSQL e variáveis de ambiente.
