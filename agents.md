@@ -31,7 +31,7 @@
 - [x] Reestruturado o fluxo de Locação de Máquinas: o cadastro inicial permanece com status `ABERTA` e registra apenas período, tipo de cobrança, quantidade prevista e tarifa estimada, sem gerar contas a pagar prematuramente.
 - [x] Implementadas ações `POST /api/locacoes-maquinas/{id}/encerrar/` e `POST /api/locacoes-maquinas/{id}/prorrogar/`; o encerramento exige horas efetivas para cobranças por hora, valor final e data prevista de pagamento, gerando uma única conta a pagar de forma idempotente.
 - [x] Adicionados status, quantidade/valor finais, data de encerramento, contador de prorrogações e indicadores dinâmicos de atraso às locações, com alerta no frontend para aluguéis abertos que ultrapassaram o período informado e opções de encerrar ou prorrogar.
-- [x] Reorganizado o menu lateral na ordem `Cadastros → Operacional → Suprimentos → Financeiro & RH`, conectando os submenus diretamente às telas e subabas já existentes: Planejamentos, Ordens de Serviço, Abastecimentos, Rateios Realizados, Rateios Operacionais, Pedidos de Compra, Pedidos de Venda, Contas a Pagar e Contas a Receber.
+- [x] Reorganizado o menu lateral na ordem `Cadastros → Operacional → Suprimentos → Financeiro`, conectando os submenus diretamente às telas e subabas já existentes: Planejamentos, Ordens de Serviço, Abastecimentos, Rateios Realizados, Rateios Operacionais, Pedidos de Compra, Pedidos de Venda, Contas a Pagar e Contas a Receber.
 - [x] Centralizado o roteamento dos submenus por metadados (`targetView` e `targetSubTab`), removendo condicionais específicas por item e permitindo que `OrdensServico` abra diretamente na subaba operacional solicitada.
 - [x] Banco preparado para início limpo de operação: proprietários, fazendas, safras, máquinas, talhões, produtos e transações zerados, mantendo apenas `admin@teste.com`, perfis e tabelas de referência populadas.
 - [x] Criado comando de manutenção `python manage.py reset_operational_data` para reproduzir esse estado inicial com segurança.
@@ -41,6 +41,7 @@
 - [x] Ao entrar como superusuário, o acesso a dados de fazendas, safras, talhões, máquinas, funcionários e transações é restrito ao proprietário da fazenda selecionada no cabeçalho (top bar).
 - [x] Corrigido crash no endpoint do relatório de Fluxo de Caixa ao receber datas vazias nos filtros (`?data_inicio=&data_fim=`), restabelecendo a exibição de lançamentos financeiros no painel.
 - [x] Ao registrar novas movimentações de estoque, a fazenda ativa global é assumida automaticamente e a seleção manual de fazenda é ocultada no formulário.
+- [x] No formulário de transferência de ativos, a fazenda de origem agora exibe apenas a fazenda ativa do contexto, e o campo de destino exibe as outras fazendas pertencentes ao mesmo proprietário (exceto a fazenda ativa).
 - [x] A listagem de produtos selecionáveis no modal de estoque é filtrada dinamicamente exibindo apenas itens da fazenda ativa atual (ou produtos globais).
 - [x] O cadastro de produtos agora exibe a quantidade atual em estoque na listagem e na edição (como campo somente leitura e desabilitado, atualizado apenas via transações reais).
 - [x] O modal de edição de produtos e de estoque foi ajustado para `max-w-2xl` para exibição ideal em grid de duas colunas.
@@ -48,7 +49,7 @@
 - [x] No formulário de turmas, a fazenda ativa global é assumida automaticamente, ocultando a seleção manual de fazenda no cadastro. A coluna "Informações / Valor" agora exibe o total de pessoas na panha de forma destacada.
 - [x] Implementado apontamento de Turmas Terceirizadas no registro de execução da OS, informando valor total pago e vencimento, com criação automática do Contas a Pagar correspondente no financeiro.
 - [x] Removido bloco informativo de Contexto Obrigatório das telas de cadastro.
-- [x] Reestruturada a barra de navegação/menu para mover "Locação de Máquinas" do grupo "Financeiro & RH" para o grupo "Cadastros".
+- [x] Reestruturada a barra de navegação/menu para mover "Locação de Máquinas", "Funcionários", "Terceirizados" e "Turmas" do grupo "Financeiro & RH" para o grupo "Cadastros", renomeando a seção para "Financeiro" e a descrição para "Vendas e contas".
 - [x] Atualizado o model e endpoint de `LocacaoMaquina` no backend para referenciar `TipoMaquina` (tabela de referências) em vez de `Maquina` (máquina física própria), ajustando também o formulário no frontend para puxar as referências corretas.
 
 
