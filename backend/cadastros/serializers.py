@@ -151,14 +151,37 @@ class TransferenciaAtivoSerializer(serializers.ModelSerializer):
 
 
 class LocacaoMaquinaSerializer(serializers.ModelSerializer):
-    maquina_codigo = serializers.ReadOnlyField(source='maquina.codigo')
-    maquina_descricao = serializers.ReadOnlyField(source='maquina.descricao')
+    maquina_codigo = serializers.ReadOnlyField(source='maquina.nome')
+    maquina_descricao = serializers.ReadOnlyField(source='maquina.nome')
     safra_nome = serializers.ReadOnlyField(source='safra.nome')
     fazenda_nome = serializers.ReadOnlyField(source='fazenda.nome')
+    em_atraso = serializers.SerializerMethodField()
+    dias_atraso = serializers.SerializerMethodField()
 
     class Meta:
         model = LocacaoMaquina
         fields = '__all__'
+        read_only_fields = [
+            'valor_total', 'quantidade_final', 'valor_final', 'data_encerramento',
+            'data_vencimento', 'status', 'prorrogacoes', 'contas_a_pagar',
+        ]
+
+    def get_em_atraso(self, obj):
+        from django.utils import timezone
+        return obj.status == 'ABERTA' and obj.data_fim < timezone.localdate()
+
+    def get_dias_atraso(self, obj):
+        from django.utils import timezone
+        if obj.status != 'ABERTA' or obj.data_fim >= timezone.localdate():
+            return 0
+        return (timezone.localdate() - obj.data_fim).days
+
+    def validate(self, attrs):
+        data_inicio = attrs.get('data_inicio', getattr(self.instance, 'data_inicio', None))
+        data_fim = attrs.get('data_fim', getattr(self.instance, 'data_fim', None))
+        if data_inicio and data_fim and data_fim < data_inicio:
+            raise serializers.ValidationError({'data_fim': 'A data final não pode ser anterior à data inicial.'})
+        return attrs
 
 
 class ManutencaoMaquinaSerializer(serializers.ModelSerializer):

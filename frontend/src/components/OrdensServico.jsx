@@ -28,7 +28,7 @@ import {
   Coins
 } from 'lucide-react';
 
-export const OrdensServico = () => {
+export const OrdensServico = ({ defaultSubTab = 'os' }) => {
   const { safraAtiva, fazendaAtiva, fazendas } = useTenant();
   const { user } = useAuth();
 
@@ -44,7 +44,7 @@ export const OrdensServico = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Módulo de Rateio e Abastecimento
-  const [activeSubTab, setActiveSubTab] = useState('os');
+  const [activeSubTab, setActiveSubTab] = useState(defaultSubTab);
   const [abastecimentos, setAbastecimentos] = useState([]);
   const [gastosRateio, setGastosRateio] = useState([]);
   const [criteriosRateio, setCriteriosRateio] = useState([]);

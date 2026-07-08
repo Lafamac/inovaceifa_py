@@ -16,12 +16,12 @@ function AppContent() {
   const { safraAtiva } = useTenant();
   const [activeView, setActiveView] = useState('dashboard');
   const [financeiroSubTab, setFinanceiroSubTab] = useState('compras');
+  const [operacoesSubTab, setOperacoesSubTab] = useState('os');
 
-  const changeView = (view, subTab = 'compras') => {
+  const changeView = (view, subTab) => {
     setActiveView(view);
-    if (subTab) {
-      setFinanceiroSubTab(subTab);
-    }
+    if (view === 'financeiro') setFinanceiroSubTab(subTab || 'compras');
+    if (view === 'operacoes') setOperacoesSubTab(subTab || 'os');
   };
 
   useEffect(() => {
@@ -63,7 +63,7 @@ function AppContent() {
       <div className="flex-grow animate-fade-in-up" key={activeView}>
         {activeView === 'dashboard' && <Dashboard />}
         {activeView === 'planejamento' && <Planejamentos />}
-        {activeView === 'operacoes' && <OrdensServico />}
+        {activeView === 'operacoes' && <OrdensServico defaultSubTab={operacoesSubTab} />}
         {activeView === 'financeiro' && <Financeiro defaultSubTab={financeiroSubTab} />}
         {activeView === 'cadastros' && <Cadastros currentSafraId={safraAtiva?.id} setActiveView={changeView} />}
       </div>

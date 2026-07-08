@@ -312,16 +312,26 @@ class LocacaoMaquina(BaseModel):
         ('MES', 'Mês'),
         ('OUTRO', 'Outro'),
     )
-    maquina = models.ForeignKey(Maquina, on_delete=models.PROTECT, related_name='locacoes')
+    STATUS_CHOICES = (
+        ('ABERTA', 'Aberta'),
+        ('ENCERRADA', 'Encerrada'),
+        ('CANCELADA', 'Cancelada'),
+    )
+    maquina = models.ForeignKey(TipoMaquina, on_delete=models.PROTECT, related_name='locacoes')
     safra = models.ForeignKey(Safra, on_delete=models.PROTECT, related_name='locacoes')
     fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='locacoes')
     tipo_cobranca = models.CharField(max_length=20, choices=TIPO_COBRANCA_CHOICES)
-    quantidade = models.DecimalField(max_digits=10, decimal_places=2)
+    quantidade = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Quantidade prevista de dias, horas ou meses")
     valor_unitario = models.DecimalField(max_digits=12, decimal_places=2)
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    quantidade_final = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    valor_final = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     data_inicio = models.DateField()
     data_fim = models.DateField()
-    data_vencimento = models.DateField(help_text="Data de vencimento para o Contas a Pagar")
+    data_encerramento = models.DateField(null=True, blank=True)
+    data_vencimento = models.DateField(null=True, blank=True, help_text="Data de vencimento definida ao encerrar a locação")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ABERTA')
+    prorrogacoes = models.PositiveIntegerField(default=0)
     observacao = models.TextField(null=True, blank=True)
     contas_a_pagar = models.ForeignKey('financeiro.ContasAPagar', on_delete=models.SET_NULL, null=True, blank=True, related_name='locacao_maquina')
 
@@ -330,34 +340,11 @@ class LocacaoMaquina(BaseModel):
         verbose_name_plural = "Locações de Máquinas"
 
     def save(self, *args, **kwargs):
-        self.valor_total = self.quantidade * self.valor_unitario
-        from financeiro.models import ContasAPagar
-        desc = f"LOCAÇÃO MÁQUINA: {self.maquina.codigo} ({self.data_inicio.strftime('%d/%m/%Y')} a {self.data_fim.strftime('%d/%m/%Y')})"
-        
-        if not self.contas_a_pagar:
-            cp = ContasAPagar.objects.create(
-                descricao=desc.upper(),
-                valor=self.valor_total,
-                data_vencimento=self.data_vencimento,
-                status='PENDENTE',
-                fazenda=self.fazenda,
-                safra=self.safra
-            )
-            self.contas_a_pagar = cp
-        else:
-            cp = self.contas_a_pagar
-            cp.descricao = desc.upper()
-            cp.valor = self.valor_total
-            cp.data_vencimento = self.data_vencimento
-            cp.fazenda = self.fazenda
-            cp.safra = self.safra
-            cp.ativo = self.ativo
-            cp.save()
-            
+        self.valor_total = (self.quantidade or 0) * self.valor_unitario
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Locação {self.maquina.codigo} - {self.safra.nome}"
+        return f"Locação {self.maquina.nome} - {self.safra.nome}"
 
 
 class ManutencaoMaquina(BaseModel):

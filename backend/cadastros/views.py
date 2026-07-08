@@ -535,6 +535,43 @@ class LocacaoMaquinaViewSet(BaseTenantViewSet):
             qs = qs.filter(safra=self.request.safra_ativa)
         return qs
 
+    @action(detail=True, methods=['post'])
+    def encerrar(self, request, pk=None):
+        from django.core.exceptions import ValidationError
+        from django.utils.dateparse import parse_date
+        from cadastros.services import encerrar_locacao_maquina
+
+        locacao = self.get_object()
+        try:
+            locacao = encerrar_locacao_maquina(
+                locacao,
+                quantidade_final=request.data.get('quantidade_final'),
+                valor_final=request.data.get('valor_final'),
+                data_encerramento=parse_date(request.data.get('data_encerramento', '')),
+                data_vencimento=parse_date(request.data.get('data_vencimento', '')),
+            )
+        except (ValidationError, ValueError) as exc:
+            mensagem = exc.messages[0] if hasattr(exc, 'messages') else str(exc)
+            return Response({'detail': mensagem}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(locacao).data)
+
+    @action(detail=True, methods=['post'])
+    def prorrogar(self, request, pk=None):
+        from django.core.exceptions import ValidationError
+        from django.utils.dateparse import parse_date
+        from cadastros.services import prorrogar_locacao_maquina
+
+        locacao = self.get_object()
+        try:
+            locacao = prorrogar_locacao_maquina(
+                locacao,
+                nova_data_fim=parse_date(request.data.get('nova_data_fim', '')),
+            )
+        except (ValidationError, ValueError) as exc:
+            mensagem = exc.messages[0] if hasattr(exc, 'messages') else str(exc)
+            return Response({'detail': mensagem}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(locacao).data)
+
 
 class ManutencaoMaquinaViewSet(BaseTenantViewSet):
     queryset = ManutencaoMaquina.objects.all()

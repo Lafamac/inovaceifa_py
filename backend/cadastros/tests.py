@@ -129,17 +129,10 @@ class Phase9ImplementationTests(APITestCase):
         funcionario.refresh_from_db()
         self.assertEqual(funcionario.fazenda, self.fazenda_destino)
 
-    def test_locacao_maquina_generates_contas_a_pagar(self):
-        maquina = Maquina.objects.create(
-            fazenda=self.fazenda_origem,
-            codigo="TR-02_ALUGADO",
-            descricao="Trator Alugado Caterpillar",
-            tipo=self.tipo_maquina,
-            propria=False
-        )
+    def test_locacao_maquina_generates_contas_a_pagar_only_when_closed(self):
         url = reverse('locacao-maquina-list')
         data = {
-            "maquina": maquina.id,
+            "maquina": self.tipo_maquina.id,
             "safra": self.safra_origem.id,
             "fazenda": self.fazenda_origem.id,
             "tipo_cobranca": "DIA",
@@ -147,18 +140,73 @@ class Phase9ImplementationTests(APITestCase):
             "valor_unitario": 500.00,
             "data_inicio": "2026-06-01",
             "data_fim": "2026-06-10",
-            "data_vencimento": "2026-07-01",
             "observacao": "Locação de teste"
         }
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        
-        # Verify accounts payable entry
+
         locacao = LocacaoMaquina.objects.get(id=response.data['id'])
+        self.assertEqual(locacao.status, 'ABERTA')
+        self.assertIsNone(locacao.contas_a_pagar)
+        self.assertEqual(ContasAPagar.objects.count(), 0)
+
+        close_url = reverse('locacao-maquina-encerrar', args=[locacao.id])
+        close_response = self.client.post(close_url, {
+            'quantidade_final': '12.00',
+            'valor_final': '6000.00',
+            'data_encerramento': '2026-06-12',
+            'data_vencimento': '2026-07-01',
+        }, format='json')
+        self.assertEqual(close_response.status_code, status.HTTP_200_OK)
+
+        locacao.refresh_from_db()
+        self.assertEqual(locacao.status, 'ENCERRADA')
+        self.assertEqual(locacao.quantidade_final, 12.00)
+        self.assertEqual(locacao.valor_final, 6000.00)
         self.assertIsNotNone(locacao.contas_a_pagar)
-        self.assertEqual(locacao.valor_total, 5000.00)
-        self.assertEqual(locacao.contas_a_pagar.valor, 5000.00)
+        self.assertEqual(ContasAPagar.objects.count(), 1)
+        self.assertEqual(locacao.contas_a_pagar.valor, 6000.00)
         self.assertEqual(locacao.contas_a_pagar.status, 'PENDENTE')
+
+        duplicate_response = self.client.post(close_url, {
+            'quantidade_final': '12.00',
+            'valor_final': '6000.00',
+            'data_vencimento': '2026-07-01',
+        }, format='json')
+        self.assertEqual(duplicate_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(ContasAPagar.objects.count(), 1)
+
+    def test_hourly_rental_requires_final_hours_and_can_be_extended(self):
+        locacao = LocacaoMaquina.objects.create(
+            maquina=self.tipo_maquina,
+            safra=self.safra_origem,
+            fazenda=self.fazenda_origem,
+            tipo_cobranca='HORA',
+            valor_unitario=250,
+            data_inicio='2026-06-01',
+            data_fim='2026-06-05',
+        )
+
+        extend_url = reverse('locacao-maquina-prorrogar', args=[locacao.id])
+        extend_response = self.client.post(extend_url, {'nova_data_fim': '2026-06-08'}, format='json')
+        self.assertEqual(extend_response.status_code, status.HTTP_200_OK)
+        locacao.refresh_from_db()
+        self.assertEqual(str(locacao.data_fim), '2026-06-08')
+        self.assertEqual(locacao.prorrogacoes, 1)
+
+        close_url = reverse('locacao-maquina-encerrar', args=[locacao.id])
+        missing_hours = self.client.post(close_url, {
+            'valor_final': '2000.00',
+            'data_vencimento': '2026-07-01',
+        }, format='json')
+        self.assertEqual(missing_hours.status_code, status.HTTP_400_BAD_REQUEST)
+
+        close_response = self.client.post(close_url, {
+            'quantidade_final': '8.00',
+            'valor_final': '2000.00',
+            'data_vencimento': '2026-07-01',
+        }, format='json')
+        self.assertEqual(close_response.status_code, status.HTTP_200_OK)
 
     def test_symmetric_product_transfer(self):
         produto_origem = Produto.objects.create(

@@ -27,6 +27,12 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] No cadastro de locação com cobrança por diária, o campo `Término Previsto` agora é calculado automaticamente somando `Data Início + Dias Previstos`, permanecendo editável para ajustes manuais.
+- [x] Reestruturado o fluxo de Locação de Máquinas: o cadastro inicial permanece com status `ABERTA` e registra apenas período, tipo de cobrança, quantidade prevista e tarifa estimada, sem gerar contas a pagar prematuramente.
+- [x] Implementadas ações `POST /api/locacoes-maquinas/{id}/encerrar/` e `POST /api/locacoes-maquinas/{id}/prorrogar/`; o encerramento exige horas efetivas para cobranças por hora, valor final e data prevista de pagamento, gerando uma única conta a pagar de forma idempotente.
+- [x] Adicionados status, quantidade/valor finais, data de encerramento, contador de prorrogações e indicadores dinâmicos de atraso às locações, com alerta no frontend para aluguéis abertos que ultrapassaram o período informado e opções de encerrar ou prorrogar.
+- [x] Reorganizado o menu lateral na ordem `Cadastros → Operacional → Suprimentos → Financeiro & RH`, conectando os submenus diretamente às telas e subabas já existentes: Planejamentos, Ordens de Serviço, Abastecimentos, Rateios Realizados, Rateios Operacionais, Pedidos de Compra, Pedidos de Venda, Contas a Pagar e Contas a Receber.
+- [x] Centralizado o roteamento dos submenus por metadados (`targetView` e `targetSubTab`), removendo condicionais específicas por item e permitindo que `OrdensServico` abra diretamente na subaba operacional solicitada.
 - [x] Banco preparado para início limpo de operação: proprietários, fazendas, safras, máquinas, talhões, produtos e transações zerados, mantendo apenas `admin@teste.com`, perfis e tabelas de referência populadas.
 - [x] Criado comando de manutenção `python manage.py reset_operational_data` para reproduzir esse estado inicial com segurança.
 - [x] Configurado envio de e-mail real via SMTP por variáveis de ambiente (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `DEFAULT_FROM_EMAIL`).
@@ -41,6 +47,9 @@
 - [x] No formulário de terceirizados, a fazenda ativa global é assumida automaticamente (ocultando a seleção manual) e foi adicionado o campo "Cargo / Função" na ficha e na listagem.
 - [x] No formulário de turmas, a fazenda ativa global é assumida automaticamente, ocultando a seleção manual de fazenda no cadastro. A coluna "Informações / Valor" agora exibe o total de pessoas na panha de forma destacada.
 - [x] Implementado apontamento de Turmas Terceirizadas no registro de execução da OS, informando valor total pago e vencimento, com criação automática do Contas a Pagar correspondente no financeiro.
+- [x] Removido bloco informativo de Contexto Obrigatório das telas de cadastro.
+- [x] Reestruturada a barra de navegação/menu para mover "Locação de Máquinas" do grupo "Financeiro & RH" para o grupo "Cadastros".
+- [x] Atualizado o model e endpoint de `LocacaoMaquina` no backend para referenciar `TipoMaquina` (tabela de referências) em vez de `Maquina` (máquina física própria), ajustando também o formulário no frontend para puxar as referências corretas.
 
 
 ### 🚀 Fase 1: Fundação do Backend e Autenticação (`accounts`)

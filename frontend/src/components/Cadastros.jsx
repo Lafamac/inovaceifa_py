@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTenant } from '../context/TenantContext';
 import {
   AlertCircle,
-  BadgeInfo,
   Briefcase,
   Building2,
   CalendarRange,
@@ -11,7 +10,11 @@ import {
   CheckCircle2,
   ClipboardList,
   Database,
+  Fuel,
   Grid3X3,
+  Activity,
+  Coins,
+  ListOrdered,
   Package,
   Pencil,
   Plus,
@@ -134,7 +137,6 @@ const emptyForms = {
     valor_unitario: '',
     data_inicio: new Date().toISOString().slice(0, 10),
     data_fim: new Date().toISOString().slice(0, 10),
-    data_vencimento: new Date().toISOString().slice(0, 10),
     observacao: '',
   },
   transferencias: {
@@ -228,7 +230,21 @@ const menuSections = [
       { id: 'talhoes', label: 'Talhões', icon: Grid3X3 },
       { id: 'maquinas', label: 'Máquinas', icon: Tractor },
       { id: 'transferencias', label: 'Transferências', icon: ClipboardList },
+      { id: 'locacoes_maquinas', label: 'Locação de Máquinas', icon: Tractor },
       { id: 'referencias', label: 'Tabelas de Referência', icon: Database },
+    ],
+  },
+  {
+    id: 'operacional',
+    label: 'Operacional',
+    icon: Tractor,
+    description: 'Planejamento e execução',
+    items: [
+      { id: 'planejamentos', label: 'Planejamentos', icon: CalendarRange, targetView: 'planejamento' },
+      { id: 'ordens_servico', label: 'Ordens de Serviço', icon: ClipboardList, targetView: 'operacoes', targetSubTab: 'os' },
+      { id: 'abastecimentos', label: 'Abastecimentos', icon: Fuel, targetView: 'operacoes', targetSubTab: 'abastecimento' },
+      { id: 'rateios_realizados', label: 'Rateios Realizados', icon: Coins, targetView: 'operacoes', targetSubTab: 'rateio' },
+      { id: 'rateios_operacionais', label: 'Rateios Operacionais', icon: Activity, targetView: 'operacoes', targetSubTab: 'rateio_operacional' },
     ],
   },
   {
@@ -240,7 +256,7 @@ const menuSections = [
       { id: 'produtos', label: 'Produtos e Insumos', icon: Package },
       { id: 'fornecedores', label: 'Fornecedores', icon: Users },
       { id: 'estoque', label: 'Movimentações', icon: Warehouse },
-      { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList },
+      { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList, targetView: 'financeiro', targetSubTab: 'compras' },
     ],
   },
   {
@@ -252,25 +268,12 @@ const menuSections = [
       { id: 'funcionarios', label: 'Funcionários', icon: Users },
       { id: 'terceirizados', label: 'Terceirizados', icon: Briefcase },
       { id: 'turmas', label: 'Turmas', icon: Users },
-      { id: 'locacoes_maquinas', label: 'Locação de Máquinas', icon: Tractor },
-      { id: 'contas_pagar', label: 'Contas a Pagar', icon: WalletCards },
-      { id: 'contas_receber', label: 'Contas a Receber', icon: WalletCards },
-    ],
-  },
-  {
-    id: 'operacional',
-    label: 'Operacional',
-    icon: Tractor,
-    description: 'Planejamento e execução',
-    items: [
-      { id: 'planejamentos', label: 'Planejamentos', icon: CalendarRange },
-      { id: 'ordens_servico', label: 'Ordens de Serviço', icon: ClipboardList },
-      { id: 'apontamentos', label: 'Apontamentos', icon: Grid3X3 },
+      { id: 'vendas', label: 'Pedidos de Venda', icon: ListOrdered, targetView: 'financeiro', targetSubTab: 'vendas' },
+      { id: 'contas_pagar', label: 'Contas a Pagar', icon: WalletCards, targetView: 'financeiro', targetSubTab: 'pagar' },
+      { id: 'contas_receber', label: 'Contas a Receber', icon: WalletCards, targetView: 'financeiro', targetSubTab: 'receber' },
     ],
   },
 ];
-
-const menuItems = menuSections.flatMap((section) => section.items);
 
 const asList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -290,6 +293,14 @@ const fieldId = (item, base) => item?.[base] ?? item?.[`${base}_id`];
 const sameId = (left, right) => String(left ?? '') === String(right ?? '');
 const lookup = (collection, id, fallback = '-') => (collection || []).find((item) => sameId(item.id, id))?.nome || fallback;
 const money = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const addDaysToDate = (dateValue, daysValue) => {
+  const days = Number(daysValue);
+  if (!dateValue || !Number.isFinite(days) || days <= 0) return '';
+  const date = new Date(`${dateValue}T12:00:00`);
+  date.setDate(date.getDate() + Math.trunc(days));
+  return date.toISOString().slice(0, 10);
+};
 
 const formatMask = (val, mask) => {
   if (!val) return '';
@@ -480,8 +491,21 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   });
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [maintenanceMachine, setMaintenanceMachine] = useState(null);
+  const [rentalToClose, setRentalToClose] = useState(null);
+  const [rentalToExtend, setRentalToExtend] = useState(null);
+  const [rentalCloseForm, setRentalCloseForm] = useState({
+    quantidade_final: '',
+    valor_final: '',
+    data_encerramento: new Date().toISOString().slice(0, 10),
+    data_vencimento: new Date().toISOString().slice(0, 10),
+  });
+  const [rentalExtendDate, setRentalExtendDate] = useState('');
 
   const currentForm = forms[activeTab];
+
+  const overdueRentals = useMemo(() => (
+    (records.locacoes_maquinas || []).filter((item) => item.status === 'ABERTA' && item.em_atraso)
+  ), [records.locacoes_maquinas]);
 
   const isSuperUsuario = useMemo(() => {
     return user && (
@@ -817,7 +841,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       fornecedores: ['nome'],
       estoque: ['fazenda', 'safra', 'produto', 'tipo_movimento', 'quantidade', 'data_movimento'],
       usuarios: ['username', 'email', 'first_name', 'perfil_id'],
-      locacoes_maquinas: ['maquina', 'tipo_cobranca', 'quantidade', 'valor_unitario', 'data_inicio', 'data_fim', 'data_vencimento'],
+      locacoes_maquinas: ['maquina', 'tipo_cobranca', 'valor_unitario', 'data_inicio', 'data_fim'],
       transferencias: ['tipo_ativo', 'origem', 'destino', 'data_transferencia'],
       referencias: ALL_REFERENCES[selectedRefTab].fields.filter((f) => f.required).map((f) => f.name),
     };
@@ -1109,6 +1133,67 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   };
 
   // Alteração de estado ativo/inativo (Soft Delete & Reativação)
+  const openRentalClose = (item) => {
+    const quantidadeSugerida = item.quantidade_final || item.quantidade || '';
+    const valorSugerido = item.valor_final || item.valor_total || '';
+    setRentalToClose(item);
+    setRentalCloseForm({
+      quantidade_final: quantidadeSugerida,
+      valor_final: valorSugerido,
+      data_encerramento: new Date().toISOString().slice(0, 10),
+      data_vencimento: new Date().toISOString().slice(0, 10),
+    });
+  };
+
+  const handleCloseRental = async (event) => {
+    event.preventDefault();
+    if (!rentalToClose) return;
+    if (rentalToClose.tipo_cobranca === 'HORA' && !rentalCloseForm.quantidade_final) {
+      showAlert('error', 'Informe a quantidade efetiva de horas trabalhadas.');
+      return;
+    }
+    if (!rentalCloseForm.valor_final || !rentalCloseForm.data_vencimento) {
+      showAlert('error', 'Informe o valor final e a data prevista para pagamento.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post(`/api/locacoes-maquinas/${rentalToClose.id}/encerrar/`, rentalCloseForm);
+      showAlert('success', 'Locação encerrada e conta a pagar gerada com sucesso.');
+      setRentalToClose(null);
+      await loadData();
+    } catch (err) {
+      showAlert('error', err.response?.data?.detail || 'Erro ao encerrar a locação.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openRentalExtension = (item) => {
+    setRentalToExtend(item);
+    setRentalExtendDate('');
+  };
+
+  const handleExtendRental = async (event) => {
+    event.preventDefault();
+    if (!rentalToExtend || !rentalExtendDate) return;
+
+    setSaving(true);
+    try {
+      await api.post(`/api/locacoes-maquinas/${rentalToExtend.id}/prorrogar/`, {
+        nova_data_fim: rentalExtendDate,
+      });
+      showAlert('success', 'Prazo da locação prorrogado com sucesso.');
+      setRentalToExtend(null);
+      await loadData();
+    } catch (err) {
+      showAlert('error', err.response?.data?.detail || 'Erro ao prorrogar a locação.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleToggleAtivo = async (item) => {
     const novoEstado = !item.ativo;
     const confirmMsg = novoEstado
@@ -1467,22 +1552,54 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
 
     if (activeTab === 'locacoes_maquinas') {
-      const maquinasOptions = (records.maquinas || [])
-        .filter(m => sameId(fieldId(m, 'fazenda'), fazendaAtiva?.id))
-        .map(m => ({ value: m.id, label: `${m.codigo} - ${m.descricao}` }));
+      const maquinasOptions = refOptions('tiposMaquina');
+      const quantidadeLabel = currentForm.tipo_cobranca === 'HORA'
+        ? 'Horas Previstas'
+        : currentForm.tipo_cobranca === 'DIA'
+          ? 'Dias Previstos'
+          : currentForm.tipo_cobranca === 'MES'
+            ? 'Meses Previstos'
+            : 'Quantidade Prevista';
+      const updateRentalField = (field, value) => {
+        if (field === 'tipo_cobranca') {
+          setForms((prev) => {
+            const rental = { ...prev.locacoes_maquinas, tipo_cobranca: value };
+            if (value === 'DIA') {
+              rental.data_fim = addDaysToDate(rental.data_inicio, rental.quantidade) || rental.data_fim;
+            }
+            return { ...prev, locacoes_maquinas: rental };
+          });
+          return;
+        }
+
+        if (field === 'quantidade' || field === 'data_inicio') {
+          setForms((prev) => {
+            const rental = { ...prev.locacoes_maquinas, [field]: value };
+            if (rental.tipo_cobranca === 'DIA') {
+              rental.data_fim = addDaysToDate(rental.data_inicio, rental.quantidade) || rental.data_fim;
+            }
+            return { ...prev, locacoes_maquinas: rental };
+          });
+          return;
+        }
+
+        patchForm(field, value);
+      };
 
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField required label="Máquina" value={currentForm.maquina} onChange={(value) => patchForm('maquina', value)} options={maquinasOptions} />
-          <SelectField required label="Tipo de Cobrança" value={currentForm.tipo_cobranca} onChange={(value) => patchForm('tipo_cobranca', value)} options={[{ value: 'DIA', label: 'DIÁRIA' }, { value: 'HORA', label: 'HORA' }, { value: 'MES', label: 'MÊS' }, { value: 'OUTRO', label: 'OUTRO' }]} />
-          <InputField required label="Quantidade" type="number" step="any" value={currentForm.quantidade} onChange={(value) => patchForm('quantidade', value)} />
-          <InputField required label="Valor Unitário (R$)" type="number" step="any" value={currentForm.valor_unitario} onChange={(value) => patchForm('valor_unitario', value)} />
-          <InputField required label="Data Início" type="date" value={currentForm.data_inicio} onChange={(value) => patchForm('data_inicio', value)} />
-          <InputField required label="Data Fim" type="date" value={currentForm.data_fim} onChange={(value) => patchForm('data_fim', value)} />
-          <InputField required label="Vencimento do Contas a Pagar" type="date" value={currentForm.data_vencimento} onChange={(value) => patchForm('data_vencimento', value)} />
+          <SelectField required label="Tipo de Máquina" value={currentForm.maquina} onChange={(value) => patchForm('maquina', value)} options={maquinasOptions} />
+          <SelectField required label="Tipo de Cobrança" value={currentForm.tipo_cobranca} onChange={(value) => updateRentalField('tipo_cobranca', value)} options={[{ value: 'DIA', label: 'DIÁRIA' }, { value: 'HORA', label: 'HORA' }, { value: 'MES', label: 'MÊS' }, { value: 'OUTRO', label: 'OUTRO' }]} />
+          <InputField label={quantidadeLabel} type="number" step={currentForm.tipo_cobranca === 'DIA' ? '1' : 'any'} value={currentForm.quantidade} onChange={(value) => updateRentalField('quantidade', value)} />
+          <InputField required label="Tarifa Estimada (R$)" type="number" step="any" value={currentForm.valor_unitario} onChange={(value) => patchForm('valor_unitario', value)} />
+          <InputField required label="Data Início" type="date" value={currentForm.data_inicio} onChange={(value) => updateRentalField('data_inicio', value)} />
+          <InputField required label="Término Previsto" type="date" value={currentForm.data_fim} onChange={(value) => patchForm('data_fim', value)} />
           <div className="md:col-span-2">
             <InputField label="Observação" value={currentForm.observacao} onChange={(value) => patchForm('observacao', value)} />
           </div>
+          <p className="md:col-span-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-semibold text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/20 dark:text-sky-300">
+            A conta a pagar será criada somente quando a locação for encerrada, usando a quantidade efetiva, o valor final e a data prevista para pagamento.
+          </p>
         </div>
       );
     }
@@ -2091,27 +2208,38 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
     if (activeTab === 'locacoes_maquinas') {
       return filteredRows('locacoes_maquinas', getActiveTabGetText('locacoes_maquinas')).map((item) => (
-        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+        <tr key={item.id} className={`${item.em_atraso ? 'bg-amber-50/70 dark:bg-amber-950/10' : ''} hover:bg-slate-50/50 dark:hover:bg-white/[0.01]`}>
           <td className="py-3 px-5">
-            <p className="text-xs font-black text-slate-800 dark:text-white">
-              {item.maquina_codigo || lookup(records.maquinas, fieldId(item, 'maquina'))}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-black text-slate-800 dark:text-white">
+                {item.maquina_codigo || lookup(refs.tiposMaquina, fieldId(item, 'maquina'))}
+              </p>
+              <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${item.status === 'ENCERRADA' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : item.em_atraso ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300'}`}>
+                {item.em_atraso ? `VENCIDA HÁ ${item.dias_atraso} DIA(S)` : item.status || 'ABERTA'}
+              </span>
+            </div>
             <p className="text-[10px] text-slate-455 dark:text-slate-500">
               Período: {item.data_inicio} a {item.data_fim}
             </p>
           </td>
           <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
-            Cobrança por {item.tipo_cobranca || 'DIA'} ({item.quantidade} x R$ {money(item.valor_unitario)})
+            Cobrança por {item.tipo_cobranca || 'DIA'}
+            <p>{item.quantidade ? `${item.quantidade} previsto(s) × R$ ${money(item.valor_unitario)}` : `Tarifa: R$ ${money(item.valor_unitario)}`}</p>
           </td>
           <td className="py-3 px-5 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
-            R$ {money(item.valor_total)}
-            <p className="text-[9px] text-slate-450 font-normal">Vence em: {item.data_vencimento}</p>
+            {item.status === 'ENCERRADA' ? `R$ ${money(item.valor_final)}` : `Estimado: R$ ${money(item.valor_total)}`}
+            <p className="text-[9px] text-slate-450 font-normal">
+              {item.status === 'ENCERRADA' ? `Pagamento: ${item.data_vencimento}` : `${item.prorrogacoes || 0} prorrogação(ões)`}
+            </p>
           </td>
           <td className="py-3 px-5 text-center">
-            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
-            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
-              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-            </button>
+            {item.status === 'ABERTA' && (
+              <div className="flex justify-center gap-1.5">
+                <button type="button" onClick={() => openRentalClose(item)} className="rounded-lg border border-emerald-300 px-2 py-1 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30">Encerrar</button>
+                <button type="button" onClick={() => openRentalExtension(item)} className="rounded-lg border border-sky-300 px-2 py-1 text-[10px] font-black text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950/30">Prorrogar</button>
+                <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
           </td>
         </tr>
       ));
@@ -2251,24 +2379,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                               disabled={item.disabled}
                               onClick={() => {
                                 if (item.disabled) return;
-                                if (item.id === 'planejamentos') {
-                                  setActiveView('planejamento');
-                                  return;
-                                }
-                                if (item.id === 'ordens_servico' || item.id === 'apontamentos') {
-                                  setActiveView('operacoes');
-                                  return;
-                                }
-                                if (item.id === 'compras') {
-                                  setActiveView('financeiro', 'compras');
-                                  return;
-                                }
-                                if (item.id === 'contas_pagar') {
-                                  setActiveView('financeiro', 'pagar');
-                                  return;
-                                }
-                                if (item.id === 'contas_receber') {
-                                  setActiveView('financeiro', 'receber');
+                                if (item.targetView) {
+                                  setActiveView(item.targetView, item.targetSubTab);
                                   return;
                                 }
                                 setActiveTab(item.id);
@@ -2296,14 +2408,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 );
               })}
             </div>
-          </div>
-
-          <div className="glass-panel p-4 rounded-2xl border border-slate-200/50 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 text-xs text-slate-500 dark:text-slate-400 space-y-2.5">
-            <div className="flex items-center gap-2 text-emerald-500 dark:text-emerald-400 font-bold">
-              <BadgeInfo className="w-4 h-4" />
-              <span>Contexto obrigatório</span>
-            </div>
-            <p className="leading-relaxed text-[11px]">Cadastros operacionais usam fazenda e, quando aplicável, safra ativa via header X-Safra-ID.</p>
           </div>
         </aside>
 
@@ -2345,6 +2449,29 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
               </div>
             )}
           </div>
+
+          {overdueRentals.length > 0 && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-100">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-black">Existem {overdueRentals.length} locação(ões) de máquinas fora do período informado</h2>
+                  <p className="mt-1 text-xs font-semibold text-amber-800 dark:text-amber-300">Escolha encerrar o aluguel para gerar o contas a pagar ou prorrogue o prazo.</p>
+                  <div className="mt-3 space-y-2">
+                    {overdueRentals.map((item) => (
+                      <div key={item.id} className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-white/70 px-3 py-2 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900 dark:bg-slate-950/30">
+                        <span className="text-xs font-bold">{item.maquina_codigo || item.maquina_descricao} · vencida há {item.dias_atraso} dia(s)</span>
+                        <span className="flex gap-2">
+                          <button type="button" onClick={() => openRentalClose(item)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-black uppercase text-white hover:bg-emerald-500">Encerrar</button>
+                          <button type="button" onClick={() => openRentalExtension(item)} className="rounded-lg border border-sky-400 px-3 py-1.5 text-[10px] font-black uppercase text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/30">Prorrogar</button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Painel de Filtros de Movimentação de Estoque */}
           {activeTab === 'estoque' && (
@@ -2519,6 +2646,61 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           )}
         </main>
       </div>
+
+      {rentalToClose && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-black text-slate-900 dark:text-white">Encerrar locação de máquina</h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{rentalToClose.maquina_codigo || rentalToClose.maquina_descricao} · cobrança por {rentalToClose.tipo_cobranca}</p>
+              </div>
+              <button type="button" onClick={() => setRentalToClose(null)} className="text-xl font-black text-slate-400 hover:text-slate-700 dark:hover:text-white">×</button>
+            </div>
+
+            <form onSubmit={handleCloseRental} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <InputField
+                required={rentalToClose.tipo_cobranca === 'HORA'}
+                label={rentalToClose.tipo_cobranca === 'HORA' ? 'Horas Trabalhadas' : 'Quantidade Efetiva'}
+                type="number"
+                step="any"
+                value={rentalCloseForm.quantidade_final}
+                onChange={(value) => setRentalCloseForm((prev) => ({
+                  ...prev,
+                  quantidade_final: value,
+                  valor_final: value ? (Number(value) * Number(rentalToClose.valor_unitario || 0)).toFixed(2) : prev.valor_final,
+                }))}
+              />
+              <InputField required label="Valor Final do Aluguel (R$)" type="number" step="any" value={rentalCloseForm.valor_final} onChange={(value) => setRentalCloseForm((prev) => ({ ...prev, valor_final: value }))} />
+              <InputField required label="Data de Encerramento" type="date" value={rentalCloseForm.data_encerramento} onChange={(value) => setRentalCloseForm((prev) => ({ ...prev, data_encerramento: value }))} />
+              <InputField required label="Data Prevista para Pagamento" type="date" value={rentalCloseForm.data_vencimento} onChange={(value) => setRentalCloseForm((prev) => ({ ...prev, data_vencimento: value }))} />
+              <div className="md:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300">
+                Ao confirmar, a locação será encerrada e uma única conta a pagar será criada com o valor e vencimento informados.
+              </div>
+              <div className="md:col-span-2 flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <button type="button" onClick={() => setRentalToClose(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
+                <button type="submit" disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-black uppercase text-white hover:bg-emerald-500 disabled:opacity-50">{saving ? 'Encerrando...' : 'Encerrar e Gerar Conta'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {rentalToExtend && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">Prorrogar locação</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Prazo atual: {rentalToExtend.data_fim}</p>
+            <form onSubmit={handleExtendRental} className="mt-5 space-y-4">
+              <InputField required label="Nova Data de Término" type="date" value={rentalExtendDate} onChange={setRentalExtendDate} />
+              <div className="flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <button type="button" onClick={() => setRentalToExtend(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
+                <button type="submit" disabled={saving} className="rounded-xl bg-sky-600 px-5 py-2 text-xs font-black uppercase text-white hover:bg-sky-500 disabled:opacity-50">{saving ? 'Salvando...' : 'Prorrogar Prazo'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
