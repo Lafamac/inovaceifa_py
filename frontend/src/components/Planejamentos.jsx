@@ -130,6 +130,30 @@ export const Planejamentos = () => {
     loadReferences();
   }, [fetchPlanejamentos, loadReferences]);
 
+  // Sempre que a lista de planejamentos ou o filtro de status mudarem,
+  // seleciona automaticamente o primeiro planejamento correspondente àquele filtro (se houver).
+  useEffect(() => {
+    if (!loading && planejamentos.length > 0) {
+      const filtered = planejamentos.filter(plan => {
+        if (statusFilter === 'aberto') return !plan.aprovado;
+        if (statusFilter === 'aprovado') return plan.aprovado;
+        return true;
+      });
+      
+      if (filtered.length > 0) {
+        // Só atualizamos se o selectedPlan atual não for um dos itens da lista filtrada
+        const isCurrentlySelectedInFiltered = filtered.some(p => p.id === selectedPlan?.id);
+        if (!isCurrentlySelectedInFiltered) {
+          setSelectedPlan(filtered[0]);
+        }
+      } else {
+        setSelectedPlan(null);
+      }
+    } else if (!loading && planejamentos.length === 0) {
+      setSelectedPlan(null);
+    }
+  }, [statusFilter, planejamentos, loading, selectedPlan]);
+
   const handleCreatePlanejamento = async (e) => {
     e.preventDefault();
     if (!newPlanForm.descricao) {
@@ -431,10 +455,10 @@ export const Planejamentos = () => {
                       <div
                         key={plan.id}
                         onClick={() => setSelectedPlan(plan)}
-                        className={`glass-panel p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer text-left ${
                           isSelected 
-                            ? 'bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-500 text-indigo-750 dark:text-indigo-400 shadow-sm ring-1 ring-indigo-500/20'
-                            : 'border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/20'
+                            ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-500 text-indigo-700 dark:text-indigo-400 shadow-sm ring-1 ring-indigo-500/20'
+                            : 'glass-panel border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800/20'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
