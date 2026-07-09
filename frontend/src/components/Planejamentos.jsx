@@ -523,7 +523,7 @@ export const Planejamentos = () => {
                       <button
                         onClick={() => handleAprovar(selectedPlan.id)}
                         disabled={saving}
-                        className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold px-3 py-2 text-[10px] uppercase tracking-wider cursor-pointer"
+                        className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold px-3 py-2 text-[10px] uppercase tracking-wider cursor-pointer"
                       >
                         <Check className="w-3.5 h-3.5" />
                         Aprovar
