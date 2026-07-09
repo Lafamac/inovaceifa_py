@@ -27,6 +27,7 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Corrigido contraste e legibilidade das fontes dos labels e do botão de fechar (X) nos modais de Novo Planejamento de Safra e Nova OS Planejada, adicionando suporte adaptável a temas claro e escuro.
 - [x] Ocultada a seleção manual de Fazenda nos formulários de Safra, Talhão, Máquina e Funcionário, assumindo automaticamente a fazenda ativa global no contexto de operação.
 - [x] Corrigido o formulário de Transferências para restringir a Fazenda de Origem à fazenda ativa (`fazendaAtiva`), filtrar a Fazenda de Destino com as outras fazendas do mesmo proprietário, e filtrar a listagem de transferências no frontend para exibir apenas os registros pertencentes à fazenda ativa.
 - [x] No cadastro de locação com cobrança por diária, o campo `Término Previsto` agora é calculado automaticamente somando `Data Início + Dias Previstos`, permanecendo editável para ajustes manuais.

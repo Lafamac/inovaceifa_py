@@ -557,19 +557,19 @@ export const Planejamentos = () => {
       {/* MODAL: Novo Planejamento de Safra */}
       {showNewPlanModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 animate-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 space-y-4 animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
                 <span>Novo Planejamento de Safra</span>
               </h3>
-              <button onClick={() => setShowNewPlanModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
+              <button onClick={() => setShowNewPlanModal(false)} className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
 
             <form onSubmit={handleCreatePlanejamento} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
               <div className="md:col-span-2">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Descrição do Planejamento *</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Descrição do Planejamento *</span>
                   <input
                     type="text"
                     required
@@ -577,35 +577,35 @@ export const Planejamentos = () => {
                     value={newPlanForm.descricao}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setNewPlanForm(prev => ({ ...prev, descricao: e.target.value.toUpperCase() }))}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none uppercase"
                   />
                 </label>
               </div>
 
               <div className="md:col-span-2">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data do Planejamento *</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Data do Planejamento *</span>
                   <input
                     type="date"
                     required
                     value={newPlanForm.data_planejamento}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setNewPlanForm(prev => ({ ...prev, data_planejamento: e.target.value }))}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
                   />
                 </label>
               </div>
 
               <div className="md:col-span-2">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Observações / Notas</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Observações / Notas</span>
                   <textarea
                     placeholder="Notas adicionais sobre o orçamento e premissas da safra..."
                     value={newPlanForm.observacao}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setNewPlanForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
                     rows={3}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none uppercase"
                   />
                 </label>
               </div>
@@ -627,55 +627,55 @@ export const Planejamentos = () => {
       {/* MODAL: Nova OS Planejada */}
       {showNewOSModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
+              <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
                 <span>Nova Ordem de Serviço Planejada</span>
               </h3>
-              <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
+              <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
 
             <form onSubmit={handleAddOSPlanejada} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
               
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Operação *</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Operação *</span>
                   <select
                     required
                     value={newOSForm.tipo_operacao}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setNewOSForm(prev => ({ ...prev, tipo_operacao: e.target.value }))}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
                   >
-                    <option value="">Selecione...</option>
+                    <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
                     {tiposOperacao.map(op => (
-                      <option key={op.id} value={op.id} className="bg-slate-900">{op.nome}</option>
+                      <option key={op.id} value={op.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{op.nome}</option>
                     ))}
                   </select>
                 </label>
 
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1.5">
-                    <span className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider">Início Planejado</span>
+                    <span className="block text-[10px] font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Início Planejado</span>
                     <input
                       type="date"
                       required
                       value={newOSForm.data_inicio_planejada}
                       onKeyDown={handleKeyDown}
                       onChange={(e) => setNewOSForm(prev => ({ ...prev, data_inicio_planejada: e.target.value }))}
-                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-white outline-none"
+                      className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-slate-800 dark:text-white outline-none"
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider">Término Planejado</span>
+                    <span className="block text-[10px] font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Término Planejado</span>
                     <input
                       type="date"
                       required
                       value={newOSForm.data_fim_planejada}
                       onKeyDown={handleKeyDown}
                       onChange={(e) => setNewOSForm(prev => ({ ...prev, data_fim_planejada: e.target.value }))}
-                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-white outline-none"
+                      className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-slate-800 dark:text-white outline-none"
                     />
                   </label>
                 </div>
@@ -683,11 +683,11 @@ export const Planejamentos = () => {
 
               {/* Seletor de Talhões */}
               <div className="md:col-span-2 space-y-2">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
+                <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
                 {talhoes.length === 0 ? (
                   <p className="text-xs text-slate-500">Nenhum talhão cadastrado para esta fazenda.</p>
                 ) : (
-                  <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 bg-slate-950/40 rounded-xl border border-white/[0.04]">
+                  <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 bg-slate-55 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-white/[0.04]">
                     {talhoes.map(t => {
                       const isSelected = newOSForm.talhoes_selecionados.includes(t.id);
                       return (
@@ -697,8 +697,8 @@ export const Planejamentos = () => {
                           onClick={() => handleToggleTalhaoSelection(t.id)}
                           className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                             isSelected 
-                              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
-                              : 'bg-slate-900 border border-white/5 text-slate-400 hover:text-slate-300'
+                              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300'
                           }`}
                         >
                           {t.codigo} ({Number(t.area).toLocaleString('pt-BR')} ha)
@@ -710,8 +710,8 @@ export const Planejamentos = () => {
               </div>
 
               {/* Formulário Interno de Insumos */}
-              <div className="md:col-span-2 space-y-3 border-t border-white/[0.06] pt-4">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Insumos Planejados</span>
+              <div className="md:col-span-2 space-y-3 border-t border-slate-100 dark:border-white/[0.06] pt-4">
+                <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Insumos Planejados</span>
                 
                 {/* Lista de insumos adicionados */}
                 {newOSForm.insumos_selecionados.length > 0 && (
@@ -720,12 +720,12 @@ export const Planejamentos = () => {
                       const prodName = produtos.find(p => p.id === Number(ins.produto_id))?.nome_comercial || 'Insumo';
                       const prodUnit = produtos.find(p => p.id === Number(ins.produto_id))?.unidade_sigla || 'un';
                       return (
-                        <div key={idx} className="flex items-center justify-between bg-slate-950/40 border border-white/[0.04] p-2.5 rounded-xl text-xs">
-                          <span className="text-white font-bold">{prodName}</span>
-                          <div className="flex items-center gap-3 text-slate-400">
-                            <span>Dose: <strong className="text-emerald-400 font-mono">{ins.dose_planejada}</strong></span>
-                            <span>Total: <strong className="text-emerald-400 font-mono">{ins.quantidade_planejada} {prodUnit}</strong></span>
-                            <button type="button" onClick={() => removeInsumoFromOS(idx)} className="text-rose-400 hover:text-rose-300 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <div key={idx} className="flex items-center justify-between bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-white/[0.04] p-2.5 rounded-xl text-xs">
+                          <span className="text-slate-800 dark:text-white font-bold">{prodName}</span>
+                          <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                            <span>Dose: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{ins.dose_planejada}</strong></span>
+                            <span>Total: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{ins.quantidade_planejada} {prodUnit}</strong></span>
+                            <button type="button" onClick={() => removeInsumoFromOS(idx)} className="text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </div>
                       );
@@ -734,46 +734,46 @@ export const Planejamentos = () => {
                 )}
 
                 {/* Controles para adicionar insumo */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-950/20 p-3 rounded-xl border border-white/[0.04]">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-55 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-200 dark:border-white/[0.04]">
                   <div className="md:col-span-5 text-left">
                     <label className="block space-y-1">
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Escolher Produto</span>
+                      <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Escolher Produto</span>
                       <select
                         value={tempInsumo.produto_id}
                         onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumo(prev => ({ ...prev, produto_id: e.target.value }))}
-                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-slate-800 dark:text-white outline-none"
                       >
-                        <option value="">Selecione...</option>
+                        <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
                         {produtos.map(p => (
-                          <option key={p.id} value={p.id} className="bg-slate-900">{p.nome_comercial} ({p.unidade_sigla || 'un'})</option>
+                          <option key={p.id} value={p.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{p.nome_comercial} ({p.unidade_sigla || 'un'})</option>
                         ))}
                       </select>
                     </label>
                   </div>
                   <div className="md:col-span-3 text-left">
                     <label className="block space-y-1">
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dose (ha/planta)</span>
+                      <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dose (ha/planta)</span>
                       <input
                         type="number"
                         placeholder="Ex: 2.5"
                         value={tempInsumo.dose_planejada}
                         onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumo(prev => ({ ...prev, dose_planejada: e.target.value }))}
-                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-slate-800 dark:text-white outline-none"
                       />
                     </label>
                   </div>
                   <div className="md:col-span-3 text-left">
                     <label className="block space-y-1">
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Qtd Total Planejada</span>
+                      <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Qtd Total Planejada</span>
                       <input
                         type="number"
                         placeholder="Ex: 500"
                         value={tempInsumo.quantidade_planejada}
                         onKeyDown={handleKeyDown}
                         onChange={(e) => setTempInsumo(prev => ({ ...prev, quantidade_planejada: e.target.value }))}
-                        className="w-full bg-slate-900 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-white outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-2 px-2.5 text-xs text-slate-800 dark:text-white outline-none"
                       />
                     </label>
                   </div>
@@ -789,16 +789,16 @@ export const Planejamentos = () => {
                 </div>
               </div>
 
-              <div className="md:col-span-2 space-y-1.5 border-t border-white/[0.06] pt-4">
+              <div className="md:col-span-2 space-y-1.5 border-t border-slate-100 dark:border-white/[0.06] pt-4">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recomendações / Instruções Técnicas</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Recomendações / Instruções Técnicas</span>
                   <textarea
                     placeholder="Instruções para o operador no campo..."
                     value={newOSForm.observacao}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setNewOSForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
                     rows={2}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none uppercase"
                   />
                 </label>
               </div>
