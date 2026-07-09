@@ -238,6 +238,18 @@ const menuSections = [
     ],
   },
   {
+    id: 'suprimentos',
+    label: 'Suprimentos',
+    icon: Warehouse,
+    description: 'Produtos e estoque',
+    items: [
+      { id: 'produtos', label: 'Produtos e Insumos', icon: Package },
+      { id: 'fornecedores', label: 'Fornecedores', icon: Users },
+      { id: 'estoque', label: 'Movimentações', icon: Warehouse },
+      { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList, targetView: 'financeiro', targetSubTab: 'compras' },
+    ],
+  },
+  {
     id: 'operacional',
     label: 'Operacional',
     icon: Tractor,
@@ -248,18 +260,6 @@ const menuSections = [
       { id: 'abastecimentos', label: 'Abastecimentos', icon: Fuel, targetView: 'operacoes', targetSubTab: 'abastecimento' },
       { id: 'rateios_realizados', label: 'Rateios Realizados', icon: Coins, targetView: 'operacoes', targetSubTab: 'rateio' },
       { id: 'rateios_operacionais', label: 'Rateios Operacionais', icon: Activity, targetView: 'operacoes', targetSubTab: 'rateio_operacional' },
-    ],
-  },
-  {
-    id: 'suprimentos',
-    label: 'Suprimentos',
-    icon: Warehouse,
-    description: 'Produtos e estoque',
-    items: [
-      { id: 'produtos', label: 'Produtos e Insumos', icon: Package },
-      { id: 'fornecedores', label: 'Fornecedores', icon: Users },
-      { id: 'estoque', label: 'Movimentações', icon: Warehouse },
-      { id: 'compras', label: 'Pedidos de Compra', icon: ClipboardList, targetView: 'financeiro', targetSubTab: 'compras' },
     ],
   },
   {
@@ -1381,7 +1381,14 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       baseList = baseList.filter(item => sameId(fieldId(item, 'fazenda'), fazendaAtiva.id));
     }
     if (key === 'transferencias' && fazendaAtiva) {
-      baseList = baseList.filter(item => sameId(fieldId(item, 'origem'), fazendaAtiva.id) || sameId(fieldId(item, 'destino'), fazendaAtiva.id));
+      baseList = baseList.filter(item => {
+        const itemOrigem = fieldId(item, 'origem');
+        const itemDestino = fieldId(item, 'destino');
+        const activeFarmId = fazendaAtiva.id;
+        const origemId = (itemOrigem && typeof itemOrigem === 'object') ? itemOrigem.id : itemOrigem;
+        const destinoId = (itemDestino && typeof itemDestino === 'object') ? itemDestino.id : itemDestino;
+        return sameId(origemId, activeFarmId) || sameId(destinoId, activeFarmId);
+      });
     }
 
     if (key === 'estoque') {
@@ -1500,7 +1507,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'safras') {
       return (
         <>
-          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Nome da Safra" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} placeholder="2024/2025" />
           <InputField required label="Data Início" type="date" value={currentForm.data_inicio} onChange={(value) => patchForm('data_inicio', value)} />
           <InputField required label="Data Fim" type="date" value={currentForm.data_fim} onChange={(value) => patchForm('data_fim', value)} />
@@ -1515,9 +1521,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'talhoes') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {user?.perfil_id === 1 && (
-            <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
-          )}
           <InputField required label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
           <InputField required label="Nome do Talhão" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField required label="Área (ha)" type="number" value={currentForm.area} onChange={(value) => patchForm('area', value)} />
@@ -1535,7 +1538,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'maquinas') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Código / Frota" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
           <div className="md:col-span-2">
             <InputField required label="Descrição" value={currentForm.descricao} onChange={(value) => patchForm('descricao', value)} />
@@ -1618,6 +1620,19 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       const produtosOptions = (records.produtos || [])
         .map(p => ({ value: p.id, label: p.nome_comercial }));
 
+      const origemOptions = (records.fazendas || [])
+        .filter(f => sameId(f.id, fazendaAtiva?.id) || (editingId && sameId(f.id, currentForm.origem)))
+        .map(f => ({ value: f.id, label: `${f.nome}${f.sigla ? ` (${f.sigla})` : ''}` }));
+
+      const destinoOptions = (records.fazendas || [])
+        .filter(f => {
+          const isSameOwner = sameId(f.proprietario || f.proprietario_id, fazendaAtiva?.proprietario || fazendaAtiva?.proprietario_id);
+          const isNotActiveFarm = !sameId(f.id, fazendaAtiva?.id);
+          const isOriginalDest = editingId && sameId(f.id, currentForm.destino);
+          return (isSameOwner && isNotActiveFarm) || isOriginalDest;
+        })
+        .map(f => ({ value: f.id, label: `${f.nome}${f.sigla ? ` (${f.sigla})` : ''}` }));
+
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SelectField required label="Tipo de Ativo" value={currentForm.tipo_ativo} onChange={(value) => {
@@ -1633,9 +1648,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             patchForm('origem', value);
             patchForm('maquina', '');
             patchForm('funcionario', '');
-          }} options={fazendasOptions} />
+          }} options={origemOptions} />
           
-          <SelectField required label="Fazenda de Destino" value={currentForm.destino} onChange={(value) => patchForm('destino', value)} options={fazendasOptions} />
+          <SelectField required label="Fazenda de Destino" value={currentForm.destino} onChange={(value) => patchForm('destino', value)} options={destinoOptions} />
 
           {currentForm.tipo_ativo === 'MAQUINA' && (
             <div className="md:col-span-2">
@@ -1669,7 +1684,6 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
     if (activeTab === 'funcionarios') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField required label="Fazenda" value={currentForm.fazenda} onChange={(value) => patchForm('fazenda', value)} options={fazendasOptions} />
           <InputField required label="Nome" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
           <InputField label="CPF" value={currentForm.cpf} onChange={(value) => patchForm('cpf', value)} />
           <InputField label="Cargo" value={currentForm.cargo} onChange={(value) => patchForm('cargo', value)} />

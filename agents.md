@@ -27,11 +27,13 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Ocultada a seleção manual de Fazenda nos formulários de Safra, Talhão, Máquina e Funcionário, assumindo automaticamente a fazenda ativa global no contexto de operação.
+- [x] Corrigido o formulário de Transferências para restringir a Fazenda de Origem à fazenda ativa (`fazendaAtiva`), filtrar a Fazenda de Destino com as outras fazendas do mesmo proprietário, e filtrar a listagem de transferências no frontend para exibir apenas os registros pertencentes à fazenda ativa.
 - [x] No cadastro de locação com cobrança por diária, o campo `Término Previsto` agora é calculado automaticamente somando `Data Início + Dias Previstos`, permanecendo editável para ajustes manuais.
 - [x] Reestruturado o fluxo de Locação de Máquinas: o cadastro inicial permanece com status `ABERTA` e registra apenas período, tipo de cobrança, quantidade prevista e tarifa estimada, sem gerar contas a pagar prematuramente.
 - [x] Implementadas ações `POST /api/locacoes-maquinas/{id}/encerrar/` e `POST /api/locacoes-maquinas/{id}/prorrogar/`; o encerramento exige horas efetivas para cobranças por hora, valor final e data prevista de pagamento, gerando uma única conta a pagar de forma idempotente.
 - [x] Adicionados status, quantidade/valor finais, data de encerramento, contador de prorrogações e indicadores dinâmicos de atraso às locações, com alerta no frontend para aluguéis abertos que ultrapassaram o período informado e opções de encerrar ou prorrogar.
-- [x] Reorganizado o menu lateral na ordem `Cadastros → Operacional → Suprimentos → Financeiro`, conectando os submenus diretamente às telas e subabas já existentes: Planejamentos, Ordens de Serviço, Abastecimentos, Rateios Realizados, Rateios Operacionais, Pedidos de Compra, Pedidos de Venda, Contas a Pagar e Contas a Receber.
+- [x] Reorganizado o menu lateral na ordem `Cadastros → Suprimentos → Operacional → Financeiro`, conectando os submenus diretamente às telas e subabas já existentes: Planejamentos, Ordens de Serviço, Abastecimentos, Rateios Realizados, Rateios Operacionais, Pedidos de Compra, Pedidos de Venda, Contas a Pagar e Contas a Receber.
 - [x] Centralizado o roteamento dos submenus por metadados (`targetView` e `targetSubTab`), removendo condicionais específicas por item e permitindo que `OrdensServico` abra diretamente na subaba operacional solicitada.
 - [x] Banco preparado para início limpo de operação: proprietários, fazendas, safras, máquinas, talhões, produtos e transações zerados, mantendo apenas `admin@teste.com`, perfis e tabelas de referência populadas.
 - [x] Criado comando de manutenção `python manage.py reset_operational_data` para reproduzir esse estado inicial com segurança.
