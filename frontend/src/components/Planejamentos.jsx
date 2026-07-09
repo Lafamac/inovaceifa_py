@@ -104,7 +104,7 @@ export const Planejamentos = () => {
   }, [fazendaAtiva]);
 
   const fetchPlanejamentos = useCallback(async () => {
-    if (!safraAtiva || !fazendaAtiva) return;
+    if (!safraAtiva || !fazendaAtiva) return [];
     setLoading(true);
     try {
       const list = await relatorioService.getPlanejamentos();
@@ -114,19 +114,15 @@ export const Planejamentos = () => {
         (p.safra_id === safraAtiva.id || p.safra === safraAtiva.id)
       );
       setPlanejamentos(filtrados);
-      
-      // Atualizar plano selecionado se aplicável
-      if (selectedPlan) {
-        const atualizado = filtrados.find(p => p.id === selectedPlan.id);
-        setSelectedPlan(atualizado || null);
-      }
+      return filtrados;
     } catch (err) {
       console.error(err);
       showAlert('error', 'Não foi possível carregar os planejamentos.');
+      return [];
     } finally {
       setLoading(false);
     }
-  }, [safraAtiva, fazendaAtiva, selectedPlan]);
+  }, [safraAtiva, fazendaAtiva]);
 
   useEffect(() => {
     fetchPlanejamentos();
@@ -172,7 +168,9 @@ export const Planejamentos = () => {
     try {
       await relatorioService.aprovarPlanejamento(id);
       showAlert('success', 'Planejamento aprovado com sucesso! Alterações futuras foram bloqueadas.');
-      await fetchPlanejamentos();
+      const list = await fetchPlanejamentos();
+      const atualizado = list.find(p => p.id === id);
+      if (atualizado) setSelectedPlan(atualizado);
     } catch (err) {
       console.error(err);
       showAlert('error', 'Falha ao aprovar o planejamento.');
@@ -190,7 +188,9 @@ export const Planejamentos = () => {
     try {
       const res = await relatorioService.gerarOrdensServico(id);
       showAlert('success', res.detail || 'Ordens de Serviço Reais geradas com sucesso!');
-      await fetchPlanejamentos();
+      const list = await fetchPlanejamentos();
+      const atualizado = list.find(p => p.id === id);
+      if (atualizado) setSelectedPlan(atualizado);
     } catch (err) {
       console.error(err);
       showAlert('error', 'Erro ao gerar as Ordens de Serviço a partir do planejamento.');
@@ -228,7 +228,7 @@ export const Planejamentos = () => {
       };
       await api.post('/api/ordens-servico-planejadas/', osPayload);
 
-      showAlert('success', 'Ordem de serviço planejada adicionada com sucesso!');
+      showAlert('success', 'Atividade planejada adicionada com sucesso!');
       setShowNewOSModal(false);
       setNewOSForm({
         tipo_operacao: '',
@@ -238,10 +238,12 @@ export const Planejamentos = () => {
         talhoes_selecionados: [],
         insumos_selecionados: []
       });
-      await fetchPlanejamentos();
+      const list = await fetchPlanejamentos();
+      const atualizado = list.find(p => p.id === selectedPlan.id);
+      if (atualizado) setSelectedPlan(atualizado);
     } catch (err) {
       console.error(err);
-      showAlert('error', 'Erro ao salvar a ordem planejada.');
+      showAlert('error', 'Erro ao salvar a atividade planejada.');
     } finally {
       setSaving(false);
     }
@@ -380,8 +382,8 @@ export const Planejamentos = () => {
                       onClick={() => setSelectedPlan(plan)}
                       className={`glass-panel p-4 rounded-2xl border transition-all cursor-pointer text-left ${
                         isSelected 
-                          ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/40 text-emerald-400 shadow-sm'
-                          : 'border-white/[0.06] bg-slate-900/30 text-slate-300 hover:bg-slate-800/20'
+                          ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500 dark:border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/20'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -402,9 +404,9 @@ export const Planejamentos = () => {
                         )}
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between border-t border-white/[0.04] pt-3 text-[10px] text-slate-500">
-                        <span>{plan.ordens_servico?.length || 0} OS planejadas</span>
-                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-emerald-400' : ''}`} />
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-200 dark:border-white/[0.04] pt-3 text-[10px] text-slate-500 dark:text-slate-400">
+                        <span>{plan.ordens_servico?.length || 0} atividades planejadas</span>
+                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-emerald-600 dark:text-emerald-400' : ''}`} />
                       </div>
                     </div>
                   );
@@ -468,18 +470,18 @@ export const Planejamentos = () => {
                 {/* Sub-telas de OS Planejadas */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                       <Layers className="w-4 h-4 text-teal-500" />
-                      <span>Ordens de Serviço Estruturadas ({selectedPlan.ordens_servico?.length || 0})</span>
+                      <span>Atividades Planejadas ({selectedPlan.ordens_servico?.length || 0})</span>
                     </h3>
                     
                     {!selectedPlan.aprovado && (
                       <button
                         onClick={() => setShowNewOSModal(true)}
-                        className="flex items-center gap-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-bold px-3 py-1.5 text-[10px] uppercase tracking-wider cursor-pointer"
+                        className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-450 hover:to-teal-500 text-white font-black px-4 py-2 text-[10px] uppercase tracking-wider cursor-pointer shadow-md shadow-emerald-500/10"
                       >
-                        <Plus className="w-3 h-3 text-emerald-400" />
-                        Adicionar OS
+                        <Plus className="w-3.5 h-3.5" />
+                        Adicionar Atividade
                       </button>
                     )}
                   </div>
@@ -631,7 +633,7 @@ export const Planejamentos = () => {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
               <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
-                <span>Nova Ordem de Serviço Planejada</span>
+                <span>Nova Atividade Planejada</span>
               </h3>
               <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
@@ -809,7 +811,7 @@ export const Planejamentos = () => {
                   disabled={saving}
                   className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
-                  {saving ? 'Adicionando...' : 'Salvar Ordem Planejada'}
+                  {saving ? 'Salvando...' : 'Salvar Atividade'}
                 </button>
               </div>
             </form>
