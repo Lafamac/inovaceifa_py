@@ -37,6 +37,7 @@ export const Planejamentos = () => {
   // Estados principais
   const [planejamentos, setPlanejamentos] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('todos'); // 'todos', 'aberto', 'aprovado'
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -366,53 +367,104 @@ export const Planejamentos = () => {
           
           {/* Coluna Esquerda: Listagem de Planejamentos */}
           <section className="lg:col-span-4 space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">Planejamentos da Safra</h3>
-            
-            {planejamentos.length === 0 ? (
-              <div className="rounded-2xl border border-slate-800/80 p-8 text-center bg-slate-950/20 text-slate-500 text-xs">
-                Nenhum planejamento cadastrado para a safra {safraAtiva?.nome}.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {planejamentos.map(plan => {
-                  const isSelected = selectedPlan?.id === plan.id;
-                  return (
-                    <div
-                      key={plan.id}
-                      onClick={() => setSelectedPlan(plan)}
-                      className={`glass-panel p-4 rounded-2xl border transition-all cursor-pointer text-left ${
-                        isSelected 
-                          ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500 dark:border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                          : 'border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/20'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h4 className="text-xs font-bold truncate">{plan.descricao}</h4>
-                          <span className="block text-[9px] text-slate-500 mt-1 font-mono uppercase tracking-wider">
-                            Criado em {new Date(plan.data_planejamento).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                        {plan.aprovado ? (
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-950 border border-emerald-900 text-emerald-400">
-                            <Lock className="w-3 h-3" />
-                          </span>
-                        ) : (
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-950 border border-amber-900 text-amber-400">
-                            <LockOpen className="w-3 h-3" />
-                          </span>
-                        )}
-                      </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-1">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Planejamentos da Safra</h3>
+            </div>
 
-                      <div className="mt-4 flex items-center justify-between border-t border-slate-200 dark:border-white/[0.04] pt-3 text-[10px] text-slate-500 dark:text-slate-400">
-                        <span>{plan.ordens_servico?.length || 0} atividades planejadas</span>
-                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-emerald-600 dark:text-emerald-400' : ''}`} />
+            {/* Filtros de Status */}
+            <div className="flex gap-1.5 p-1 bg-slate-100 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/[0.04] text-xs">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('todos')}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                  statusFilter === 'todos'
+                    ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('aberto')}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                  statusFilter === 'aberto'
+                    ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                Em Aberto
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('aprovado')}
+                className={`flex-1 py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center ${
+                  statusFilter === 'aprovado'
+                    ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                Aprovados
+              </button>
+            </div>
+            
+            {(() => {
+              const filtered = planejamentos.filter(plan => {
+                if (statusFilter === 'aberto') return !plan.aprovado;
+                if (statusFilter === 'aprovado') return plan.aprovado;
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800/80 p-8 text-center bg-slate-50 dark:bg-slate-950/20 text-slate-500 text-xs">
+                    Nenhum planejamento correspondente ao filtro.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {filtered.map(plan => {
+                    const isSelected = selectedPlan?.id === plan.id;
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => setSelectedPlan(plan)}
+                        className={`glass-panel p-4 rounded-2xl border transition-all cursor-pointer text-left ${
+                          isSelected 
+                            ? 'bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-500 text-indigo-750 dark:text-indigo-400 shadow-sm ring-1 ring-indigo-500/20'
+                            : 'border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/20'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-bold truncate">{plan.descricao}</h4>
+                            <span className="block text-[9px] text-slate-500 mt-1 font-mono uppercase tracking-wider">
+                              Criado em {new Date(plan.data_planejamento).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                          {plan.aprovado ? (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-950 border border-emerald-900 text-emerald-400">
+                              <Lock className="w-3 h-3" />
+                            </span>
+                          ) : (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-950 border border-amber-900 text-amber-400">
+                              <LockOpen className="w-3 h-3" />
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between border-t border-slate-200 dark:border-white/[0.04] pt-3 text-[10px] text-slate-500 dark:text-slate-400">
+                          <span>{plan.ordens_servico?.length || 0} atividades planejadas</span>
+                          <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-indigo-600 dark:text-indigo-400' : ''}`} />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </section>
 
           {/* Coluna Direita: Detalhamento do Planejamento Selecionado */}

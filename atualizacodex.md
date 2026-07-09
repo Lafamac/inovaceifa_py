@@ -6,9 +6,10 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ### 💻 Frontend
 
-#### 1. Estabilidade e Melhorias Visuais na Tela de Planejamentos
+#### 1. Estabilidade, Destaques e Filtros na Tela de Planejamentos
 - Corrigimos o ciclo de dependências de `fetchPlanejamentos` no componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), removendo `selectedPlan` de suas dependências do React. Isso evitou que a coluna da direita ficasse sumindo e piscando de forma intermitente ao selecionar planejamentos na lista ou atualizar registros.
-- Destacamos de forma muito clara os cards selecionados e não selecionados na barra lateral esquerda com bordas e fundos adaptativos de alto contraste (`border-slate-200 dark:border-white/[0.06]` e gradiente esmeralda no selecionado) garantindo legibilidade em ambos os temas.
+- Adicionamos uma barra de filtros por status no topo da listagem de planejamentos, permitindo alternar de forma responsiva entre exibir **Todos**, apenas os **Em Aberto** (rascunhos) ou apenas os **Aprovados**.
+- Destacamos visualmente o card de planejamento selecionado utilizando um tom de **Índigo / Azul** (`bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-500 text-indigo-750 dark:text-indigo-400 shadow-sm ring-1 ring-indigo-500/20`), garantindo uma distinção marcante em relação aos outros elementos e legibilidade de alto contraste nos dois temas.
 - Renomeamos os termos de "OS Planejadas" para **"Atividades Planejadas"** e "Adicionar OS" para **"Adicionar Atividade"**, tornando o fluxo de planejamento muito mais intuitivo.
 - Substituímos o botão discreto por um botão com destaque premium (`bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/10`).
 
