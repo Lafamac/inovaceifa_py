@@ -116,8 +116,8 @@ export const Header = ({ activeView, setActiveView }) => {
                   onClick={() => setActiveView('dashboard')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer shrink-0 ${
                     activeView === 'dashboard'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
-                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/[0.02]'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/15'
+                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white/[0.02]'
                   }`}
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" />
@@ -127,8 +127,8 @@ export const Header = ({ activeView, setActiveView }) => {
                   onClick={() => setActiveView('planejamento')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer shrink-0 ${
                     activeView === 'planejamento'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
-                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/[0.02]'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/15'
+                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white/[0.02]'
                   }`}
                 >
                   <Calendar className="w-3.5 h-3.5" />
@@ -138,8 +138,8 @@ export const Header = ({ activeView, setActiveView }) => {
                   onClick={() => setActiveView('operacoes')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer shrink-0 ${
                     activeView === 'operacoes'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
-                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/[0.02]'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/15'
+                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white/[0.02]'
                   }`}
                 >
                   <Tractor className="w-3.5 h-3.5" />
@@ -149,8 +149,8 @@ export const Header = ({ activeView, setActiveView }) => {
                   onClick={() => setActiveView('financeiro')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer shrink-0 ${
                     activeView === 'financeiro'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
-                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/[0.02]'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/15'
+                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white/[0.02]'
                   }`}
                 >
                   <WalletCards className="w-3.5 h-3.5" />
@@ -160,8 +160,8 @@ export const Header = ({ activeView, setActiveView }) => {
                   onClick={() => setActiveView('cadastros')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all transform active:scale-95 hover:-translate-y-0.5 cursor-pointer shrink-0 ${
                     activeView === 'cadastros'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
-                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-white/[0.02]'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/15'
+                      : 'border border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white/[0.02]'
                   }`}
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -179,7 +179,7 @@ export const Header = ({ activeView, setActiveView }) => {
               <div className="relative" ref={desktopFazendaRef}>
                 <button
                   onClick={() => setShowFazendaMenu(!showFazendaMenu)}
-                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all hover:border-slate-300 dark:hover:border-slate-700 focus:outline-none max-w-[160px] xl:max-w-[240px]"
+                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-400 transition-all hover:border-slate-300 dark:hover:border-slate-700 focus:outline-none max-w-[160px] xl:max-w-[240px]"
                 >
                   <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                   <span className="truncate">{fazendaAtiva ? fazendaAtiva.nome : 'Carregando fazenda...'}</span>
@@ -200,8 +200,8 @@ export const Header = ({ activeView, setActiveView }) => {
                         }}
                         className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
                           isFazendaSelecionada(f)
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-500'
+                            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
                         }`}
                       >
                         <span>{f.nome}</span>
@@ -216,7 +216,7 @@ export const Header = ({ activeView, setActiveView }) => {
               <div className="relative" ref={desktopSafraRef}>
                 <button
                   onClick={() => setShowSafraMenu(!showSafraMenu)}
-                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all hover:border-slate-300 dark:hover:border-slate-700 focus:outline-none max-w-[120px] xl:max-w-[180px]"
+                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-400 transition-all hover:border-slate-300 dark:hover:border-slate-700 focus:outline-none max-w-[120px] xl:max-w-[180px]"
                 >
                   <Sprout className="h-3.5 w-3.5 text-teal-500 shrink-0" />
                   <span className="truncate">{safraAtiva ? safraAtiva.nome : 'Carregando safra...'}</span>
@@ -237,8 +237,8 @@ export const Header = ({ activeView, setActiveView }) => {
                         }}
                         className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
                           isSafraSelecionada(s)
-                            ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400'
-                            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                            ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-500'
+                            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
                         }`}
                       >
                         <span>{s.nome}</span>
@@ -262,7 +262,7 @@ export const Header = ({ activeView, setActiveView }) => {
             {/* Theme switcher button */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/60 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-all focus:outline-none cursor-pointer"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/60 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 text-slate-500 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 transition-all focus:outline-none cursor-pointer"
               title="Alternar Tema"
             >
               {darkMode ? (
@@ -284,7 +284,7 @@ export const Header = ({ activeView, setActiveView }) => {
                   </div>
                   
                   <div className="hidden lg:block text-left">
-                    <div className="text-xs font-bold leading-none text-slate-800 dark:text-slate-200">{user.nome}</div>
+                    <div className="text-xs font-bold leading-none text-slate-800 dark:text-slate-300">{user.nome}</div>
                     <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">{user.cargo}</div>
                   </div>
                   <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
@@ -293,7 +293,7 @@ export const Header = ({ activeView, setActiveView }) => {
                 {showProfileMenu && (
                   <div className="absolute right-0 mt-1.5 w-52 rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
                     <div className="border-b border-slate-100 dark:border-slate-800/80 px-2.5 pb-2 pt-1.5 mb-1.5">
-                      <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{user.nome}</div>
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-400">{user.nome}</div>
                       <div className="text-[10px] text-slate-400 dark:text-slate-500">{user.email}</div>
                     </div>
 
@@ -302,7 +302,7 @@ export const Header = ({ activeView, setActiveView }) => {
                         setIsPasswordModalOpen(true);
                         setShowProfileMenu(false);
                       }}
-                      className="flex w-full items-center space-x-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                      className="flex w-full items-center space-x-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       <Lock className="h-4.5 w-4.5 text-slate-400" />
                       <span>Alterar Senha</span>
@@ -338,7 +338,7 @@ export const Header = ({ activeView, setActiveView }) => {
                 setShowFazendaMenu(!showFazendaMenu);
                 setShowSafraMenu(false);
               }}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all focus:outline-none active:scale-98"
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-400 transition-all focus:outline-none active:scale-98"
             >
               <div className="flex items-center gap-1.5 truncate">
                 <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
@@ -361,8 +361,8 @@ export const Header = ({ activeView, setActiveView }) => {
                     }}
                     className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
                       isFazendaSelecionada(f)
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                        : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-500'
+                        : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
                     }`}
                   >
                     <span>{f.nome}</span>
@@ -380,7 +380,7 @@ export const Header = ({ activeView, setActiveView }) => {
                 setShowSafraMenu(!showSafraMenu);
                 setShowFazendaMenu(false);
               }}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all focus:outline-none active:scale-98"
+              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-400 transition-all focus:outline-none active:scale-98"
             >
               <div className="flex items-center gap-1.5 truncate">
                 <Sprout className="h-3.5 w-3.5 text-teal-500 shrink-0" />
@@ -403,8 +403,8 @@ export const Header = ({ activeView, setActiveView }) => {
                     }}
                     className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
                       isSafraSelecionada(s)
-                        ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-400'
-                        : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                        ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/30 dark:text-teal-500'
+                        : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
                     }`}
                   >
                     <span>{s.nome}</span>

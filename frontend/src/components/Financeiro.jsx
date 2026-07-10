@@ -869,8 +869,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             onClick={() => { setActiveSubTab('compras'); setStatusFilter('TODOS'); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'compras'
-                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-md'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                ? 'financial-tab-active bg-white dark:bg-slate-800 text-slate-800 shadow-md'
+                : 'financial-tab-inactive text-slate-500 hover:text-slate-800'
             }`}
           >
             <ShoppingBag className="w-4.5 h-4.5" />
@@ -881,8 +881,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             onClick={() => { setActiveSubTab('pagar'); setStatusFilter('TODOS'); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'pagar'
-                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-md'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                ? 'financial-tab-active bg-white dark:bg-slate-800 text-slate-800 shadow-md'
+                : 'financial-tab-inactive text-slate-500 hover:text-slate-800'
             }`}
           >
             <WalletCards className="w-4.5 h-4.5 text-amber-500" />
@@ -893,8 +893,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             onClick={() => { setActiveSubTab('vendas'); setStatusFilter('TODOS'); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'vendas'
-                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-md'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                ? 'financial-tab-active bg-white dark:bg-slate-800 text-slate-800 shadow-md'
+                : 'financial-tab-inactive text-slate-500 hover:text-slate-800'
             }`}
           >
             <ListOrdered className="w-4.5 h-4.5" />
@@ -905,8 +905,8 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
             onClick={() => { setActiveSubTab('receber'); setStatusFilter('TODOS'); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'receber'
-                ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-md'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                ? 'financial-tab-active bg-white dark:bg-slate-800 text-slate-800 shadow-md'
+                : 'financial-tab-inactive text-slate-500 hover:text-slate-800'
             }`}
           >
             <WalletCards className="w-4.5 h-4.5 text-emerald-500" />

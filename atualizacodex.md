@@ -6,6 +6,28 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ### 💻 Frontend
 
+#### 8. Padronização de Contraste no Dark Mode
+- No arquivo [index.css](file:///c:/workspace/inovaceifa/frontend/src/index.css), adicionamos uma cor base de texto para tema claro e escuro, garantindo que componentes sem classe explícita também mantenham leitura adequada.
+- Foram mapeadas globalmente as classes customizadas `text-slate-350`, `text-slate-405`, `text-slate-450`, `text-slate-455`, `text-slate-550`, `text-slate-555`, `text-slate-650`, `text-slate-655` e `text-slate-850`, que já eram usadas nos componentes mas não pertencem à escala padrão do Tailwind.
+- Tabelas, células e painéis `.glass-panel` dentro da página de cadastros passaram a receber cores padrão por tema, reduzindo casos de fonte clara sobre fundo claro no dark mode.
+- Após revisão visual, a escala global foi recalibrada para evitar textos excessivamente escuros no tema claro e manter tons médios mais confortáveis em listas, tabelas e painéis.
+- Foram adicionados estilos explícitos para labels dos formulários em modais no dark mode e para os botões/filtros **Ativos** e **Inativos**, evitando dependência de classes customizadas não geradas pelo Tailwind.
+- A regra global `.dark input`, `.dark select` e `.dark textarea` foi corrigida para usar campos claros (`#f8fafc`) com texto escuro (`#0f172a`) no dark mode. Essa era a regra que mantinha os campos dos modais escuros e sem separação visual suficiente.
+- Foi criada a classe `app-modal-panel` e aplicada aos modais de Cadastros, Planejamento e Locação para padronizar fundo, borda, sombra, labels, campos e botões secundários em formulários densos.
+- A correção foi validada visualmente no modal **Novo Registro de Proprietários** em dark mode, confirmando campos claros, labels legíveis e contraste real entre modal e inputs.
+
+#### 9. Correção Visual do Planejamento Selecionado
+- No componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), o card selecionado na coluna esquerda deixou de usar contraste fraco e passou a usar destaque Índigo suave, com texto, data e rodapé ajustados para tema claro e escuro.
+- O painel de detalhes do planejamento selecionado foi revisado para usar fundos, bordas e textos adaptativos em tema claro e escuro, incluindo cabeçalho, observações, atividades planejadas, talhões e insumos.
+- Também foram ajustados o cabeçalho da tela e o estado sem safra ativa para evitar dependência de textos brancos em contextos de fundo claro.
+- Os labels dos modais de novo planejamento e nova atividade foram trocados para `dark:text-slate-200`, melhorando a leitura no dark mode sem estourar o contraste.
+- Foi adicionada a classe `planning-selected-card` para sobrescrever a regra global de headings no dark mode, evitando que o título do card selecionado fique branco; o título, data, rodapé e ícone agora usam tons Índigo mais escuros.
+
+#### 10. Ajustes de Fontes no Financeiro e Header
+- No componente [Financeiro.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Financeiro.jsx), as abas **Pedidos de Compra**, **Contas a Pagar**, **Pedidos de Venda** e **Contas a Receber** passaram a usar as classes dedicadas `financial-tab-active` e `financial-tab-inactive`.
+- No arquivo [index.css](file:///c:/workspace/inovaceifa/frontend/src/index.css), essas classes definem cores fixas no dark mode (`#94a3b8` para a aba selecionada e `#64748b` para abas inativas), evitando que regras globais de texto deixem as fontes claras demais.
+- No componente [Header.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Header.jsx), a navegação principal, seletores de fazenda/safra, perfil e equivalentes mobile tiveram os tons dark reduzidos de brilho (`slate-400/300/200` para `slate-500/400/300` conforme o estado).
+
 #### 1. Estabilidade, Destaques e Filtros na Tela de Planejamentos
 - Corrigimos o ciclo de dependências de `fetchPlanejamentos` no componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), removendo `selectedPlan` de suas dependências do React. Isso evitou que a coluna da direita ficasse sumindo e piscando de forma intermitente ao selecionar planejamentos na lista ou atualizar registros.
 - Adicionamos uma barra de filtros por status no topo da listagem de planejamentos, permitindo alternar de forma responsiva entre exibir **Todos**, apenas os **Em Aberto** (rascunhos) ou apenas os **Aprovados**.
@@ -44,8 +66,10 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ### 📝 Documentação
 
-- Atualizado o histórico de tarefas recentes no arquivo [AGENTS.md](file:///c:/workspace/inovaceifa/AGENTS.md) registrando a conclusão destas melhorias.
+- Atualizado o histórico de tarefas recentes no arquivo [agents.md](file:///c:/workspace/inovaceifa/agents.md) registrando a conclusão destas melhorias.
+- Atualizado este arquivo [atualizacodex.md](file:///c:/workspace/inovaceifa/atualizacodex.md) com as correções de contraste do dark mode em cadastros e planejamento.
 
 ## Validação
 
 - Executados os testes de integridade do sistema no backend Django com `manage.py check`, sem erros identificados.
+- Executado `npm run build` no frontend após os ajustes visuais, sem erros de compilação.

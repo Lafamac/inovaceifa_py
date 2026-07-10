@@ -27,6 +27,15 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Ajustada a cor da fonte do card de planejamento selecionado no dark mode, substituindo o branco forçado do título por tom Índigo menos brilhante e corrigindo também data, rodapé e ícone de expansão.
+- [x] Escurecidas as fontes das abas do módulo Financeiro (`Pedidos de Compra`, `Contas a Pagar`, `Pedidos de Venda`, `Contas a Receber`) no dark mode com classes dedicadas para estado ativo/inativo, reduzindo brilho excessivo mesmo com regras globais de texto.
+- [x] Escurecida levemente a tipografia do Header no dark mode, incluindo navegação principal, seletores de fazenda/safra e itens de perfil/mobile.
+- [x] Corrigida de forma efetiva a leitura dos formulários no dark mode: a regra global `.dark input/select/textarea` foi ajustada para usar campos claros com texto escuro, eliminando o problema de campos e modal em tons escuros quase iguais.
+- [x] Aplicada a classe `app-modal-panel` aos modais de Cadastros, Planejamento e Locação, com borda e fundo específicos para separar melhor o formulário do restante da tela no dark mode.
+- [x] Recalibradas as cores do dark mode após revisão visual: o destaque do planejamento selecionado foi suavizado, os textos deixaram de usar tons excessivamente escuros no tema claro e os labels dos modais de cadastro/planejamento ganharam contraste consistente no tema escuro.
+- [x] Corrigida a leitura dos botões/filtros `Ativos` e `Inativos` em Cadastros no dark mode, removendo dependência de classes customizadas não geradas pelo Tailwind e adicionando estilos explícitos para estados selecionados e não selecionados.
+- [x] Corrigido o padrão de contraste de fontes no dark mode para Cadastros e Planejamento, adicionando suporte global às classes `text-slate-*` customizadas usadas no JSX e padronizando texto base, tabelas e painéis para leitura consistente em tema claro e escuro.
+- [x] Ajustado o card de planejamento selecionado na coluna esquerda para usar destaque Índigo suave com texto legível nos dois temas, além de revisar o painel de detalhes das atividades planejadas para evitar textos claros sobre fundos claros.
 - [x] Adicionado destaque na cor Índigo aos cards de planejamento selecionados na coluna esquerda, filtro de visualização por status (Todos, Em Aberto, Aprovados), e corrigido bug em que a seleção sumia ao clicar ou atualizar a lista, renomeando "Adicionar OS" para "Adicionar Atividade" com maior destaque visual.
 - [x] Corrigido contraste e legibilidade das fontes dos labels e do botão de fechar (X) nos modais de Novo Planejamento de Safra e Nova OS Planejada, adicionando suporte adaptável a temas claro e escuro.
 - [x] Ocultada a seleção manual de Fazenda nos formulários de Safra, Talhão, Máquina e Funcionário, assumindo automaticamente a fazenda ativa global no contexto de operação.

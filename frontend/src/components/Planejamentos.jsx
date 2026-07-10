@@ -360,11 +360,11 @@ export const Planejamentos = () => {
       {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight font-display flex items-center gap-2">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight font-display flex items-center gap-2">
             <Sprout className="w-6 h-6 text-emerald-500" />
             Planejamento de Safra
           </h1>
-          <p className="text-slate-400 text-xs mt-1">
+          <p className="text-slate-600 dark:text-slate-300 text-xs mt-1">
             Mapeie o orçamento, distribua insumos por talhão e gere as OSs da safra.
           </p>
         </div>
@@ -381,10 +381,10 @@ export const Planejamentos = () => {
       </div>
 
       {!safraAtiva ? (
-        <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center bg-slate-900/10 backdrop-blur-md">
+        <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center bg-white/80 dark:bg-slate-900/10 backdrop-blur-md">
           <AlertCircle className="mx-auto h-10 w-10 text-slate-500 animate-pulse" />
-          <h2 className="mt-4 text-sm font-bold text-slate-300">Nenhuma Safra Ativa</h2>
-          <p className="mt-1 text-xs text-slate-500">Selecione uma safra ativa no seletor do topo para gerenciar os planejamentos agrícolas.</p>
+          <h2 className="mt-4 text-sm font-bold text-slate-800 dark:text-slate-200">Nenhuma Safra Ativa</h2>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">Selecione uma safra ativa no seletor do topo para gerenciar os planejamentos agrícolas.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -457,14 +457,14 @@ export const Planejamentos = () => {
                         onClick={() => setSelectedPlan(plan)}
                         className={`p-4 rounded-2xl border transition-all cursor-pointer text-left ${
                           isSelected 
-                            ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-500 text-indigo-700 dark:text-indigo-400 shadow-sm ring-1 ring-indigo-500/20'
-                            : 'glass-panel border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-800/20'
+                            ? 'planning-selected-card bg-indigo-100 dark:bg-indigo-950/35 border-indigo-400 dark:border-indigo-500/60 text-indigo-950 dark:text-indigo-300 shadow-sm ring-1 ring-indigo-300/50 dark:ring-indigo-400/20'
+                            : 'glass-panel border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-900/30 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/20'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <h4 className="text-xs font-bold truncate">{plan.descricao}</h4>
-                            <span className="block text-[9px] text-slate-500 mt-1 font-mono uppercase tracking-wider">
+                            <span className={`block text-[9px] mt-1 font-mono uppercase tracking-wider ${isSelected ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`}>
                               Criado em {new Date(plan.data_planejamento).toLocaleDateString('pt-BR')}
                             </span>
                           </div>
@@ -479,9 +479,9 @@ export const Planejamentos = () => {
                           )}
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between border-t border-slate-200 dark:border-white/[0.04] pt-3 text-[10px] text-slate-500 dark:text-slate-400">
+                        <div className={`mt-4 flex items-center justify-between border-t pt-3 text-[10px] ${isSelected ? 'border-indigo-300/70 dark:border-indigo-500/30 text-indigo-800 dark:text-indigo-400' : 'border-slate-200 dark:border-white/[0.04] text-slate-600 dark:text-slate-400'}`}>
                           <span>{plan.ordens_servico?.length || 0} atividades planejadas</span>
-                          <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-indigo-600 dark:text-indigo-400' : ''}`} />
+                          <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isSelected ? 'rotate-90 text-indigo-700 dark:text-indigo-400' : ''}`} />
                         </div>
                       </div>
                     );
@@ -494,15 +494,15 @@ export const Planejamentos = () => {
           {/* Coluna Direita: Detalhamento do Planejamento Selecionado */}
           <section className="lg:col-span-8">
             {!selectedPlan ? (
-              <div className="glass-panel p-12 rounded-2xl border border-white/[0.06] bg-slate-900/20 text-center text-slate-400">
-                <FileText className="mx-auto w-10 h-10 text-slate-600 mb-3" />
+              <div className="glass-panel p-12 rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 text-center text-slate-600 dark:text-slate-300">
+                <FileText className="mx-auto w-10 h-10 text-slate-500 dark:text-slate-400 mb-3" />
                 <p className="text-xs font-bold">Selecione um planejamento na coluna ao lado para visualizar os detalhes, OSs estruturadas e orçamentos.</p>
               </div>
             ) : (
-              <div className="glass-panel p-6 rounded-2xl border border-white/[0.06] bg-slate-900/40 space-y-6">
+              <div className="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-slate-900/40 space-y-6">
                 
                 {/* Cabeçalho do Planejamento Selecionado */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-white/[0.06] pb-5 gap-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 dark:border-white/[0.06] pb-5 gap-4">
                   <div>
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border mb-2 ${
                       selectedPlan.aprovado 
@@ -512,9 +512,9 @@ export const Planejamentos = () => {
                       {selectedPlan.aprovado ? <Lock className="w-2.5 h-2.5" /> : <LockOpen className="w-2.5 h-2.5" />}
                       {selectedPlan.aprovado ? 'Aprovado (Bloqueado)' : 'Rascunho (Editável)'}
                     </span>
-                    <h2 className="text-base font-black text-white font-display">{selectedPlan.descricao}</h2>
+                    <h2 className="text-base font-black text-slate-900 dark:text-white font-display">{selectedPlan.descricao}</h2>
                     {selectedPlan.observacao && (
-                      <p className="text-[11px] text-slate-400 mt-1 max-w-xl">{selectedPlan.observacao}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 max-w-xl">{selectedPlan.observacao}</p>
                     )}
                   </div>
 
@@ -563,50 +563,50 @@ export const Planejamentos = () => {
                   </div>
 
                   {(!selectedPlan.ordens_servico || selectedPlan.ordens_servico.length === 0) ? (
-                    <div className="p-6 rounded-2xl border border-dashed border-white/5 bg-slate-950/15 text-center text-slate-500 text-xs">
+                    <div className="p-6 rounded-2xl border border-dashed border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950/15 text-center text-slate-600 dark:text-slate-400 text-xs">
                       Nenhuma ordem de serviço planejada adicionada a este orçamento.
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {selectedPlan.ordens_servico.map((os, idx) => (
-                        <div key={os.id || idx} className="rounded-xl border border-white/[0.04] bg-slate-950/30 p-4 space-y-3 text-left">
+                        <div key={os.id || idx} className="rounded-xl border border-slate-200 dark:border-white/[0.04] bg-slate-50 dark:bg-slate-950/30 p-4 space-y-3 text-left">
                           
-                          <div className="flex items-start justify-between border-b border-white/[0.04] pb-2.5">
+                          <div className="flex items-start justify-between border-b border-slate-200 dark:border-white/[0.04] pb-2.5">
                             <div>
-                              <h4 className="text-xs font-black text-white">{os.tipo_operacao_nome || `Operação #${os.tipo_operacao}`}</h4>
-                              <p className="text-[10px] text-slate-500 mt-0.5">
+                              <h4 className="text-xs font-black text-slate-900 dark:text-white">{os.tipo_operacao_nome || `Operação #${os.tipo_operacao}`}</h4>
+                              <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5">
                                 Janela: {new Date(os.data_inicio_planejada).toLocaleDateString('pt-BR')} até {new Date(os.data_fim_planejada).toLocaleDateString('pt-BR')}
                               </p>
                             </div>
                           </div>
 
                           {os.observacao && (
-                            <p className="text-[10px] text-slate-400 bg-slate-900/40 p-2 rounded-lg">{os.observacao}</p>
+                            <p className="text-[10px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/40 p-2 rounded-lg">{os.observacao}</p>
                           )}
 
                           {/* Talhões da OS */}
                           <div className="space-y-1">
-                            <span className="block text-[9px] font-black text-slate-500 uppercase">Talhões Alvo</span>
+                            <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Talhões Alvo</span>
                             <div className="flex flex-wrap gap-1.5">
                               {os.talhoes_detalhe?.map(t => (
-                                <span key={t.id} className="inline-flex rounded-lg bg-slate-900 border border-white/5 px-2 py-0.5 text-[9px] text-slate-300">
+                                <span key={t.id} className="inline-flex rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 px-2 py-0.5 text-[9px] text-slate-700 dark:text-slate-300">
                                   {t.codigo} - {t.nome} ({Number(t.area).toLocaleString('pt-BR')} ha)
                                 </span>
-                              )) || <span className="text-[10px] text-slate-600">Nenhum talhão selecionado</span>}
+                              )) || <span className="text-[10px] text-slate-600 dark:text-slate-400">Nenhum talhão selecionado</span>}
                             </div>
                           </div>
 
                           {/* Insumos Planejados */}
-                          <div className="space-y-1.5 border-t border-white/[0.02] pt-2">
-                            <span className="block text-[9px] font-black text-slate-500 uppercase">Insumos e Doses Planejadas</span>
+                          <div className="space-y-1.5 border-t border-slate-200 dark:border-white/[0.02] pt-2">
+                            <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Insumos e Doses Planejadas</span>
                             {((os.insumos_detalhe || os.insumos)?.length > 0) ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {(os.insumos_detalhe || os.insumos).map(ins => {
                                   const prodName = ins.produto_nome || ins.produto_detalhe?.nome_comercial || 'Insumo';
                                   const prodUnit = ins.produto_unidade || ins.produto_detalhe?.unidade_sigla || 'un';
                                   return (
-                                    <div key={ins.id} className="flex justify-between items-center rounded-lg bg-slate-900/60 p-2 border border-white/[0.02]">
-                                      <span className="text-[10px] text-white font-bold truncate max-w-[150px]">{prodName}</span>
+                                    <div key={ins.id} className="flex justify-between items-center rounded-lg bg-white dark:bg-slate-900/60 p-2 border border-slate-200 dark:border-white/[0.02]">
+                                      <span className="text-[10px] text-slate-900 dark:text-white font-bold truncate max-w-[150px]">{prodName}</span>
                                       <span className="text-[9px] text-emerald-400 font-mono">
                                         Dose: {Number(ins.dose_planejada).toLocaleString('pt-BR')} | Total: {Number(ins.quantidade_planejada).toLocaleString('pt-BR')} {prodUnit}
                                       </span>
@@ -615,7 +615,7 @@ export const Planejamentos = () => {
                                 })}
                               </div>
                             ) : (
-                              <span className="text-[10px] text-slate-600">Nenhum insumo planejado para esta operação</span>
+                              <span className="text-[10px] text-slate-600 dark:text-slate-400">Nenhum insumo planejado para esta operação</span>
                             )}
                           </div>
 
@@ -635,7 +635,7 @@ export const Planejamentos = () => {
       {/* MODAL: Novo Planejamento de Safra */}
       {showNewPlanModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 space-y-4 animate-in zoom-in duration-200">
+          <div className="app-modal-panel w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 space-y-4 animate-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
               <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
@@ -647,7 +647,7 @@ export const Planejamentos = () => {
             <form onSubmit={handleCreatePlanejamento} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
               <div className="md:col-span-2">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Descrição do Planejamento *</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Descrição do Planejamento *</span>
                   <input
                     type="text"
                     required
@@ -662,7 +662,7 @@ export const Planejamentos = () => {
 
               <div className="md:col-span-2">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Data do Planejamento *</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Data do Planejamento *</span>
                   <input
                     type="date"
                     required
@@ -676,7 +676,7 @@ export const Planejamentos = () => {
 
               <div className="md:col-span-2">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Observações / Notas</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Observações / Notas</span>
                   <textarea
                     placeholder="Notas adicionais sobre o orçamento e premissas da safra..."
                     value={newPlanForm.observacao}
@@ -705,7 +705,7 @@ export const Planejamentos = () => {
       {/* MODAL: Nova OS Planejada */}
       {showNewOSModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
+          <div className="app-modal-panel w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
               <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
@@ -718,7 +718,7 @@ export const Planejamentos = () => {
               
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Operação *</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Operação *</span>
                   <select
                     required
                     value={newOSForm.tipo_operacao}
@@ -735,7 +735,7 @@ export const Planejamentos = () => {
 
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1.5">
-                    <span className="block text-[10px] font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Início Planejado</span>
+                    <span className="block text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Início Planejado</span>
                     <input
                       type="date"
                       required
@@ -746,7 +746,7 @@ export const Planejamentos = () => {
                     />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="block text-[10px] font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Término Planejado</span>
+                    <span className="block text-[10px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Término Planejado</span>
                     <input
                       type="date"
                       required
@@ -761,7 +761,7 @@ export const Planejamentos = () => {
 
               {/* Seletor de Talhões */}
               <div className="md:col-span-2 space-y-2">
-                <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
+                <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
                 {talhoes.length === 0 ? (
                   <p className="text-xs text-slate-500">Nenhum talhão cadastrado para esta fazenda.</p>
                 ) : (
@@ -789,7 +789,7 @@ export const Planejamentos = () => {
 
               {/* Formulário Interno de Insumos */}
               <div className="md:col-span-2 space-y-3 border-t border-slate-100 dark:border-white/[0.06] pt-4">
-                <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Insumos Planejados</span>
+                <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Insumos Planejados</span>
                 
                 {/* Lista de insumos adicionados */}
                 {newOSForm.insumos_selecionados.length > 0 && (
@@ -815,7 +815,7 @@ export const Planejamentos = () => {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-55 dark:bg-slate-950/20 p-3 rounded-xl border border-slate-200 dark:border-white/[0.04]">
                   <div className="md:col-span-5 text-left">
                     <label className="block space-y-1">
-                      <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Escolher Produto</span>
+                      <span className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Escolher Produto</span>
                       <select
                         value={tempInsumo.produto_id}
                         onKeyDown={handleKeyDown}
@@ -831,7 +831,7 @@ export const Planejamentos = () => {
                   </div>
                   <div className="md:col-span-3 text-left">
                     <label className="block space-y-1">
-                      <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dose (ha/planta)</span>
+                      <span className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Dose (ha/planta)</span>
                       <input
                         type="number"
                         placeholder="Ex: 2.5"
@@ -844,7 +844,7 @@ export const Planejamentos = () => {
                   </div>
                   <div className="md:col-span-3 text-left">
                     <label className="block space-y-1">
-                      <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Qtd Total Planejada</span>
+                      <span className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Qtd Total Planejada</span>
                       <input
                         type="number"
                         placeholder="Ex: 500"
@@ -869,7 +869,7 @@ export const Planejamentos = () => {
 
               <div className="md:col-span-2 space-y-1.5 border-t border-slate-100 dark:border-white/[0.06] pt-4">
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-350 uppercase tracking-wider">Recomendações / Instruções Técnicas</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Recomendações / Instruções Técnicas</span>
                   <textarea
                     placeholder="Instruções para o operador no campo..."
                     value={newOSForm.observacao}

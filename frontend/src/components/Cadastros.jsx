@@ -354,7 +354,7 @@ const InputField = ({ label, value, onChange, type = 'text', required = false, p
 
   return (
     <label className="block space-y-1.5 text-left">
-      <span className="block text-xs font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+      <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
       <input
         type={type}
         value={formattedValue}
@@ -390,7 +390,7 @@ const InputField = ({ label, value, onChange, type = 'text', required = false, p
         }}
         placeholder={placeholder}
         {...props}
-        className={`w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white placeholder-slate-450 outline-none transition-all ${type === 'text' && !mask ? 'uppercase' : ''}`}
+        className={`w-full bg-white border border-slate-200 focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 placeholder-slate-450 outline-none transition-all ${type === 'text' && !mask ? 'uppercase' : ''}`}
       />
     </label>
   );
@@ -398,7 +398,7 @@ const InputField = ({ label, value, onChange, type = 'text', required = false, p
 
 const SelectField = ({ label, value, onChange, options, required = false, defaultOption = 'Selecione...' }) => (
   <label className="block space-y-1.5 text-left">
-    <span className="block text-xs font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
+    <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">{label}{required ? ' *' : ''}</span>
     <select
       value={value || ''}
       onChange={(event) => onChange(event.target.value)}
@@ -424,7 +424,7 @@ const SelectField = ({ label, value, onChange, options, required = false, defaul
           }
         }
       }}
-      className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none transition-all"
+      className="w-full bg-white border border-slate-200 focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 outline-none transition-all"
     >
       <option value="" className="bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500">{defaultOption}</option>
       {options.map((option) => (
@@ -2604,8 +2604,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 type="button"
                 onClick={() => setShowInactiveOnly(false)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${!showInactiveOnly
-                    ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                    ? 'active-filter-button bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm'
+                    : 'inactive-filter-button text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white'
                   }`}
               >
                 Ativos
@@ -2614,8 +2614,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 type="button"
                 onClick={() => setShowInactiveOnly(true)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${showInactiveOnly
-                    ? 'bg-white dark:bg-slate-800 text-rose-500 dark:text-rose-450 shadow-sm'
-                    : 'text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400'
+                    ? 'active-filter-button bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-200 shadow-sm'
+                    : 'inactive-filter-button text-slate-500 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-200'
                   }`}
               >
                 Inativos
@@ -2663,7 +2663,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
       {rentalToClose && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-modal-panel w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black text-slate-900 dark:text-white">Encerrar locação de máquina</h2>
@@ -2692,7 +2692,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 Ao confirmar, a locação será encerrada e uma única conta a pagar será criada com o valor e vencimento informados.
               </div>
               <div className="md:col-span-2 flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
-                <button type="button" onClick={() => setRentalToClose(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
+                <button type="button" onClick={() => setRentalToClose(null)} className="secondary-action-button rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
                 <button type="submit" disabled={saving} className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-black uppercase text-white hover:bg-emerald-500 disabled:opacity-50">{saving ? 'Encerrando...' : 'Encerrar e Gerar Conta'}</button>
               </div>
             </form>
@@ -2702,13 +2702,13 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
       {rentalToExtend && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+          <div className="app-modal-panel w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <h2 className="text-lg font-black text-slate-900 dark:text-white">Prorrogar locação</h2>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Prazo atual: {rentalToExtend.data_fim}</p>
             <form onSubmit={handleExtendRental} className="mt-5 space-y-4">
               <InputField required label="Nova Data de Término" type="date" value={rentalExtendDate} onChange={setRentalExtendDate} />
               <div className="flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
-                <button type="button" onClick={() => setRentalToExtend(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
+                <button type="button" onClick={() => setRentalToExtend(null)} className="secondary-action-button rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancelar</button>
                 <button type="submit" disabled={saving} className="rounded-xl bg-sky-600 px-5 py-2 text-xs font-black uppercase text-white hover:bg-sky-500 disabled:opacity-50">{saving ? 'Salvando...' : 'Prorrogar Prazo'}</button>
               </div>
             </form>
@@ -2719,7 +2719,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       {/* POPUP MODAL PARA CADASTRO / EDIÇÃO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className={`w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias' || activeTab === 'funcionarios' || activeTab === 'terceirizados' || activeTab === 'fornecedores' || activeTab === 'produtos' || activeTab === 'estoque') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
+          <div className={`app-modal-panel w-full ${(activeTab === 'proprietarios' || activeTab === 'fazendas' || activeTab === 'usuarios' || activeTab === 'talhoes' || activeTab === 'maquinas' || activeTab === 'referencias' || activeTab === 'turmas' || activeTab === 'locacoes_maquinas' || activeTab === 'transferencias' || activeTab === 'funcionarios' || activeTab === 'terceirizados' || activeTab === 'fornecedores' || activeTab === 'produtos' || activeTab === 'estoque') ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200`}>
 
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
@@ -2763,7 +2763,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                     setError('');
                     setSuccess('');
                   }}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold uppercase transition-all cursor-pointer"
+                  className="secondary-action-button flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold uppercase transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
