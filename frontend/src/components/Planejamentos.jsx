@@ -756,7 +756,7 @@ export const Planejamentos = () => {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
               <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
-                <span>Nova Atividade Planejada</span>
+                <span>Adicionar Atividade</span>
               </h3>
               <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
