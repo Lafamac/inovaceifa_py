@@ -631,7 +631,7 @@ export const Planejamentos = () => {
                                 )}
                                 {os.trator_codigo && (
                                   <div>
-                                    <span className="font-bold text-slate-500">Trator:</span> {os.trator_codigo}
+                                    <span className="font-bold text-slate-500">Máquina:</span> {os.trator_codigo}
                                   </div>
                                 )}
                                 {os.implemento_codigo && (
@@ -824,7 +824,7 @@ export const Planejamentos = () => {
                 </label>
 
                 <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Trator Planejado</span>
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Máquina Planejada</span>
                   <select
                     value={newOSForm.trator}
                     onKeyDown={handleKeyDown}
@@ -976,11 +976,18 @@ export const Planejamentos = () => {
                 </label>
               </div>
 
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setShowNewOSModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
                   {saving ? 'Salvando...' : 'Salvar Atividade'}
                 </button>
