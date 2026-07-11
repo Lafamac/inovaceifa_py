@@ -27,6 +27,7 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Adicionado suporte à definição de Operador (funcionário), Trator e Implemento planejados no Planejamento de Safra, com cópia automática para a OS real no momento da geração e sugestão automática no modal de Apontamento Operacional.
 - [x] Ajustada a cor da fonte do card de planejamento selecionado no dark mode, substituindo o branco forçado do título por tom Índigo menos brilhante e corrigindo também data, rodapé e ícone de expansão.
 - [x] Escurecidas as fontes das abas do módulo Financeiro (`Pedidos de Compra`, `Contas a Pagar`, `Pedidos de Venda`, `Contas a Receber`) no dark mode com classes dedicadas para estado ativo/inativo, reduzindo brilho excessivo mesmo com regras globais de texto.
 - [x] Escurecida levemente a tipografia do Header no dark mode, incluindo navegação principal, seletores de fazenda/safra e itens de perfil/mobile.

@@ -22,6 +22,9 @@ class OrdemServico(BaseModel):
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='APROVADA')
     observacao = models.TextField(null=True, blank=True)
     origem_planejada = models.ForeignKey('planejamento.OrdemServicoPlanejada', on_delete=models.SET_NULL, null=True, blank=True, related_name='execucoes')
+    funcionario_planejado = models.ForeignKey(Funcionario, null=True, blank=True, on_delete=models.SET_NULL, related_name='ordens_servico_plan')
+    trator_planejado = models.ForeignKey(Maquina, null=True, blank=True, on_delete=models.SET_NULL, related_name='ordens_servico_trator_plan')
+    implemento_planejado = models.ForeignKey(Maquina, null=True, blank=True, on_delete=models.SET_NULL, related_name='ordens_servico_implemento_plan')
 
     class Meta:
         verbose_name = "Ordem de Serviço"

@@ -1,7 +1,7 @@
 from django.db import models
 from core.models import BaseModel, Fazenda, Safra
 from referencias.models import TipoOperacao, GrupoTrabalhador, CriterioRateio, ContaGerencial
-from cadastros.models import Talhao, Produto
+from cadastros.models import Talhao, Produto, Funcionario, Maquina
 
 class PlanejamentoSafra(BaseModel):
     fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='planejamentos')
@@ -26,6 +26,9 @@ class OrdemServicoPlanejada(BaseModel):
     data_inicio_planejada = models.DateField()
     data_fim_planejada = models.DateField()
     observacao = models.TextField(null=True, blank=True)
+    funcionario = models.ForeignKey(Funcionario, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas')
+    trator = models.ForeignKey(Maquina, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas_trator')
+    implemento = models.ForeignKey(Maquina, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas_implemento')
 
     class Meta:
         verbose_name = "Ordem de Serviço Planejada"

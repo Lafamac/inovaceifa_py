@@ -38,13 +38,18 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
         child=serializers.IntegerField(), write_only=True, required=False
     )
     talhoes_detalhe = serializers.SerializerMethodField(read_only=True)
+    funcionario_nome = serializers.CharField(source='funcionario.nome', read_only=True)
+    trator_codigo = serializers.CharField(source='trator.codigo', read_only=True)
+    implemento_codigo = serializers.CharField(source='implemento.codigo', read_only=True)
 
     class Meta:
         model = OrdemServicoPlanejada
         fields = [
             'id', 'planejamento', 'tipo_operacao', 'data_inicio_planejada',
             'data_fim_planejada', 'observacao', 'insumos', 'parametros',
-            'mao_obra_terceiros', 'talhoes_ids', 'talhoes_detalhe'
+            'mao_obra_terceiros', 'talhoes_ids', 'talhoes_detalhe',
+            'funcionario', 'trator', 'implemento',
+            'funcionario_nome', 'trator_codigo', 'implemento_codigo'
         ]
 
     def get_talhoes_detalhe(self, obj):
@@ -63,7 +68,7 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
 
         os_planejada = OrdemServicoPlanejada.objects.create(**validated_data)
 
-        # 1. Vincular talhões
+        # 1. Vincular talões
         for t_id in talhoes_ids:
             try:
                 talhao = Talhao.objects.get(id=t_id, ativo=True)
@@ -107,6 +112,9 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
         instance.data_inicio_planejada = validated_data.get('data_inicio_planejada', instance.data_inicio_planejada)
         instance.data_fim_planejada = validated_data.get('data_fim_planejada', instance.data_fim_planejada)
         instance.observacao = validated_data.get('observacao', instance.observacao)
+        instance.funcionario = validated_data.get('funcionario', instance.funcionario)
+        instance.trator = validated_data.get('trator', instance.trator)
+        instance.implemento = validated_data.get('implemento', instance.implemento)
         instance.save()
 
         if talhoes_ids is not None:

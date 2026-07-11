@@ -47,6 +47,8 @@ export const Planejamentos = () => {
   const [tiposOperacao, setTiposOperacao] = useState([]);
   const [talhoes, setTalhoes] = useState([]);
   const [produtos, setProdutos] = useState([]);
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [maquinas, setMaquinas] = useState([]);
 
   // Formulário de Novo Planejamento
   const [showNewPlanModal, setShowNewPlanModal] = useState(false);
@@ -64,7 +66,10 @@ export const Planejamentos = () => {
     data_fim_planejada: new Date().toISOString().slice(0, 10),
     observacao: '',
     talhoes_selecionados: [],
-    insumos_selecionados: [] // array de { produto_id, dose_planejada, quantidade_planejada }
+    insumos_selecionados: [], // array de { produto_id, dose_planejada, quantidade_planejada }
+    funcionario: '',
+    trator: '',
+    implemento: ''
   });
 
   // Temporários para adicionar Insumo na OS
@@ -86,10 +91,12 @@ export const Planejamentos = () => {
 
   const loadReferences = useCallback(async () => {
     try {
-      const [resOps, resTalhoes, resProds] = await Promise.all([
+      const [resOps, resTalhoes, resProds, resFuncs, resMaqs] = await Promise.all([
         api.get('/api/ref/tipos-operacao/'),
         api.get('/api/talhoes/'),
-        api.get('/api/produtos/')
+        api.get('/api/produtos/'),
+        api.get('/api/funcionarios/'),
+        api.get('/api/maquinas/')
       ]);
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
@@ -99,6 +106,16 @@ export const Planejamentos = () => {
       setTalhoes(currentTalhoes);
       
       setProdutos(resProds.data?.results || resProds.data || []);
+
+      // Filtrar funcionários da fazenda ativa
+      const allFuncs = resFuncs.data?.results || resFuncs.data || [];
+      const currentFuncs = allFuncs.filter(f => f.fazenda_id === fazendaAtiva?.id || f.fazenda === fazendaAtiva?.id);
+      setFuncionarios(currentFuncs);
+
+      // Filtrar máquinas da fazenda ativa
+      const allMaqs = resMaqs.data?.results || resMaqs.data || [];
+      const currentMaqs = allMaqs.filter(m => m.fazenda_id === fazendaAtiva?.id || m.fazenda === fazendaAtiva?.id);
+      setMaquinas(currentMaqs);
     } catch (err) {
       console.error("Erro ao carregar referências", err);
     }
@@ -245,6 +262,9 @@ export const Planejamentos = () => {
         data_fim_planejada: newOSForm.data_fim_planejada,
         observacao: newOSForm.observacao,
         talhoes_ids: newOSForm.talhoes_selecionados.map(Number),
+        funcionario: newOSForm.funcionario ? Number(newOSForm.funcionario) : null,
+        trator: newOSForm.trator ? Number(newOSForm.trator) : null,
+        implemento: newOSForm.implemento ? Number(newOSForm.implemento) : null,
         insumos: newOSForm.insumos_selecionados.map(ins => ({
           produto: Number(ins.produto_id),
           dose_planejada: Number(ins.dose_planejada),
@@ -261,7 +281,10 @@ export const Planejamentos = () => {
         data_fim_planejada: new Date().toISOString().slice(0, 10),
         observacao: '',
         talhoes_selecionados: [],
-        insumos_selecionados: []
+        insumos_selecionados: [],
+        funcionario: '',
+        trator: '',
+        implemento: ''
       });
       const list = await fetchPlanejamentos();
       const atualizado = list.find(p => p.id === selectedPlan.id);
@@ -596,6 +619,30 @@ export const Planejamentos = () => {
                             </div>
                           </div>
 
+                          {/* Recursos Planejados */}
+                          {(os.funcionario_nome || os.trator_codigo || os.implemento_codigo) && (
+                            <div className="space-y-1 border-t border-slate-200 dark:border-white/[0.02] pt-2">
+                              <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Recursos Planejados</span>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-700 dark:text-slate-300">
+                                {os.funcionario_nome && (
+                                  <div>
+                                    <span className="font-bold text-slate-500">Operador:</span> {os.funcionario_nome}
+                                  </div>
+                                )}
+                                {os.trator_codigo && (
+                                  <div>
+                                    <span className="font-bold text-slate-500">Trator:</span> {os.trator_codigo}
+                                  </div>
+                                )}
+                                {os.implemento_codigo && (
+                                  <div>
+                                    <span className="font-bold text-slate-500">Implemento:</span> {os.implemento_codigo}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Insumos Planejados */}
                           <div className="space-y-1.5 border-t border-slate-200 dark:border-white/[0.02] pt-2">
                             <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Insumos e Doses Planejadas</span>
@@ -757,6 +804,54 @@ export const Planejamentos = () => {
                     />
                   </label>
                 </div>
+              </div>
+
+              {/* Operador e Máquinas Planejadas */}
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 dark:border-white/[0.06] pt-4">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Operador Planejado</span>
+                  <select
+                    value={newOSForm.funcionario}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, funcionario: e.target.value }))}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
+                  >
+                    <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
+                    {funcionarios.map(f => (
+                      <option key={f.id} value={f.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{f.nome} ({f.cargo || 'Campo'})</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Trator Planejado</span>
+                  <select
+                    value={newOSForm.trator}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, trator: e.target.value }))}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
+                  >
+                    <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
+                    {maquinas.filter(m => m.tipo_nome?.toLowerCase().includes('trator')).map(m => (
+                      <option key={m.id} value={m.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{m.codigo} - {m.descricao}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Implemento Planejado</span>
+                  <select
+                    value={newOSForm.implemento}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, implemento: e.target.value }))}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
+                  >
+                    <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
+                    {maquinas.filter(m => !m.tipo_nome?.toLowerCase().includes('trator')).map(m => (
+                      <option key={m.id} value={m.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{m.codigo} - {m.descricao}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
 
               {/* Seletor de Talhões */}

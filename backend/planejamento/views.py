@@ -132,7 +132,10 @@ class PlanejamentoSafraViewSet(BaseTenantPlanejamentoViewSet):
                 data_fim_planejada=os_plan.data_fim_planejada,
                 status='APROVADA',
                 observacao=os_plan.observacao,
-                origem_planejada=os_plan
+                origem_planejada=os_plan,
+                funcionario_planejado=os_plan.funcionario,
+                trator_planejado=os_plan.trator,
+                implemento_planejado=os_plan.implemento
             )
 
             for pt in os_plan.talhoes.filter(ativo=True):

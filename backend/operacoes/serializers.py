@@ -77,6 +77,9 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
         child=serializers.IntegerField(), write_only=True, required=False
     )
     talhoes_detalhe = serializers.SerializerMethodField(read_only=True)
+    funcionario_planejado_nome = serializers.CharField(source='funcionario_planejado.nome', read_only=True)
+    trator_planejado_codigo = serializers.CharField(source='trator_planejado.codigo', read_only=True)
+    implemento_planejado_codigo = serializers.CharField(source='implemento_planejado.codigo', read_only=True)
 
     class Meta:
         model = OrdemServico
@@ -85,6 +88,8 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
             'data_fim_real', 'data_inicio_planejada', 'data_fim_planejada',
             'status', 'observacao', 'origem_planejada', 'talhoes', 'insumos',
             'apontamentos', 'auditorias', 'talhoes_ids', 'talhoes_detalhe',
+            'funcionario_planejado', 'trator_planejado', 'implemento_planejado',
+            'funcionario_planejado_nome', 'trator_planejado_codigo', 'implemento_planejado_codigo',
             'ativo', 'created_at', 'updated_at'
         ]
 

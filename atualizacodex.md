@@ -64,10 +64,24 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 - Movemos as abas **Funcionários**, **Terceirizados** e **Turmas** do grupo "Financeiro & RH" para o grupo **Cadastros**.
 - O grupo "Financeiro & RH" foi renomeado para **Financeiro**, com sua descrição de apoio alterada para **"Vendas e contas"**, focando estritamente em operações comerciais e financeiras (**Pedidos de Venda**, **Contas a Pagar** e **Contas a Receber**).
 
+### 🚜 Recursos Planejados no Planejamento e OSs Reais
+
+#### 1. Backend (Models e Serializers)
+- Adicionados os campos `funcionario`, `trator` e `implemento` (ForeignKeys opcionais) no modelo `OrdemServicoPlanejada`.
+- Adicionados os campos `funcionario_planejado`, `trator_planejado` e `implemento_planejado` (ForeignKeys opcionais) no modelo `OrdemServico` (OS Real).
+- Atualizado o serializer `OrdemServicoPlanejadaSerializer` e `OrdemServicoSerializer` para incluir estes novos campos, além de representações somente leitura (`funcionario_nome`/`funcionario_planejado_nome`, `trator_codigo`/`trator_planejado_codigo` e `implemento_codigo`/`implemento_planejado_codigo`).
+- Atualizada a action `gerar_ordens_servico` para copiar os recursos indicados no planejamento diretamente para a OS Real no momento de sua criação.
+
+#### 2. Frontend (Planejamentos e Apontamentos)
+- No componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), adicionados campos de seleção para Operador, Trator e Implemento no modal **Nova Atividade Planejada**.
+- No mesmo arquivo, as listagens de funcionários e máquinas são buscadas e filtradas dinamicamente pela fazenda ativa atual.
+- O card de detalhes de atividades planejadas agora exibe visualmente os recursos predefinidos para a operação.
+- No componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), a abertura do modal de Apontamento Operacional foi interceptada por meio da nova função helper `handleOpenAptModal`, pré-carregando automaticamente os operadores e máquinas predefinidos no formulário temporário de apontamento real.
+
 ### 📝 Documentação
 
 - Atualizado o histórico de tarefas recentes no arquivo [agents.md](file:///c:/workspace/inovaceifa/agents.md) registrando a conclusão destas melhorias.
-- Atualizado este arquivo [atualizacodex.md](file:///c:/workspace/inovaceifa/atualizacodex.md) com as correções de contraste do dark mode em cadastros e planejamento.
+- Atualizado este arquivo [atualizacodex.md](file:///c:/workspace/inovaceifa/atualizacodex.md) com a documentação do recurso planejado.
 
 ## Validação
 

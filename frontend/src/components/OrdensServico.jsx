@@ -379,6 +379,43 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
     }
   };
 
+  const handleOpenAptModal = (os) => {
+    const initialMaquinas = [];
+    const initialFuncionarios = [];
+    
+    if (os.trator_planejado) {
+      initialMaquinas.push({
+        maquina_id: os.trator_planejado,
+        horimetro_inicial: '',
+        horimetro_final: ''
+      });
+    }
+    if (os.implemento_planejado) {
+      initialMaquinas.push({
+        maquina_id: os.implemento_planejado,
+        horimetro_inicial: '',
+        horimetro_final: ''
+      });
+    }
+    if (os.funcionario_planejado) {
+      initialFuncionarios.push({
+        funcionario_id: os.funcionario_planejado,
+        horas_trabalhadas: ''
+      });
+    }
+
+    setAptForm({
+      data_apontamento: new Date().toISOString().slice(0, 10),
+      clima: 'Bom',
+      observacao: '',
+      maquinas: initialMaquinas,
+      funcionarios: initialFuncionarios,
+      insumos: [],
+      turmas: []
+    });
+    setShowAptModal(true);
+  };
+
   const handleSaveApontamentos = async (e) => {
     e.preventDefault();
 
@@ -1225,7 +1262,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                     {selectedOS.status === 'EM_EXECUCAO' && (
                       <>
                         <button
-                          onClick={() => setShowAptModal(true)}
+                          onClick={() => handleOpenAptModal(selectedOS)}
                           className="flex items-center gap-1.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 font-bold px-3 py-2 text-[10px] uppercase tracking-wider cursor-pointer"
                         >
                           <Plus className="w-3.5 h-3.5 text-emerald-400" />
