@@ -563,67 +563,7 @@ body .dark .app-modal-panel textarea {
   color: #94a3b8 !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  .app-modal-panel {
-    background: #111827 !important;
-    border-color: #475569 !important;
-    color: #f8fafc !important;
-    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.7);
-  }
 
-  .app-modal-panel h1,
-  .app-modal-panel h2,
-  .app-modal-panel h3,
-  .app-modal-panel label,
-  .app-modal-panel label > span,
-  .app-modal-panel .modal-form-label {
-    color: #ffffff !important;
-  }
-
-  .app-modal-panel input,
-  .app-modal-panel select,
-  .app-modal-panel textarea {
-    background: #f8fafc !important;
-    border-color: #94a3b8 !important;
-    color: #0f172a !important;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  body .app-modal-panel input,
-  body .app-modal-panel select,
-  body .app-modal-panel textarea {
-    background: #f8fafc !important;
-    border-color: #94a3b8 !important;
-    color: #0f172a !important;
-  }
-
-  .app-modal-panel input::placeholder,
-  .app-modal-panel textarea::placeholder {
-    color: #64748b !important;
-  }
-
-  .app-modal-panel input:focus,
-  .app-modal-panel select:focus,
-  .app-modal-panel textarea:focus {
-    border-color: #10b981 !important;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35) !important;
-  }
-
-  .app-modal-panel select option {
-    background: #f8fafc !important;
-    color: #0f172a !important;
-  }
-
-  .app-modal-panel .secondary-action-button {
-    background: #1f2937 !important;
-    border-color: #64748b !important;
-    color: #f8fafc !important;
-  }
-
-  .app-modal-panel .secondary-action-button:hover {
-    background: #334155 !important;
-  }
-}
 
 .cadastros-page aside button:not(:disabled):hover {
   background: #f1f5f9 !important;
