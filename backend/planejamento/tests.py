@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from core.models import Fazenda, Safra, Proprietario
 from referencias.models import TipoOperacao, GrupoTrabalhador
 from accounts.models import Perfil
-from cadastros.models import Talhao, Produto
+from cadastros.models import Talhao, Produto, Terceirizado, TurmaTerceirizada
 from planejamento.models import PlanejamentoSafra, OrdemServicoPlanejada, ItemInsumoOSPlanejado, OrdemServicoPlanejadaTalhao
 from operacoes.models import OrdemServico
 
@@ -68,6 +68,16 @@ class PlanejamentoAPITests(APITestCase):
         # 5. Tipo Operação
         self.tipo_operacao = TipoOperacao.objects.create(
             nome="Adubação Foliar"
+        )
+
+        # 6. Terceirizado
+        self.terceirizado = Terceirizado.objects.create(
+            fazenda=self.fazenda, nome="Terceirizado Teste", documento="12345678901", cargo="Panha"
+        )
+
+        # 7. TurmaTerceirizada
+        self.turma_terceirizada = TurmaTerceirizada.objects.create(
+            fazenda=self.fazenda, nome="Turma Teste", responsavel="Líder", qtd_pessoas=15
         )
 
         # URLs
@@ -179,7 +189,9 @@ class PlanejamentoAPITests(APITestCase):
         )
         os_plan = OrdemServicoPlanejada.objects.create(
             planejamento=planejamento, tipo_operacao=self.tipo_operacao,
-            data_inicio_planejada="2026-05-20", data_fim_planejada="2026-05-22"
+            data_inicio_planejada="2026-05-20", data_fim_planejada="2026-05-22",
+            terceirizado=self.terceirizado, usar_turma=True,
+            valor_planejado_turma=1500.00
         )
         OrdemServicoPlanejadaTalhao.objects.create(ordem_servico_planejada=os_plan, talhao=self.talhao1)
         ItemInsumoOSPlanejado.objects.create(
@@ -202,6 +214,9 @@ class PlanejamentoAPITests(APITestCase):
         os_real = OrdemServico.objects.first()
         self.assertEqual(os_real.status, 'APROVADA')
         self.assertEqual(os_real.origem_planejada, os_plan)
+        self.assertEqual(os_real.terceirizado_planejado, self.terceirizado)
+        self.assertTrue(os_real.usar_turma)
+        self.assertEqual(float(os_real.valor_planejado_turma), 1500.00)
         
         self.assertEqual(os_real.talhoes.count(), 1)
         self.assertEqual(os_real.talhoes.first().talhao, self.talhao1)
@@ -210,3 +225,24 @@ class PlanejamentoAPITests(APITestCase):
         insumo_real = os_real.insumos.first()
         self.assertEqual(float(insumo_real.dose_planejada), 2.5)
         self.assertEqual(float(insumo_real.quantidade_planejada), 25.0)
+
+    def test_planned_end_date_cannot_be_before_start_date(self):
+        planejamento = PlanejamentoSafra.objects.create(
+            fazenda=self.fazenda, safra=self.safra,
+            descricao="Plan Date Test", data_planejamento="2026-05-19"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        self.client.credentials(HTTP_X_SAFRA_ID=str(self.safra.id), HTTP_X_FAZENDA_ID=str(self.fazenda.id))
+
+        os_data = {
+            "planejamento": planejamento.id,
+            "tipo_operacao": self.tipo_operacao.id,
+            "data_inicio_planejada": "2026-05-22",
+            "data_fim_planejada": "2026-05-20",  # Invalid: end < start
+            "talhoes_ids": [self.talhao1.id]
+        }
+        os_url = reverse('planejamento-os-list')
+        response = self.client.post(os_url, os_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("término planejado não pode ser menor", str(response.data))
+

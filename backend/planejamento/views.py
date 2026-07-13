@@ -135,7 +135,11 @@ class PlanejamentoSafraViewSet(BaseTenantPlanejamentoViewSet):
                 origem_planejada=os_plan,
                 funcionario_planejado=os_plan.funcionario,
                 trator_planejado=os_plan.trator,
-                implemento_planejado=os_plan.implemento
+                implemento_planejado=os_plan.implemento,
+                terceirizado_planejado=os_plan.terceirizado,
+                turma_planejada=os_plan.turma,
+                valor_planejado_turma=os_plan.valor_planejado_turma,
+                usar_turma=os_plan.usar_turma
             )
 
             for pt in os_plan.talhoes.filter(ativo=True):

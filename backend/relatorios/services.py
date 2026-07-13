@@ -236,6 +236,7 @@ def comparativo_safra(fazenda):
                 | Q(descricao__icontains="terceiro")
                 | Q(descricao__icontains="servico")
                 | Q(descricao__icontains="serviço")
+                | Q(descricao__icontains="turma")
             ),
             "valor",
         )
@@ -255,6 +256,12 @@ def comparativo_safra(fazenda):
                     ativo=True,
                 ),
                 "valor_planejado",
+            ) + decimal_sum(
+                OrdemServicoPlanejada.objects.filter(
+                    planejamento=planejamento,
+                    ativo=True
+                ),
+                "valor_planejado_turma"
             )
             plan_outros = decimal_sum(
                 PlanejamentoRateio.objects.filter(planejamento=planejamento, ativo=True),

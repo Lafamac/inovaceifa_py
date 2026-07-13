@@ -16,6 +16,23 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 - Foi criada a classe `app-modal-panel` e aplicada aos modais de Cadastros, Planejamento e Locação para padronizar fundo, borda, sombra, labels, campos e botões secundários em formulários densos.
 - A correção foi validada visualmente no modal **Novo Registro de Proprietários** em dark mode, confirmando campos claros, labels legíveis e contraste real entre modal e inputs.
 
+#### 11. Validação de Datas do Planejamento e Ordens de Serviço
+- No formulário de **Adicionar Atividade** (Nova OS Planejada) no componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), adicionamos uma validação no frontend para impedir que a data de "Término Planejado" seja menor que a data de "Início Planejado".
+- No formulário de **Criar OS Real** no componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), adicionamos a mesma validação para a janela técnica planejada.
+- No backend, no serializer [OrdemServicoPlanejadaSerializer](file:///c:/workspace/inovaceifa/backend/planejamento/serializers.py), implementamos o método `validate` para rejeitar requisições cuja data de término seja menor que a data de início planejado.
+- No backend, no serializer [OrdemServicoSerializer](file:///c:/workspace/inovaceifa/backend/operacoes/serializers.py), estendemos o método `validate` para rejeitar termos de data menores que o início, tanto para a janela técnica planejada quanto para a execução real.
+- Adicionamos um teste de integração automatizado (`test_planned_end_date_cannot_be_before_start_date`) em [tests.py](file:///c:/workspace/inovaceifa/backend/planejamento/tests.py) para certificar a consistência dessa regra de validação do backend.
+
+#### 12. Planejamento de Terceirizados e Turmas (Panha de Café)
+- Adicionados os campos `terceirizado` (Foreign Key para `Terceirizado`) e `usar_turma` (BooleanField) no modelo de backend [OrdemServicoPlanejada](file:///c:/workspace/inovaceifa/backend/planejamento/models.py). O campo `turma` (ForeignKey) continua existindo de forma opcional, mas no fluxo padrão do planejamento especificamos apenas se usaremos ou não turma (via flag booleana) e qual o orçamento previsto.
+- Adicionados os campos `terceirizado_planejado`, `usar_turma` (BooleanField) e `valor_planejado_turma` (DecimalField) no modelo de backend [OrdemServico](file:///c:/workspace/inovaceifa/backend/operacoes/models.py) para registrar o orçamento orçado de mão de obra de colheita.
+- Atualizados os serializers de backend [OrdemServicoPlanejadaSerializer](file:///c:/workspace/inovaceifa/backend/planejamento/serializers.py) e [OrdemServicoSerializer](file:///c:/workspace/inovaceifa/backend/operacoes/serializers.py) para incluir essas novas flags e orçamentos.
+- Atualizada a action `gerar_ordens_servico` em [views.py](file:///c:/workspace/inovaceifa/backend/planejamento/views.py) para copiar automaticamente a flag `usar_turma` e o `valor_planejado_turma` da atividade planejada para a OS real correspondente.
+- Atualizado o frontend no componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx): o modal de **Adicionar Atividade** foi modificado para substituir o dropdown de turmas por uma opção Sim/Não **"Usar Turma para Panha (Colheita)"**, habilitando a digitação do valor planejado caso ativado. O card de detalhamento exibe a label **Turma (Panha): Sim** com o respectivo valor orçado.
+- Atualizado o frontend no componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx): exibe os presets de operador, máquina, implemento, terceirizado e turma planejada com seu valor histórico de panha. O preenchimento da turma executora no apontamento operacional permanece manual a partir do cadastro de turmas no momento em que a OS é executada.
+- Estendidos os testes automatizados do backend em [tests.py](file:///c:/workspace/inovaceifa/backend/planejamento/tests.py) para validar a persistência e cópia correta de `usar_turma` e `valor_planejado_turma`.
+
+
 #### 9. Correção Visual do Planejamento Selecionado
 - No componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), o card selecionado na coluna esquerda deixou de usar contraste fraco e passou a usar destaque Índigo suave, com texto, data e rodapé ajustados para tema claro e escuro.
 - O painel de detalhes do planejamento selecionado foi revisado para usar fundos, bordas e textos adaptativos em tema claro e escuro, incluindo cabeçalho, observações, atividades planejadas, talhões e insumos.

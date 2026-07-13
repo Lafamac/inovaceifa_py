@@ -49,6 +49,8 @@ export const Planejamentos = () => {
   const [produtos, setProdutos] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
+  const [terceirizados, setTerceirizados] = useState([]);
+  const [turmas, setTurmas] = useState([]);
 
   // Formulário de Novo Planejamento
   const [showNewPlanModal, setShowNewPlanModal] = useState(false);
@@ -69,7 +71,10 @@ export const Planejamentos = () => {
     insumos_selecionados: [], // array de { produto_id, dose_planejada, quantidade_planejada }
     funcionario: '',
     trator: '',
-    implemento: ''
+    implemento: '',
+    terceirizado: '',
+    usar_turma: false,
+    valor_planejado_turma: ''
   });
 
   // Temporários para adicionar Insumo na OS
@@ -91,16 +96,18 @@ export const Planejamentos = () => {
 
   const loadReferences = useCallback(async () => {
     try {
-      const [resOps, resTalhoes, resProds, resFuncs, resMaqs] = await Promise.all([
+      const [resOps, resTalhoes, resProds, resFuncs, resMaqs, resTerceirizados, resTurmas] = await Promise.all([
         api.get('/api/ref/tipos-operacao/'),
         api.get('/api/talhoes/'),
         api.get('/api/produtos/'),
         api.get('/api/funcionarios/'),
-        api.get('/api/maquinas/')
+        api.get('/api/maquinas/'),
+        api.get('/api/terceirizados/'),
+        api.get('/api/turmas-terceirizadas/')
       ]);
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
-      // Filtrar talhões da fazenda ativa
+      // Filtrar talões da fazenda ativa
       const allTalhoes = resTalhoes.data?.results || resTalhoes.data || [];
       const currentTalhoes = allTalhoes.filter(t => t.fazenda_id === fazendaAtiva?.id || t.fazenda === fazendaAtiva?.id);
       setTalhoes(currentTalhoes);
@@ -116,6 +123,16 @@ export const Planejamentos = () => {
       const allMaqs = resMaqs.data?.results || resMaqs.data || [];
       const currentMaqs = allMaqs.filter(m => m.fazenda_id === fazendaAtiva?.id || m.fazenda === fazendaAtiva?.id);
       setMaquinas(currentMaqs);
+
+      // Filtrar terceirizados da fazenda ativa
+      const allTerceirizados = resTerceirizados.data?.results || resTerceirizados.data || [];
+      const currentTerceirizados = allTerceirizados.filter(t => t.fazenda_id === fazendaAtiva?.id || t.fazenda === fazendaAtiva?.id);
+      setTerceirizados(currentTerceirizados);
+
+      // Filtrar turmas da fazenda ativa
+      const allTurmas = resTurmas.data?.results || resTurmas.data || [];
+      const currentTurmas = allTurmas.filter(t => t.fazenda_id === fazendaAtiva?.id || t.fazenda === fazendaAtiva?.id);
+      setTurmas(currentTurmas);
     } catch (err) {
       console.error("Erro ao carregar referências", err);
     }
@@ -251,6 +268,10 @@ export const Planejamentos = () => {
       showAlert('error', 'Selecione ao menos um talhão.');
       return;
     }
+    if (newOSForm.data_fim_planejada && newOSForm.data_inicio_planejada && newOSForm.data_fim_planejada < newOSForm.data_inicio_planejada) {
+      showAlert('error', 'A data do Término Planejado não pode ser menor que a data de Início Planejado.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -265,6 +286,10 @@ export const Planejamentos = () => {
         funcionario: newOSForm.funcionario ? Number(newOSForm.funcionario) : null,
         trator: newOSForm.trator ? Number(newOSForm.trator) : null,
         implemento: newOSForm.implemento ? Number(newOSForm.implemento) : null,
+        terceirizado: newOSForm.terceirizado ? Number(newOSForm.terceirizado) : null,
+        turma: null,
+        usar_turma: !!newOSForm.usar_turma,
+        valor_planejado_turma: newOSForm.usar_turma && newOSForm.valor_planejado_turma ? Number(newOSForm.valor_planejado_turma) : null,
         insumos: newOSForm.insumos_selecionados.map(ins => ({
           produto: Number(ins.produto_id),
           dose_planejada: Number(ins.dose_planejada),
@@ -284,7 +309,10 @@ export const Planejamentos = () => {
         insumos_selecionados: [],
         funcionario: '',
         trator: '',
-        implemento: ''
+        implemento: '',
+        terceirizado: '',
+        usar_turma: false,
+        valor_planejado_turma: ''
       });
       const list = await fetchPlanejamentos();
       const atualizado = list.find(p => p.id === selectedPlan.id);
@@ -619,8 +647,8 @@ export const Planejamentos = () => {
                             </div>
                           </div>
 
-                          {/* Recursos Planejados */}
-                          {(os.funcionario_nome || os.trator_codigo || os.implemento_codigo) && (
+                           {/* Recursos Planejados */}
+                          {(os.funcionario_nome || os.trator_codigo || os.implemento_codigo || os.terceirizado_nome || os.usar_turma) && (
                             <div className="space-y-1 border-t border-slate-200 dark:border-white/[0.02] pt-2">
                               <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Recursos Planejados</span>
                               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-700 dark:text-slate-300">
@@ -637,6 +665,17 @@ export const Planejamentos = () => {
                                 {os.implemento_codigo && (
                                   <div>
                                     <span className="font-bold text-slate-500">Implemento:</span> {os.implemento_codigo}
+                                  </div>
+                                )}
+                                {os.terceirizado_nome && (
+                                  <div>
+                                    <span className="font-bold text-slate-500">Terceirizado:</span> {os.terceirizado_nome}
+                                  </div>
+                                )}
+                                {os.usar_turma && (
+                                  <div>
+                                    <span className="font-bold text-slate-500">Turma (Panha):</span> Sim
+                                    {os.valor_planejado_turma && ` (Plan: R$ ${Number(os.valor_planejado_turma).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                                   </div>
                                 )}
                               </div>
@@ -851,6 +890,52 @@ export const Planejamentos = () => {
                       <option key={m.id} value={m.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{m.codigo} - {m.descricao}</option>
                     ))}
                   </select>
+                </label>
+              </div>
+
+              {/* Terceirizados e Turmas Planejadas */}
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 dark:border-white/[0.06] pt-4">
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Terceirizado Planejado</span>
+                  <select
+                    value={newOSForm.terceirizado}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, terceirizado: e.target.value }))}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
+                  >
+                    <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
+                    {terceirizados.map(t => (
+                      <option key={t.id} value={t.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{t.nome} ({t.cargo || 'Terceirizado'})</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Usar Turma para Panha (Colheita)</span>
+                  <select
+                    value={newOSForm.usar_turma ? 'sim' : 'nao'}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, usar_turma: e.target.value === 'sim' }))}
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
+                  >
+                    <option value="nao" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Não</option>
+                    <option value="sim" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Sim</option>
+                  </select>
+                </label>
+
+                <label className="block space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Valor Planejado da Turma (R$)</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    disabled={!newOSForm.usar_turma}
+                    value={newOSForm.valor_planejado_turma}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setNewOSForm(prev => ({ ...prev, valor_planejado_turma: e.target.value }))}
+                    className="w-full bg-white dark:bg-slate-950/50 disabled:bg-slate-100 dark:disabled:bg-slate-950/20 disabled:opacity-50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
+                  />
                 </label>
               </div>
 

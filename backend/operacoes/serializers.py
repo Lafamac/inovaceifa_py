@@ -80,6 +80,8 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
     funcionario_planejado_nome = serializers.CharField(source='funcionario_planejado.nome', read_only=True)
     trator_planejado_codigo = serializers.CharField(source='trator_planejado.codigo', read_only=True)
     implemento_planejado_codigo = serializers.CharField(source='implemento_planejado.codigo', read_only=True)
+    terceirizado_planejado_nome = serializers.CharField(source='terceirizado_planejado.nome', read_only=True)
+    turma_planejada_nome = serializers.CharField(source='turma_planejada.nome', read_only=True)
 
     class Meta:
         model = OrdemServico
@@ -89,8 +91,10 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
             'status', 'observacao', 'origem_planejada', 'talhoes', 'insumos',
             'apontamentos', 'auditorias', 'talhoes_ids', 'talhoes_detalhe',
             'funcionario_planejado', 'trator_planejado', 'implemento_planejado',
+            'terceirizado_planejado', 'turma_planejada',
             'funcionario_planejado_nome', 'trator_planejado_codigo', 'implemento_planejado_codigo',
-            'ativo', 'created_at', 'updated_at'
+            'terceirizado_planejado_nome', 'turma_planejada_nome',
+            'valor_planejado_turma', 'usar_turma', 'ativo', 'created_at', 'updated_at'
         ]
 
     def get_talhoes_detalhe(self, obj):
@@ -131,6 +135,42 @@ class OrdemServicoSerializer(serializers.ModelSerializer):
                 except Talhao.DoesNotExist:
                     pass
         return instance
+
+    def validate(self, attrs):
+        data_inicio_plan = attrs.get('data_inicio_planejada')
+        data_fim_plan = attrs.get('data_fim_planejada')
+        
+        if data_inicio_plan is None and self.instance:
+            data_inicio_plan = self.instance.data_inicio_planejada
+        if data_fim_plan is None and self.instance:
+            data_fim_plan = self.instance.data_fim_planejada
+
+        if data_inicio_plan and data_fim_plan and data_fim_plan < data_inicio_plan:
+            raise serializers.ValidationError({
+                "data_fim_planejada": "A data do término planejado não pode ser menor que a data do início planejado."
+            })
+
+        data_inicio_real = attrs.get('data_inicio_real')
+        data_fim_real = attrs.get('data_fim_real')
+
+        if data_inicio_real is None and self.instance:
+            data_inicio_real = self.instance.data_inicio_real
+        if data_fim_real is None and self.instance:
+            data_fim_real = self.instance.data_fim_real
+
+        if data_inicio_real and data_fim_real and data_fim_real < data_inicio_real:
+            raise serializers.ValidationError({
+                "data_fim_real": "A data do término real não pode ser menor que a data de início real."
+            })
+
+        valor_turma = attrs.get('valor_planejado_turma')
+        if valor_turma is not None and valor_turma < 0:
+            raise serializers.ValidationError({
+                "valor_planejado_turma": "O valor planejado para a turma não pode ser negativo."
+            })
+
+        return attrs
+
 
 
 class RateioTalhaoSerializer(serializers.ModelSerializer):

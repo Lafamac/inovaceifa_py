@@ -27,6 +27,8 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Adicionado suporte ao planejamento de Terceirizados e Turmas (Panha) na Atividade Planejada (com valor planejado de colheita para as turmas via flag booleana, sem seleção prévia da turma), mapeamento automático para a OS real e consolidação no Comparativo de Safra.
+- [x] Adicionada regra de validação de datas no Planejamento e Ordens de Serviço: a data do término (planejado ou real) não pode ser menor que a correspondente data de início.
 - [x] Adicionado suporte à definição de Operador (funcionário), Trator e Implemento planejados no Planejamento de Safra, com cópia automática para a OS real no momento da geração e sugestão automática no modal de Apontamento Operacional.
 - [x] Ajustada a cor da fonte do card de planejamento selecionado no dark mode, substituindo o branco forçado do título por tom Índigo menos brilhante e corrigindo também data, rodapé e ícone de expansão.
 - [x] Escurecidas as fontes das abas do módulo Financeiro (`Pedidos de Compra`, `Contas a Pagar`, `Pedidos de Venda`, `Contas a Receber`) no dark mode com classes dedicadas para estado ativo/inativo, reduzindo brilho excessivo mesmo com regras globais de texto.

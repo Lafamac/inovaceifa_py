@@ -1,7 +1,7 @@
 from django.db import models
 from core.models import BaseModel, Fazenda, Safra
 from referencias.models import TipoOperacao, GrupoTrabalhador, CriterioRateio, ContaGerencial
-from cadastros.models import Talhao, Produto, Funcionario, Maquina
+from cadastros.models import Talhao, Produto, Funcionario, Maquina, Terceirizado, TurmaTerceirizada
 
 class PlanejamentoSafra(BaseModel):
     fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='planejamentos')
@@ -29,6 +29,10 @@ class OrdemServicoPlanejada(BaseModel):
     funcionario = models.ForeignKey(Funcionario, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas')
     trator = models.ForeignKey(Maquina, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas_trator')
     implemento = models.ForeignKey(Maquina, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas_implemento')
+    terceirizado = models.ForeignKey(Terceirizado, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas')
+    turma = models.ForeignKey(TurmaTerceirizada, null=True, blank=True, on_delete=models.SET_NULL, related_name='os_planejadas')
+    valor_planejado_turma = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Valor Planejado da Turma")
+    usar_turma = models.BooleanField(default=False, verbose_name="Usar Turma")
 
     class Meta:
         verbose_name = "Ordem de Serviço Planejada"

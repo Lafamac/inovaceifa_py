@@ -345,6 +345,10 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
       showAlert('error', 'Selecione os talhões.');
       return;
     }
+    if (newOSForm.data_fim_planejada && newOSForm.data_inicio_planejada && newOSForm.data_fim_planejada < newOSForm.data_inicio_planejada) {
+      showAlert('error', 'A data do Término Planejado não pode ser menor que a data de Início Planejado.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -404,6 +408,15 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
       });
     }
 
+    const initialTurmas = [];
+    if (os.turma_planejada) {
+      initialTurmas.push({
+        turma_id: os.turma_planejada,
+        valor_total: '',
+        data_vencimento: new Date().toISOString().slice(0, 10)
+      });
+    }
+
     setAptForm({
       data_apontamento: new Date().toISOString().slice(0, 10),
       clima: 'Bom',
@@ -411,7 +424,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
       maquinas: initialMaquinas,
       funcionarios: initialFuncionarios,
       insumos: [],
-      turmas: []
+      turmas: initialTurmas
     });
     setShowAptModal(true);
   };
@@ -1311,6 +1324,41 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                     )) || <span className="text-xs text-slate-600">-</span>}
                   </div>
                 </div>
+
+                {/* Recursos Planejados da OS */}
+                {(selectedOS.funcionario_planejado_nome || selectedOS.trator_planejado_codigo || selectedOS.implemento_planejado_codigo || selectedOS.terceirizado_planejado_nome || selectedOS.turma_planejada_nome || selectedOS.usar_turma) && (
+                  <div className="space-y-2 text-left border-t border-white/[0.06] pt-5">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Recursos Planejados (Presets)</span>
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-300 bg-slate-950/20 p-3.5 rounded-xl border border-white/[0.04]">
+                      {selectedOS.funcionario_planejado_nome && (
+                        <div>
+                          <span className="font-bold text-slate-500">Operador:</span> {selectedOS.funcionario_planejado_nome}
+                        </div>
+                      )}
+                      {selectedOS.trator_planejado_codigo && (
+                        <div>
+                          <span className="font-bold text-slate-500">Máquina:</span> {selectedOS.trator_planejado_codigo}
+                        </div>
+                      )}
+                      {selectedOS.implemento_planejado_codigo && (
+                        <div>
+                          <span className="font-bold text-slate-500">Implemento:</span> {selectedOS.implemento_planejado_codigo}
+                        </div>
+                      )}
+                      {selectedOS.terceirizado_planejado_nome && (
+                        <div>
+                          <span className="font-bold text-slate-500">Terceirizado:</span> {selectedOS.terceirizado_planejado_nome}
+                        </div>
+                      )}
+                      {(selectedOS.turma_planejada_nome || selectedOS.usar_turma) && (
+                        <div>
+                          <span className="font-bold text-slate-500">Turma (Panha):</span> {selectedOS.turma_planejada_nome || 'Sim'}
+                          {selectedOS.valor_planejado_turma && ` (Plan: R$ ${Number(selectedOS.valor_planejado_turma).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Histórico de Apontamentos Realizados */}
                 <div className="space-y-4 border-t border-white/[0.06] pt-5">
