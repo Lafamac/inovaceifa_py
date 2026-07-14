@@ -193,7 +193,7 @@ class Command(BaseCommand):
             TipoOperacao.objects.get_or_create(nome=nome)
 
         # 18. TipoMaquina
-        tipos_maquina = ["Trator", "Colhetadeira", "Caminhao"]
+        tipos_maquina = ["Trator", "Colhetadeira", "Caminhao", "Implemento"]
         for nome in tipos_maquina:
             TipoMaquina.objects.get_or_create(nome=nome)
 

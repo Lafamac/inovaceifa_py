@@ -104,23 +104,23 @@ class EstoqueMovimentoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate(self, attrs):
-        tipo = attrs.get('tipo_movimento')
-        
+        tipo = attrs.get('tipo_movimento', getattr(self.instance, 'tipo_movimento', None))
+
         if tipo == 'TRANSFERENCIA':
-            origem = attrs.get('origem_transferencia')
-            destino = attrs.get('destino_transferencia')
+            origem = attrs.get('origem_transferencia', getattr(self.instance, 'origem_transferencia', None))
+            destino = attrs.get('destino_transferencia', getattr(self.instance, 'destino_transferencia', None))
             if not origem or not destino:
                 raise serializers.ValidationError("Transferência exige fazenda de origem e destino.")
             if origem == destino:
                 raise serializers.ValidationError("As fazendas de origem e destino devem ser diferentes.")
             if origem.proprietario != destino.proprietario:
                 raise serializers.ValidationError("As fazendas devem pertencer ao mesmo proprietário.")
-            
+
             # Auto-populate fazenda for origin (outflow) record
             attrs['fazenda'] = origem
-            
-            # If safra is not provided, populate it from request context or origin farm
-            if not attrs.get('safra'):
+
+            # If safra is not provided, populate it from request context, instance, or origin farm
+            if not attrs.get('safra') and not getattr(self.instance, 'safra', None):
                 request = self.context.get('request')
                 if request and getattr(request, 'safra_ativa', None):
                     attrs['safra'] = request.safra_ativa
@@ -130,11 +130,13 @@ class EstoqueMovimentoSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError("A fazenda de origem não possui uma safra ativa.")
                     attrs['safra'] = safra_origem
         else:
-            if not attrs.get('fazenda'):
+            fazenda = attrs.get('fazenda', getattr(self.instance, 'fazenda', None))
+            safra = attrs.get('safra', getattr(self.instance, 'safra', None))
+            if not fazenda:
                 raise serializers.ValidationError({"fazenda": "Este campo é obrigatório."})
-            if not attrs.get('safra'):
+            if not safra:
                 raise serializers.ValidationError({"safra": "Este campo é obrigatório."})
-                
+
         return attrs
 
 

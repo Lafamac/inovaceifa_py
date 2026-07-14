@@ -622,7 +622,8 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   const fetchList = async (url, fallbackKey) => {
     try {
       // Forçamos a API a sempre buscar registros ativos e inativos juntos para filtragem reativa no front
-      const response = await api.get(url + '?incluir_inativos=true');
+      // Adicionamos um cache-buster para evitar que o navegador cacheie as respostas da API
+      const response = await api.get(`${url}?incluir_inativos=true&_=${new Date().getTime()}`);
       return asList(response.data);
     } catch (error) {
       // Se o backend respondeu com erro (error.response existe), propagamos o erro
@@ -630,9 +631,14 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       if (error.response) {
         throw error;
       }
-      if (fallbackRefs[fallbackKey]) return fallbackRefs[fallbackKey];
       const fallbackDB = getFallbackDB();
-      return asList(fallbackDB[fallbackKey]);
+      if (fallbackDB[fallbackKey]) {
+        return asList(fallbackDB[fallbackKey]);
+      }
+      if (fallbackRefs[fallbackKey]) {
+        return fallbackRefs[fallbackKey].map(x => ({ ...x, ativo: x.ativo !== false }));
+      }
+      return [];
     }
   };
 
@@ -1195,7 +1201,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   };
 
   const handleToggleAtivo = async (item) => {
-    const novoEstado = !item.ativo;
+    const novoEstado = item.ativo !== false ? false : true;
     const confirmMsg = novoEstado
       ? `Deseja REATIVAR este registro?`
       : `Deseja DESATIVAR (soft delete) este registro?`;

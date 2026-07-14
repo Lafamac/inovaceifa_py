@@ -95,6 +95,19 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 - O card de detalhes de atividades planejadas agora exibe visualmente os recursos predefinidos para a operação.
 - No componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), a abertura do modal de Apontamento Operacional foi interceptada por meio da nova função helper `handleOpenAptModal`, pré-carregando automaticamente os operadores e máquinas predefinidos no formulário temporário de apontamento real.
 
+### 🚜 Ajustes de Máquinas, Implementos e Desativação (Soft Delete)
+
+#### 1. Backend & Banco de Dados (Tabelas de Referência e Cadastros)
+- Adicionado o registro `"Implemento"` na tabela auxiliar de tipos de máquinas (`referencias_tipomaquina`) via comando de seed para suportar a classificação.
+- Criada e injetada uma regra de cabeçalhos de resposta `Cache-Control` estrita (`no-cache, no-store, must-revalidate, max-age=0`) em `BaseReferenciaViewSet` e `BaseTenantViewSet`. Isso obriga o navegador a sempre buscar o status real de atividade do registro direto no banco de dados nas consultas `GET` e `HEAD`.
+- Corrigida a validação em `EstoqueMovimentoSerializer` no backend para dar suporte correto a atualizações parciais (`PATCH`) como a inativação de registros de estoque sem exigir indevidamente a fazenda e a safra, utilizando dados pré-existentes da instância no banco de dados.
+- Convertido o arquivo de serializers `backend/cadastros/serializers.py` de codificação mista (Latin-1/UTF-8) para UTF-8 puro, eliminando problemas de `SyntaxError` sob o Python 3.
+
+#### 2. Frontend (Filtros e Conectividade Local)
+- No componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) e [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), aplicamos `.toLowerCase() === 'implemento'` nos filtros de Máquinas e Implementos. Isso torna a comparação completamente insensível a maiúsculas e minúsculas, cobrindo tanto `"Implemento"` quanto `"IMPLEMENTO"`.
+- Em [api.js](file:///c:/workspace/inovaceifa/frontend/src/services/api.js), aprimoramos o resolvedor de URL base `API_BASE_URL` para contemplar rotas de desenvolvimento locais em IPv6 (`[::1]`) ou portas locais customizadas, eliminando redirecionamentos incorretos para fallbacks estáticos.
+- No componente [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx), revisamos a lógica de desativação (`handleToggleAtivo`) para estimar dinamicamente o status ativo e inativo de referências que não possuam estado explícito inicializado no fallback local.
+
 ### 📝 Documentação
 
 - Atualizado o histórico de tarefas recentes no arquivo [agents.md](file:///c:/workspace/inovaceifa/agents.md) registrando a conclusão destas melhorias.

@@ -2798,7 +2798,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                           className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Trator plan...</option>
-                          {maquinas?.filter(m => m.classificacao?.toUpperCase() !== 'IMPLEMENTO').map(m => (
+                          {maquinas?.filter(m => m.tipo_nome?.toLowerCase() !== 'implemento').map(m => (
                             <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
                           ))}
                         </select>
@@ -2811,7 +2811,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                           className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Implemento plan...</option>
-                          {maquinas?.map(m => (
+                          {maquinas?.filter(m => m.tipo_nome?.toLowerCase() === 'implemento').map(m => (
                             <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
                           ))}
                         </select>
@@ -3019,7 +3019,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                           className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Trator real...</option>
-                          {maquinas?.filter(m => m.classificacao?.toUpperCase() !== 'IMPLEMENTO').map(m => (
+                          {maquinas?.filter(m => m.tipo_nome?.toLowerCase() !== 'implemento').map(m => (
                             <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
                           ))}
                         </select>
@@ -3032,7 +3032,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                           className="w-full bg-slate-955/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Implemento real...</option>
-                          {maquinas?.map(m => (
+                          {maquinas?.filter(m => m.tipo_nome?.toLowerCase() === 'implemento').map(m => (
                             <option key={m.id} value={m.id} className="bg-slate-900">{m.codigo}</option>
                           ))}
                         </select>

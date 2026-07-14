@@ -871,7 +871,7 @@ export const Planejamentos = () => {
                     className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
                   >
                     <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
-                    {maquinas.filter(m => m.tipo_nome?.toLowerCase().includes('trator')).map(m => (
+                    {maquinas.filter(m => m.tipo_nome?.toLowerCase() !== 'implemento').map(m => (
                       <option key={m.id} value={m.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{m.codigo} - {m.descricao}</option>
                     ))}
                   </select>
@@ -886,7 +886,7 @@ export const Planejamentos = () => {
                     className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 dark:text-white outline-none"
                   >
                     <option value="" className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">Selecione...</option>
-                    {maquinas.filter(m => !m.tipo_nome?.toLowerCase().includes('trator')).map(m => (
+                    {maquinas.filter(m => m.tipo_nome?.toLowerCase() === 'implemento').map(m => (
                       <option key={m.id} value={m.id} className="text-slate-850 dark:text-white bg-white dark:bg-slate-900">{m.codigo} - {m.descricao}</option>
                     ))}
                   </select>

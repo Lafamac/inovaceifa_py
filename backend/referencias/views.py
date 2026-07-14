@@ -32,6 +32,14 @@ class BaseReferenciaViewSet(viewsets.ModelViewSet):
         instance.ativo = False
         instance.save()
 
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        if request.method in ['GET', 'HEAD']:
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+        return response
+
 class CulturaViewSet(BaseReferenciaViewSet):
     queryset = Cultura.objects.all()
     serializer_class = CulturaSerializer

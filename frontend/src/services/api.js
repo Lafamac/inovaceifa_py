@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const API_BASE_URL = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname) || window.location.port === '5173'
   ? 'http://127.0.0.1:8000'
   : window.location.origin;
 
