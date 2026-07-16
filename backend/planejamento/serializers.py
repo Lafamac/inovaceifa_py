@@ -40,7 +40,9 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
     talhoes_detalhe = serializers.SerializerMethodField(read_only=True)
     funcionario_nome = serializers.CharField(source='funcionario.nome', read_only=True)
     trator_codigo = serializers.CharField(source='trator.codigo', read_only=True)
+    trator_nome = serializers.CharField(source='trator.descricao', read_only=True)
     implemento_codigo = serializers.CharField(source='implemento.codigo', read_only=True)
+    implemento_nome = serializers.CharField(source='implemento.descricao', read_only=True)
     terceirizado_nome = serializers.CharField(source='terceirizado.nome', read_only=True)
     turma_nome = serializers.CharField(source='turma.nome', read_only=True)
 
@@ -51,8 +53,8 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
             'data_fim_planejada', 'observacao', 'insumos', 'parametros',
             'mao_obra_terceiros', 'talhoes_ids', 'talhoes_detalhe',
             'funcionario', 'trator', 'implemento', 'terceirizado', 'turma',
-            'funcionario_nome', 'trator_codigo', 'implemento_codigo',
-            'terceirizado_nome', 'turma_nome', 'valor_planejado_turma', 'usar_turma'
+            'funcionario_nome', 'trator_codigo', 'trator_nome', 'implemento_codigo',
+            'implemento_nome', 'terceirizado_nome', 'turma_nome', 'valor_planejado_turma', 'usar_turma'
         ]
 
     def get_talhoes_detalhe(self, obj):
@@ -110,6 +112,7 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Este planejamento já está Aprovado e não pode ser editado.")
 
         talhoes_ids = validated_data.pop('talhoes_ids', None)
+        insumos_data = validated_data.pop('insumos', None)
         
         instance.tipo_operacao = validated_data.get('tipo_operacao', instance.tipo_operacao)
         instance.data_inicio_planejada = validated_data.get('data_inicio_planejada', instance.data_inicio_planejada)
@@ -135,6 +138,20 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
                     )
                 except Talhao.DoesNotExist:
                     pass
+
+        if insumos_data is not None:
+            instance.insumos.all().delete()
+            total_area = sum(pt.talhao.area for pt in instance.talhoes.filter(ativo=True))
+            for insumo in insumos_data:
+                qty = insumo.get('quantidade_planejada')
+                if qty is None or qty <= 0:
+                    qty = insumo.get('dose_planejada') * total_area
+                ItemInsumoOSPlanejado.objects.create(
+                    ordem_servico_planejada=instance,
+                    produto=insumo.get('produto'),
+                    dose_planejada=insumo.get('dose_planejada'),
+                    quantidade_planejada=qty
+                )
 
         return instance
 

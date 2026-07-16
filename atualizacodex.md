@@ -4,6 +4,29 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ## Alterações Realizadas
 
+### 🔄 Edição de Atividades Planejadas e Ajustes Visuais
+
+#### 1. Edição de Atividades Planejadas no Frontend e Backend
+- No backend, o método `update` de [OrdemServicoPlanejadaSerializer](file:///c:/workspace/inovaceifa/backend/planejamento/serializers.py) agora extrai, valida e persiste os insumos planejados (`ItemInsumoOSPlanejado`), permitindo a alteração dinâmica de insumos e doses sem que o payload seja ignorado.
+- No frontend, o componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) foi atualizado para gerenciar o estado `editingOS`. Adicionamos um botão **Editar** que preenche o formulário da atividade planejada selecionada e abre a modal de Atividade.
+- Ao salvar a edição, a requisição é feita via método HTTP `PUT` para a rota `/api/ordens-servico-planejadas/{id}/`.
+
+#### 2. Inteligência no Cadastro de Insumos Planejados
+- Implementamos uma lógica na submissão do formulário em [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) para verificar se o usuário preencheu os inputs de insumo temporário (`tempInsumo`) mas esqueceu de clicar no botão de somar `+`. O sistema agora anexa automaticamente este insumo ao payload antes do envio.
+
+#### 3. Compactação de Espaçamento e Acordeão Colapsável
+- O visual do card das atividades planejadas em [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) foi otimizado: as atividades agora utilizam um layout de **Acordeão Colapsável** (fechadas por padrão) com rotação suave de ícone indicador.
+- Adicionamos um botão global **Expandir Todas / Recolher Todas** ao lado do título da seção, visível quando houver múltiplas atividades, melhorando significativamente a navegação em planejamentos densos.
+- Reduzimos o espaçamento interno do card para as seções detalhadas.
+
+#### 4. Exibição de Nomes Descritivos nos Recursos Planejados
+- Adicionamos os campos de leitura `trator_nome` (descrição da máquina) e `implemento_nome` (descrição do implemento) no serializer do backend.
+- O componente frontend [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) foi atualizado para exibir essas descrições amigáveis no painel de recursos em vez do código numérico puro da base de dados.
+
+#### 5. Correção de Contraste e Tamanho de Fonte das Doses e Totais Planejados
+- Alteramos a linha inteira de informação de doses ("Dose: X | Total: Y kg") para utilizar a cor `text-emerald-700` (light mode) e `text-emerald-400` (dark mode) com peso de fonte extra negrito (`font-black`) e tamanho de fonte aumentado de `text-[9px]` para `text-[10px]`, garantindo visibilidade e destaque completo desse bloco de informação crítica.
+
+
 ### 💻 Frontend
 
 #### 8. Padronização de Contraste no Dark Mode

@@ -27,6 +27,18 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Adicionado suporte à edição de atividades planejadas (`OrdemServicoPlanejada`) no Planejamento de Safra no frontend, com atualização completa e em cascata dos insumos associados via PUT no backend.
+- [x] Ajustado o design do card de atividades planejadas no Planejamento de Safra para diminuir o espaçamento entre linhas e elementos (operação, talhão, recursos e insumos), tornando a exibição mais compacta.
+- [x] Implementada inteligência na modal de atividades planejadas para incluir automaticamente na submissão os dados de insumos atualmente preenchidos no formulário temporário de rodapé caso o usuário não tenha clicado no botão `+`.
+- [x] Reestruturado o card de atividades planejadas no formato de acordeão colapsável/expansível (com botão global de Expandir/Recolher Todas), otimizando a visualização de longas listas.
+- [x] Ajustada a cor da dose no card detalhado para `text-emerald-700` (light mode) e `text-emerald-400` (dark mode) em negrito, resolvendo a baixa legibilidade da cor anterior.
+- [x] Atualizado o serializer de atividades planejadas para retornar o nome/descrição das máquinas e implementos (`trator_nome` e `implemento_nome`), exibindo-os amigavelmente no painel de recursos.
+- [x] Ajustados os filtros de listagem e dropdown de Máquina e Implemento no Planejamento de Safra e Ordens de Serviço para realizar comparações insensíveis a maiúsculas e minúsculas (ex: "Implemento" e "IMPLEMENTO"), garantindo a filtragem correta em todos os cenários de cadastro.
+- [x] Adicionado suporte a cabeçalhos HTTP `Cache-Control` estritos no Django (`BaseReferenciaViewSet` e `BaseTenantViewSet`) para evitar cache local de requisições GET no navegador, resolvendo o problema de registros inativados continuarem aparecendo como ativos no frontend.
+- [x] Corrigida a validação em `EstoqueMovimentoSerializer` no backend para dar suporte correto a atualizações parciais (`PATCH`) como a inativação de registros de estoque sem exigir indevidamente a fazenda e a safra, utilizando dados pré-existentes da instância no banco.
+- [x] Convertido o arquivo `cadastros/serializers.py` inteiramente para UTF-8 limpo para sanar `SyntaxError` de caracteres especiais em tempo de execução no Python 3.
+- [x] Ajustada a configuração de `API_BASE_URL` em `api.js` para suportar de forma mais flexível loops locais em IPv6 (`[::1]`) e acessos por portas alternativas de desenvolvimento, evitando falhas de fallback silencioso.
+- [x] Corrigido o bug de desativação (soft delete) de referências de tabelas em Cadastros.
 - [x] Adicionado suporte ao planejamento de Terceirizados e Turmas (Panha) na Atividade Planejada (com valor planejado de colheita para as turmas via flag booleana, sem seleção prévia da turma), mapeamento automático para a OS real e consolidação no Comparativo de Safra.
 - [x] Adicionada regra de validação de datas no Planejamento e Ordens de Serviço: a data do término (planejado ou real) não pode ser menor que a correspondente data de início.
 - [x] Adicionado suporte à definição de Operador (funcionário), Trator e Implemento planejados no Planejamento de Safra, com cópia automática para a OS real no momento da geração e sugestão automática no modal de Apontamento Operacional.

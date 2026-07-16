@@ -79,6 +79,8 @@ export const Planejamentos = () => {
 
   // Temporários para adicionar Insumo na OS
   const [tempInsumo, setTempInsumo] = useState({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+  const [editingOS, setEditingOS] = useState(null);
+  const [expandedActivities, setExpandedActivities] = useState({});
 
   const showAlert = (type, message) => {
     if (type === 'error') {
@@ -258,6 +260,50 @@ export const Planejamentos = () => {
     }
   };
 
+  const handleCloseOSModal = () => {
+    setShowNewOSModal(false);
+    setEditingOS(null);
+    setNewOSForm({
+      tipo_operacao: '',
+      data_inicio_planejada: new Date().toISOString().slice(0, 10),
+      data_fim_planejada: new Date().toISOString().slice(0, 10),
+      observacao: '',
+      talhoes_selecionados: [],
+      insumos_selecionados: [],
+      funcionario: '',
+      trator: '',
+      implemento: '',
+      terceirizado: '',
+      usar_turma: false,
+      valor_planejado_turma: ''
+    });
+    setTempInsumo({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+  };
+
+  const handleEditOS = (os) => {
+    setEditingOS(os);
+    setNewOSForm({
+      tipo_operacao: os.tipo_operacao || '',
+      data_inicio_planejada: os.data_inicio_planejada,
+      data_fim_planejada: os.data_fim_planejada,
+      observacao: os.observacao || '',
+      talhoes_selecionados: os.talhoes_detalhe ? os.talhoes_detalhe.map(t => t.id) : [],
+      insumos_selecionados: os.insumos ? os.insumos.map(ins => ({
+        produto_id: String(ins.produto),
+        dose_planejada: String(ins.dose_planejada),
+        quantidade_planejada: String(ins.quantidade_planejada)
+      })) : [],
+      funcionario: os.funcionario || '',
+      trator: os.trator || '',
+      implemento: os.implemento || '',
+      terceirizado: os.terceirizado || '',
+      usar_turma: !!os.usar_turma,
+      valor_planejado_turma: os.valor_planejado_turma || ''
+    });
+    setTempInsumo({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+    setShowNewOSModal(true);
+  };
+
   const handleAddOSPlanejada = async (e) => {
     e.preventDefault();
     if (!newOSForm.tipo_operacao) {
@@ -275,7 +321,13 @@ export const Planejamentos = () => {
 
     setSaving(true);
     try {
-      // Criar a OS Planejada com talhões e insumos aninhados
+      // Inteligência para auto-adicionar insumo digitado no rodapé caso o usuário não tenha clicado no "+"
+      let finalInsumos = [...newOSForm.insumos_selecionados];
+      if (tempInsumo.produto_id && tempInsumo.dose_planejada && tempInsumo.quantidade_planejada) {
+        finalInsumos.push({ ...tempInsumo });
+      }
+
+      // Criar payload
       const osPayload = {
         planejamento: selectedPlan.id,
         tipo_operacao: Number(newOSForm.tipo_operacao),
@@ -290,30 +342,23 @@ export const Planejamentos = () => {
         turma: null,
         usar_turma: !!newOSForm.usar_turma,
         valor_planejado_turma: newOSForm.usar_turma && newOSForm.valor_planejado_turma ? Number(newOSForm.valor_planejado_turma) : null,
-        insumos: newOSForm.insumos_selecionados.map(ins => ({
+        insumos: finalInsumos.map(ins => ({
           produto: Number(ins.produto_id),
           dose_planejada: Number(ins.dose_planejada),
           quantidade_planejada: Number(ins.quantidade_planejada)
         }))
       };
-      await api.post('/api/ordens-servico-planejadas/', osPayload);
 
-      showAlert('success', 'Atividade planejada adicionada com sucesso!');
-      setShowNewOSModal(false);
-      setNewOSForm({
-        tipo_operacao: '',
-        data_inicio_planejada: new Date().toISOString().slice(0, 10),
-        data_fim_planejada: new Date().toISOString().slice(0, 10),
-        observacao: '',
-        talhoes_selecionados: [],
-        insumos_selecionados: [],
-        funcionario: '',
-        trator: '',
-        implemento: '',
-        terceirizado: '',
-        usar_turma: false,
-        valor_planejado_turma: ''
-      });
+      if (editingOS) {
+        await api.put(`/api/ordens-servico-planejadas/${editingOS.id}/`, osPayload);
+        showAlert('success', 'Atividade planejada atualizada com sucesso!');
+      } else {
+        await api.post('/api/ordens-servico-planejadas/', osPayload);
+        showAlert('success', 'Atividade planejada adicionada com sucesso!');
+      }
+
+      handleCloseOSModal();
+
       const list = await fetchPlanejamentos();
       const atualizado = list.find(p => p.id === selectedPlan.id);
       if (atualizado) setSelectedPlan(atualizado);
@@ -342,6 +387,25 @@ export const Planejamentos = () => {
       ...prev,
       insumos_selecionados: prev.insumos_selecionados.filter((_, i) => i !== idx)
     }));
+  };
+
+  const toggleActivityExpansion = (osId) => {
+    setExpandedActivities(prev => ({
+      ...prev,
+      [osId]: !prev[osId]
+    }));
+  };
+
+  const handleToggleAllActivities = () => {
+    if (!selectedPlan?.ordens_servico) return;
+    const allExpanded = selectedPlan.ordens_servico.every(os => expandedActivities[os.id]);
+    const nextState = {};
+    if (!allExpanded) {
+      selectedPlan.ordens_servico.forEach(os => {
+        nextState[os.id] = true;
+      });
+    }
+    setExpandedActivities(nextState);
   };
 
   const handleToggleTalhaoSelection = (tId) => {
@@ -602,15 +666,26 @@ export const Planejamentos = () => {
                       <span>Atividades Planejadas ({selectedPlan.ordens_servico?.length || 0})</span>
                     </h3>
                     
-                    {!selectedPlan.aprovado && (
-                      <button
-                        onClick={() => setShowNewOSModal(true)}
-                        className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-450 hover:to-teal-500 text-white font-black px-4 py-2 text-[10px] uppercase tracking-wider cursor-pointer shadow-md shadow-emerald-500/10"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Adicionar Atividade
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {selectedPlan.ordens_servico?.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleToggleAllActivities}
+                          className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-300 px-2 py-1 transition-all cursor-pointer font-bold uppercase tracking-wider"
+                        >
+                          {selectedPlan.ordens_servico.every(os => expandedActivities[os.id]) ? 'Recolher Todas' : 'Expandir Todas'}
+                        </button>
+                      )}
+                      {!selectedPlan.aprovado && (
+                        <button
+                          onClick={() => setShowNewOSModal(true)}
+                          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-450 hover:to-teal-500 text-white font-black px-4 py-2 text-[10px] uppercase tracking-wider cursor-pointer shadow-md shadow-emerald-500/10"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Adicionar Atividade
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {(!selectedPlan.ordens_servico || selectedPlan.ordens_servico.length === 0) ? (
@@ -618,95 +693,132 @@ export const Planejamentos = () => {
                       Nenhuma ordem de serviço planejada adicionada a este orçamento.
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {selectedPlan.ordens_servico.map((os, idx) => (
-                        <div key={os.id || idx} className="rounded-xl border border-slate-200 dark:border-white/[0.04] bg-slate-50 dark:bg-slate-950/30 p-4 space-y-3 text-left">
-                          
-                          <div className="flex items-start justify-between border-b border-slate-200 dark:border-white/[0.04] pb-2.5">
-                            <div>
-                              <h4 className="text-xs font-black text-slate-900 dark:text-white">{os.tipo_operacao_nome || `Operação #${os.tipo_operacao}`}</h4>
-                              <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5">
-                                Janela: {new Date(os.data_inicio_planejada).toLocaleDateString('pt-BR')} até {new Date(os.data_fim_planejada).toLocaleDateString('pt-BR')}
-                              </p>
-                            </div>
-                          </div>
-
-                          {os.observacao && (
-                            <p className="text-[10px] text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/40 p-2 rounded-lg">{os.observacao}</p>
-                          )}
-
-                          {/* Talhões da OS */}
-                          <div className="space-y-1">
-                            <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Talhões Alvo</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {os.talhoes_detalhe?.map(t => (
-                                <span key={t.id} className="inline-flex rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 px-2 py-0.5 text-[9px] text-slate-700 dark:text-slate-300">
-                                  {t.codigo} - {t.nome} ({Number(t.area).toLocaleString('pt-BR')} ha)
-                                </span>
-                              )) || <span className="text-[10px] text-slate-600 dark:text-slate-400">Nenhum talhão selecionado</span>}
-                            </div>
-                          </div>
-
-                           {/* Recursos Planejados */}
-                          {(os.funcionario_nome || os.trator_codigo || os.implemento_codigo || os.terceirizado_nome || os.usar_turma) && (
-                            <div className="space-y-1 border-t border-slate-200 dark:border-white/[0.02] pt-2">
-                              <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Recursos Planejados</span>
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-700 dark:text-slate-300">
-                                {os.funcionario_nome && (
-                                  <div>
-                                    <span className="font-bold text-slate-500">Operador:</span> {os.funcionario_nome}
-                                  </div>
-                                )}
-                                {os.trator_codigo && (
-                                  <div>
-                                    <span className="font-bold text-slate-500">Máquina:</span> {os.trator_codigo}
-                                  </div>
-                                )}
-                                {os.implemento_codigo && (
-                                  <div>
-                                    <span className="font-bold text-slate-500">Implemento:</span> {os.implemento_codigo}
-                                  </div>
-                                )}
-                                {os.terceirizado_nome && (
-                                  <div>
-                                    <span className="font-bold text-slate-500">Terceirizado:</span> {os.terceirizado_nome}
-                                  </div>
-                                )}
-                                {os.usar_turma && (
-                                  <div>
-                                    <span className="font-bold text-slate-500">Turma (Panha):</span> Sim
-                                    {os.valor_planejado_turma && ` (Plan: R$ ${Number(os.valor_planejado_turma).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
-                                  </div>
+                    <div className="space-y-3">
+                      {selectedPlan.ordens_servico.map((os, idx) => {
+                        const isExpanded = !!expandedActivities[os.id];
+                        return (
+                          <div key={os.id || idx} className="rounded-xl border border-slate-200 dark:border-white/[0.04] bg-slate-50 dark:bg-slate-950/30 p-3 space-y-1.5 text-left">
+                            
+                            {/* Cabeçalho do Card (Clicável) */}
+                            <div 
+                              className="flex items-start justify-between cursor-pointer"
+                              onClick={() => toggleActivityExpansion(os.id)}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <ChevronRight className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                                  <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+                                    {os.tipo_operacao_nome || `Operação #${os.tipo_operacao}`}
+                                  </h4>
+                                </div>
+                                <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 ml-5">
+                                  Janela: {new Date(os.data_inicio_planejada).toLocaleDateString('pt-BR')} até {new Date(os.data_fim_planejada).toLocaleDateString('pt-BR')}
+                                  <span className="mx-1.5">•</span>
+                                  {os.talhoes_detalhe?.length || 0} {os.talhoes_detalhe?.length === 1 ? 'Talhão' : 'Talhões'}
+                                  {((os.insumos_detalhe || os.insumos)?.length > 0) && (
+                                    <>
+                                      <span className="mx-1.5">•</span>
+                                      {(os.insumos_detalhe || os.insumos).length} {(os.insumos_detalhe || os.insumos).length === 1 ? 'Insumo' : 'Insumos'}
+                                    </>
+                                  )}
+                                </p>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
+                                {!selectedPlan.aprovado && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditOS(os)}
+                                    className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer uppercase tracking-wider"
+                                  >
+                                    Editar
+                                  </button>
                                 )}
                               </div>
                             </div>
-                          )}
 
-                          {/* Insumos Planejados */}
-                          <div className="space-y-1.5 border-t border-slate-200 dark:border-white/[0.02] pt-2">
-                            <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Insumos e Doses Planejadas</span>
-                            {((os.insumos_detalhe || os.insumos)?.length > 0) ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {(os.insumos_detalhe || os.insumos).map(ins => {
-                                  const prodName = ins.produto_nome || ins.produto_detalhe?.nome_comercial || 'Insumo';
-                                  const prodUnit = ins.produto_unidade || ins.produto_detalhe?.unidade_sigla || 'un';
-                                  return (
-                                    <div key={ins.id} className="flex justify-between items-center rounded-lg bg-white dark:bg-slate-900/60 p-2 border border-slate-200 dark:border-white/[0.02]">
-                                      <span className="text-[10px] text-slate-900 dark:text-white font-bold truncate max-w-[150px]">{prodName}</span>
-                                      <span className="text-[9px] text-emerald-400 font-mono">
-                                        Dose: {Number(ins.dose_planejada).toLocaleString('pt-BR')} | Total: {Number(ins.quantidade_planejada).toLocaleString('pt-BR')} {prodUnit}
+                            {/* Conteúdo Expandido */}
+                            {isExpanded && (
+                              <div className="space-y-2.5 pt-2 border-t border-slate-200 dark:border-white/[0.04]">
+                                {os.observacao && (
+                                  <p className="text-[10px] text-slate-700 dark:text-slate-300 bg-white/60 dark:bg-slate-900/40 p-2 rounded-lg">{os.observacao}</p>
+                                )}
+
+                                {/* Talhões da OS */}
+                                <div className="space-y-0.5">
+                                  <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Talhões Alvo</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {os.talhoes_detalhe?.map(t => (
+                                      <span key={t.id} className="inline-flex rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 px-2 py-0.5 text-[9px] text-slate-700 dark:text-slate-300 font-medium">
+                                        {t.codigo} - {t.nome} ({Number(t.area).toLocaleString('pt-BR')} ha)
                                       </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-slate-600 dark:text-slate-400">Nenhum insumo planejado para esta operação</span>
-                            )}
-                          </div>
+                                    )) || <span className="text-[10px] text-slate-600 dark:text-slate-400">Nenhum talhão selecionado</span>}
+                                  </div>
+                                </div>
 
-                        </div>
-                      ))}
+                                {/* Recursos Planejados */}
+                                {(os.funcionario_nome || os.trator_codigo || os.implemento_codigo || os.terceirizado_nome || os.usar_turma) && (
+                                  <div className="space-y-0.5 border-t border-slate-200 dark:border-white/[0.02] pt-1.5">
+                                    <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Recursos Planejados</span>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-700 dark:text-slate-300">
+                                      {os.funcionario_nome && (
+                                        <div>
+                                          <span className="font-bold text-slate-500">Operador:</span> {os.funcionario_nome}
+                                        </div>
+                                      )}
+                                      {(os.trator_nome || os.trator_codigo) && (
+                                        <div>
+                                          <span className="font-bold text-slate-500">Máquina:</span> {os.trator_nome || os.trator_codigo}
+                                        </div>
+                                      )}
+                                      {(os.implemento_nome || os.implemento_codigo) && (
+                                        <div>
+                                          <span className="font-bold text-slate-500">Implemento:</span> {os.implemento_nome || os.implemento_codigo}
+                                        </div>
+                                      )}
+                                      {os.terceirizado_nome && (
+                                        <div>
+                                          <span className="font-bold text-slate-500">Terceirizado:</span> {os.terceirizado_nome}
+                                        </div>
+                                      )}
+                                      {os.usar_turma && (
+                                        <div>
+                                          <span className="font-bold text-slate-500">Turma (Panha):</span> Sim
+                                          {os.valor_planejado_turma && ` (Plan: R$ ${Number(os.valor_planejado_turma).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Insumos Planejados */}
+                                <div className="space-y-1 border-t border-slate-200 dark:border-white/[0.02] pt-1.5">
+                                  <span className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Insumos e Doses Planejadas</span>
+                                  {((os.insumos_detalhe || os.insumos)?.length > 0) ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                                      {(os.insumos_detalhe || os.insumos).map(ins => {
+                                        const prodName = ins.produto_nome || ins.produto_detalhe?.nome_comercial || 'Insumo';
+                                        const prodUnit = ins.produto_unidade || ins.produto_detalhe?.unidade_sigla || 'un';
+                                        return (
+                                          <div key={ins.id} className="flex justify-between items-center rounded-lg bg-white dark:bg-slate-900/60 p-1.5 border border-slate-200 dark:border-white/[0.02]">
+                                            <span className="text-[10px] text-slate-900 dark:text-white font-bold truncate max-w-[150px]">{prodName}</span>
+                                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-black">
+                                              Dose: {Number(ins.dose_planejada).toLocaleString('pt-BR')} | Total: {Number(ins.quantidade_planejada).toLocaleString('pt-BR')} {prodUnit}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-600 dark:text-slate-400">Nenhum insumo planejado para esta operação</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -795,9 +907,9 @@ export const Planejamentos = () => {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] pb-3">
               <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
-                <span>Adicionar Atividade</span>
+                <span>{editingOS ? 'Editar Atividade' : 'Adicionar Atividade'}</span>
               </h3>
-              <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
+              <button onClick={handleCloseOSModal} className="p-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
             </div>
 
             <form onSubmit={handleAddOSPlanejada} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
@@ -1064,7 +1176,7 @@ export const Planejamentos = () => {
               <div className="md:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.06]">
                 <button
                   type="button"
-                  onClick={() => setShowNewOSModal(false)}
+                  onClick={handleCloseOSModal}
                   className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase transition-all cursor-pointer"
                 >
                   Cancelar
@@ -1074,7 +1186,7 @@ export const Planejamentos = () => {
                   disabled={saving}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
-                  {saving ? 'Salvando...' : 'Salvar Atividade'}
+                  {saving ? 'Salvando...' : (editingOS ? 'Salvar Alterações' : 'Salvar Atividade')}
                 </button>
               </div>
             </form>
