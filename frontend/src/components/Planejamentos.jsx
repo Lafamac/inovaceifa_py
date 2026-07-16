@@ -21,6 +21,7 @@ import {
   Activity,
   Layers,
   ChevronRight,
+  Edit2,
   X
 } from 'lucide-react';
 
@@ -302,6 +303,23 @@ export const Planejamentos = () => {
     });
     setTempInsumo({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
     setShowNewOSModal(true);
+  };
+
+  const handleDeleteOS = async (osId) => {
+    if (!window.confirm("Deseja realmente excluir esta atividade planejada?")) return;
+    setSaving(true);
+    try {
+      await api.delete(`/api/ordens-servico-planejadas/${osId}/`);
+      showAlert('success', 'Atividade planejada excluída com sucesso!');
+      const list = await fetchPlanejamentos();
+      const atualizado = list.find(p => p.id === selectedPlan.id);
+      if (atualizado) setSelectedPlan(atualizado);
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Erro ao excluir a atividade planejada.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAddOSPlanejada = async (e) => {
@@ -724,15 +742,26 @@ export const Planejamentos = () => {
                                 </p>
                               </div>
                               
-                              <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
                                 {!selectedPlan.aprovado && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditOS(os)}
-                                    className="text-[10px] font-black text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer uppercase tracking-wider"
-                                  >
-                                    Editar
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditOS(os)}
+                                      className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all cursor-pointer"
+                                      title="Editar Atividade"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteOS(os.id)}
+                                      className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer"
+                                      title="Excluir Atividade"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>

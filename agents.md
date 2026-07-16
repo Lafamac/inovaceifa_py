@@ -27,9 +27,9 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
-- [x] Adicionado suporte à edição de atividades planejadas (`OrdemServicoPlanejada`) no Planejamento de Safra no frontend, com atualização completa e em cascata dos insumos associados via PUT no backend.
-- [x] Ajustado o design do card de atividades planejadas no Planejamento de Safra para diminuir o espaçamento entre linhas e elementos (operação, talhão, recursos e insumos), tornando a exibição mais compacta.
+- [x] Adicionado suporte à edição e exclusão de atividades planejadas (`OrdemServicoPlanejada`) no Planejamento de Safra no frontend (através de botões com ícones dedicados de lápis e lixeira), com atualização completa e em cascata dos insumos associados via PUT e deleção lógica/física via DELETE no backend.
 - [x] Implementada inteligência na modal de atividades planejadas para incluir automaticamente na submissão os dados de insumos atualmente preenchidos no formulário temporário de rodapé caso o usuário não tenha clicado no botão `+`.
+- [x] Ajustado o design do card de atividades planejadas no Planejamento de Safra para diminuir o espaçamento entre linhas e elementos (operação, talhão, recursos e insumos), tornando a exibição mais compacta.
 - [x] Reestruturado o card de atividades planejadas no formato de acordeão colapsável/expansível (com botão global de Expandir/Recolher Todas), otimizando a visualização de longas listas.
 - [x] Ajustada a cor da dose no card detalhado para `text-emerald-700` (light mode) e `text-emerald-400` (dark mode) em negrito, resolvendo a baixa legibilidade da cor anterior.
 - [x] Atualizado o serializer de atividades planejadas para retornar o nome/descrição das máquinas e implementos (`trator_nome` e `implemento_nome`), exibindo-os amigavelmente no painel de recursos.

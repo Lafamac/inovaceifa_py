@@ -6,9 +6,10 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ### 🔄 Edição de Atividades Planejadas e Ajustes Visuais
 
-#### 1. Edição de Atividades Planejadas no Frontend e Backend
+#### 1. Edição e Exclusão de Atividades Planejadas no Frontend e Backend
 - No backend, o método `update` de [OrdemServicoPlanejadaSerializer](file:///c:/workspace/inovaceifa/backend/planejamento/serializers.py) agora extrai, valida e persiste os insumos planejados (`ItemInsumoOSPlanejado`), permitindo a alteração dinâmica de insumos e doses sem que o payload seja ignorado.
-- No frontend, o componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) foi atualizado para gerenciar o estado `editingOS`. Adicionamos um botão **Editar** que preenche o formulário da atividade planejada selecionada e abre a modal de Atividade.
+- No frontend, o componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) foi atualizado para gerenciar o estado `editingOS`. Substituímos o botão de texto "Editar" por botões de ícones no cabeçalho de cada card de atividade: um ícone de lápis (`Edit2`) para edição e um ícone de lixeira (`Trash2`) para a remoção da atividade planejada.
+- Adicionada a função `handleDeleteOS` para enviar a requisição HTTP `DELETE` e atualizar dinamicamente a listagem de atividades após a confirmação.
 - Ao salvar a edição, a requisição é feita via método HTTP `PUT` para a rota `/api/ordens-servico-planejadas/{id}/`.
 
 #### 2. Inteligência no Cadastro de Insumos Planejados
