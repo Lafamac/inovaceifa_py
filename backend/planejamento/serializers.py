@@ -45,6 +45,7 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
     implemento_nome = serializers.CharField(source='implemento.descricao', read_only=True)
     terceirizado_nome = serializers.CharField(source='terceirizado.nome', read_only=True)
     turma_nome = serializers.CharField(source='turma.nome', read_only=True)
+    os_gerada = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = OrdemServicoPlanejada
@@ -54,8 +55,12 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
             'mao_obra_terceiros', 'talhoes_ids', 'talhoes_detalhe',
             'funcionario', 'trator', 'implemento', 'terceirizado', 'turma',
             'funcionario_nome', 'trator_codigo', 'trator_nome', 'implemento_codigo',
-            'implemento_nome', 'terceirizado_nome', 'turma_nome', 'valor_planejado_turma', 'usar_turma'
+            'implemento_nome', 'terceirizado_nome', 'turma_nome', 'valor_planejado_turma', 'usar_turma',
+            'os_gerada'
         ]
+
+    def get_os_gerada(self, obj):
+        return obj.execucoes.filter(ativo=True).exists()
 
     def get_talhoes_detalhe(self, obj):
         talhoes = [pt.talhao for pt in obj.talhoes.filter(ativo=True)]

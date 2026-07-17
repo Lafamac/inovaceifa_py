@@ -132,10 +132,23 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 - Em [api.js](file:///c:/workspace/inovaceifa/frontend/src/services/api.js), aprimoramos o resolvedor de URL base `API_BASE_URL` para contemplar rotas de desenvolvimento locais em IPv6 (`[::1]`) ou portas locais customizadas, eliminando redirecionamentos incorretos para fallbacks estáticos.
 - No componente [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx), revisamos a lógica de desativação (`handleToggleAtivo`) para estimar dinamicamente o status ativo e inativo de referências que não possuam estado explícito inicializado no fallback local.
 
+### 🖨️ Ficha de Impressão de Ordem de Serviço (Informe de Operação)
+
+#### 1. Folha de Estilos de Impressão
+- No arquivo [index.css](file:///c:/workspace/inovaceifa/frontend/src/index.css), adicionamos classes CSS no bloco `@media print` para definir a largura máxima da página A4 (`210mm`) e forçar bordas pretas sólidas (`#000000`) nas tabelas, garantindo nitidez nas grades impressas ou exportadas em PDF.
+
+#### 2. Template e Visualização de Impressão no Frontend
+- No componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), adicionamos a div `.print-only` para renderizar a ficha "Informe de Operação" idêntica ao modelo físico `exemploos.pdf`.
+- Os logotipos do cabeçalho foram removidos a pedido, exibindo o título do relatório e o nome do grupo centralizados em largura cheia.
+- Adicionada fórmula de estimativa de horas e combustível planejado baseada na área física dos talhões alvos (horas = área × 0,8 e diesel = horas × 6,0).
+- Estruturada a tabela de produtos para exibir os insumos planejados da OS, completando o grid até conter exatamente 11 linhas com espaços vazios para manter a integridade visual da folha de campo.
+- Inserido diário com exatamente 16 linhas vazias para logs de pontas, RPM e marcha (com colunas de Data, Horímetro Inicial e Final).
+- Campos de execução física, anotações de dosagem por bomba e assinaturas do operador e responsável foram desenhados na parte inferior da página.
+
 ### 📝 Documentação
 
 - Atualizado o histórico de tarefas recentes no arquivo [agents.md](file:///c:/workspace/inovaceifa/agents.md) registrando a conclusão destas melhorias.
-- Atualizado este arquivo [atualizacodex.md](file:///c:/workspace/inovaceifa/atualizacodex.md) com a documentação do recurso planejado.
+- Atualizado este arquivo [atualizacodex.md](file:///c:/workspace/inovaceifa/atualizacodex.md) com a documentação da ficha de impressão.
 
 ## Validação
 

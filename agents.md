@@ -27,6 +27,7 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Criada a ficha de impressão em PDF para Ordem de Serviço (OS) em formato de folha de campo A4 ("Informe de Operação"), com layout de alta fidelidade sem logotipos no cabeçalho e contendo tabela estruturada de 11 linhas para insumos, grade de logs de 16 linhas (pontas, RPM, marcha) e campos de anotação de campo.
 - [x] Adicionado suporte à edição e exclusão de atividades planejadas (`OrdemServicoPlanejada`) no Planejamento de Safra no frontend (através de botões com ícones dedicados de lápis e lixeira), com atualização completa e em cascata dos insumos associados via PUT e deleção lógica/física via DELETE no backend.
 - [x] Implementada inteligência na modal de atividades planejadas para incluir automaticamente na submissão os dados de insumos atualmente preenchidos no formulário temporário de rodapé caso o usuário não tenha clicado no botão `+`.
 - [x] Ajustado o design do card de atividades planejadas no Planejamento de Safra para diminuir o espaçamento entre linhas e elementos (operação, talhão, recursos e insumos), tornando a exibição mais compacta.

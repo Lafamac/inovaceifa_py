@@ -679,6 +679,19 @@ body .dark .app-modal-panel textarea {
   .page-break {
     page-break-before: always !important;
   }
+  
+  .print-page {
+    width: 100% !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+  }
+  
+  .print-table th, 
+  .print-table td,
+  .print-border {
+    border: 1px solid #000000 !important;
+  }
 }
 
 /* Fallback style to hide print brand in standard web view */

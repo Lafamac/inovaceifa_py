@@ -246,6 +246,14 @@ export const Planejamentos = () => {
       showAlert('error', 'Apenas o Superusuário tem permissão para gerar Ordens de Serviço.');
       return;
     }
+    const hasAlreadyGenerated = selectedPlan?.ordens_servico?.some(os => os.os_gerada);
+    if (hasAlreadyGenerated) {
+      const confirmGen = window.confirm(
+        "Atenção: Já foram geradas Ordens de Serviço Reais para este planejamento. " +
+        "Deseja gerar novamente? Isso criará novos registros em duplicidade no operacional."
+      );
+      if (!confirmGen) return;
+    }
     setSaving(true);
     try {
       const res = await relatorioService.gerarOrdensServico(id);
@@ -645,6 +653,12 @@ export const Planejamentos = () => {
                       {selectedPlan.aprovado ? <Lock className="w-2.5 h-2.5" /> : <LockOpen className="w-2.5 h-2.5" />}
                       {selectedPlan.aprovado ? 'Aprovado (Bloqueado)' : 'Rascunho (Editável)'}
                     </span>
+                    {selectedPlan.ordens_servico?.some(os => os.os_gerada) && (
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase border mb-2 ml-2 bg-emerald-950/60 border-emerald-800 text-emerald-400">
+                        <Check className="w-2.5 h-2.5" />
+                        OSs Geradas
+                      </span>
+                    )}
                     <h2 className="text-base font-black text-slate-900 dark:text-white font-display">{selectedPlan.descricao}</h2>
                     {selectedPlan.observacao && (
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 max-w-xl">{selectedPlan.observacao}</p>
@@ -723,11 +737,17 @@ export const Planejamentos = () => {
                               onClick={() => toggleActivityExpansion(os.id)}
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <ChevronRight className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
                                   <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
                                     {os.tipo_operacao_nome || `Operação #${os.tipo_operacao}`}
                                   </h4>
+                                  {os.os_gerada && (
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900 px-1.5 py-0.5 text-[8px] font-black uppercase text-emerald-800 dark:text-emerald-400">
+                                      <Check className="w-2 h-2" />
+                                      OS Gerada
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 ml-5">
                                   Janela: {new Date(os.data_inicio_planejada).toLocaleDateString('pt-BR')} até {new Date(os.data_fim_planejada).toLocaleDateString('pt-BR')}
@@ -830,8 +850,8 @@ export const Planejamentos = () => {
                                         const prodUnit = ins.produto_unidade || ins.produto_detalhe?.unidade_sigla || 'un';
                                         return (
                                           <div key={ins.id} className="flex justify-between items-center rounded-lg bg-white dark:bg-slate-900/60 p-1.5 border border-slate-200 dark:border-white/[0.02]">
-                                            <span className="text-[10px] text-slate-900 dark:text-white font-bold truncate max-w-[150px]">{prodName}</span>
-                                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-black">
+                                            <span className="text-xs text-slate-900 dark:text-white font-bold truncate max-w-[150px]">{prodName}</span>
+                                            <span className="text-xs text-emerald-700 dark:text-emerald-400 font-mono font-black">
                                               Dose: {Number(ins.dose_planejada).toLocaleString('pt-BR')} | Total: {Number(ins.quantidade_planejada).toLocaleString('pt-BR')} {prodUnit}
                                             </span>
                                           </div>

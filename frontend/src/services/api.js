@@ -1382,7 +1382,12 @@ export const relatorioService = {
       const plan = db.planejamentos?.find(p => p.id === Number(id));
       if (plan) {
         plan.aprovado = true;
-        saveDB(db);
+        if (plan.ordens_servico) {
+          plan.ordens_servico = plan.ordens_servico.map(os => ({
+            ...os,
+            os_gerada: true
+          }));
+        }
         // Simular a geração de uma OS real a partir do planejamento
         if (!db.ordens_servico) db.ordens_servico = [];
         const newOS = {

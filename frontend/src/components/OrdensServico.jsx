@@ -3208,6 +3208,238 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
         </div>
       )}
 
+      {/* Ficha de Impressão do Informe de Operação (exemploos.pdf) */}
+      {selectedOS && (
+        <div className="print-only print-page print:block hidden bg-white text-black p-4 font-sans text-[10px]">
+          {/* Cabeçalho */}
+          <table className="w-full border-collapse print-table">
+            <tbody>
+              {/* Linha 1: Logotipo, Título do Relatório, SEBRAE */}
+              <tr className="border border-black">
+                <td className="w-full p-3 text-center">
+                  <div className="text-sm font-black tracking-wider uppercase">INFORME DE OPERAÇÃO</div>
+                  <div className="text-[8px] font-bold text-slate-700 mt-0.5">Grupo Congonhas Estate Coffee</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Dados e Prazos da OS */}
+          <table className="w-full border-collapse print-table border-t-0 -mt-px">
+            <tbody>
+              <tr className="border border-black">
+                <td className="w-[15%] bg-slate-100 p-1 font-bold border-r border-black">OS Nº</td>
+                <td className="w-[15%] p-1 text-center font-black border-r border-black text-sm">{selectedOS.id}</td>
+                <td className="w-[15%] bg-slate-100 p-1 font-bold border-r border-black">Ação</td>
+                <td className="w-[55%] p-1 font-bold text-left">{selectedOS.tipo_operacao_nome || lookup(tiposOperacao, selectedOS.tipo_operacao)}</td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Operador:</td>
+                <td colSpan="3" className="p-1 font-bold text-left">
+                  {selectedOS.funcionario_planejado_nome || selectedOS.terceirizado_planejado_nome || '__________________________________________________________________'}
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Talhão</td>
+                <td className="p-1 border-r border-black text-left font-bold" colSpan="2">
+                  {selectedOS.talhoes_detalhe?.map(t => `${t.codigo} - ${t.nome}`).join(', ') || '-'}
+                </td>
+                <td className="p-1 text-left">
+                  <span className="font-bold text-slate-700">Serviço:</span> {selectedOS.tipo_operacao_nome || lookup(tiposOperacao, selectedOS.tipo_operacao)}
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Máquina</td>
+                <td className="p-1 border-r border-black text-left font-bold" colSpan="2">
+                  {selectedOS.trator_planejado_codigo || '_________________'}
+                </td>
+                <td className="p-1 text-left">
+                  <span className="font-bold text-slate-700">Implemento:</span> {selectedOS.implemento_planejado_codigo || '_________________'}
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Prazo Inicial Planj.</td>
+                <td className="p-1 border-r border-black text-center font-bold">
+                  {new Date(selectedOS.data_inicio_planejada).toLocaleDateString('pt-BR')}
+                </td>
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Prazo Final Planj.</td>
+                <td className="p-1 text-left font-bold">
+                  {new Date(selectedOS.data_fim_planejada).toLocaleDateString('pt-BR')}
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Total de Horas Planejadas</td>
+                <td className="p-1 border-r border-black text-center font-mono font-bold">
+                  {(() => {
+                    const totalArea = selectedOS.talhoes_detalhe?.reduce((sum, t) => sum + Number(t.area || 0), 0) || 0;
+                    return totalArea > 0 ? (totalArea * 0.8).toFixed(2).replace('.', ',') : '6,26';
+                  })()}
+                </td>
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Total de Diesel Planejado</td>
+                <td className="p-1 text-left font-mono font-bold">
+                  {(() => {
+                    const totalArea = selectedOS.talhoes_detalhe?.reduce((sum, t) => sum + Number(t.area || 0), 0) || 0;
+                    const horas = totalArea > 0 ? totalArea * 0.8 : 6.26;
+                    return (horas * 6.0).toFixed(2).replace('.', ',');
+                  })()}
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Data Inicial de Execução</td>
+                <td className="p-1 border-r border-black text-center" colSpan="2">
+                  {selectedOS.data_inicio_real ? new Date(selectedOS.data_inicio_real).toLocaleDateString('pt-BR') : '____/____/________'}
+                </td>
+                <td className="p-1 text-left">
+                  <span className="font-bold text-slate-700">Data Final de Execução:</span> {selectedOS.data_fim_real ? new Date(selectedOS.data_fim_real).toLocaleDateString('pt-BR') : '____/____/________'}
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Horímetro inicial</td>
+                <td className="p-1 border-r border-black text-center" colSpan="2">
+                  {selectedOS.apontamentos?.[0]?.maquinas?.[0]?.horimetro_inicial || '_________________'}
+                </td>
+                <td className="p-1 text-left">
+                  <span className="font-bold text-slate-700">Horímetro final:</span> {selectedOS.apontamentos?.[selectedOS.apontamentos.length - 1]?.maquinas?.[0]?.horimetro_final || '_________________'}
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Diesel Gasto</td>
+                <td className="p-1 border-r border-black text-center font-mono font-bold" colSpan="2">
+                  _________________ L
+                </td>
+                <td className="p-1 text-left">
+                  <span className="font-bold text-slate-700">Velocidade Operacional (km/h):</span> 6,00
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Capacidade Implemento</td>
+                <td className="p-1 border-r border-black text-center font-bold">
+                  0
+                </td>
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Vazão kg ou L/ha</td>
+                <td className="p-1 text-left font-bold">
+                  0
+                </td>
+              </tr>
+              <tr className="border border-black">
+                <td className="bg-slate-100 p-1 font-bold border-r border-black">Quantidade de bomba/bags</td>
+                <td className="p-1 text-left leading-normal font-mono text-[8px]" colSpan="3">
+                  <div className="mb-0.5">
+                    (____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)
+                  </div>
+                  <div>
+                    (____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)(____)
+                    <span className="float-right font-bold text-[9px] mr-2">Total Gasto: __________________________</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Tabela de Produtos (Insumos) */}
+          <table className="w-full border-collapse print-table border-t-0 -mt-px text-center">
+            <thead>
+              <tr className="border border-black bg-slate-100 font-bold">
+                <th className="w-[12%] p-1 text-center border-r border-black">Ordem Pré-mistura</th>
+                <th className="w-[30%] p-1 text-left border-r border-black">Produtos</th>
+                <th className="w-[18%] p-1 text-center border-r border-black">Dose kg ou L/Tanque</th>
+                <th className="w-[18%] p-1 text-left border-r border-black">Ativo</th>
+                <th className="w-[11%] p-1 text-center border-r border-black">Carência</th>
+                <th className="w-[11%] p-1 text-left">Alvo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const maxRows = 11;
+                const rows = [];
+                const insumos = selectedOS.insumos || [];
+
+                for (let i = 0; i < maxRows; i++) {
+                  if (i < insumos.length) {
+                    const ins = insumos[i];
+                    const prodName = ins.produto_detalhe?.nome_comercial || 'Insumo';
+                    const chemicalGroup = ins.produto_detalhe?.grupo_quimico_nome || ins.produto_detalhe?.classificacao_nome || '-';
+                    const carencia = ins.produto_detalhe?.periodo_carencia !== null ? `${ins.produto_detalhe.periodo_carencia}` : '-';
+                    const alvo = ins.produto_detalhe?.alvo || '-';
+                    
+                    rows.push(
+                      <tr key={i} className="border border-black">
+                        <td className="p-1 border-r border-black font-bold">{i + 1}º</td>
+                        <td className="p-1 text-left border-r border-black font-bold truncate max-w-[200px]">{prodName}</td>
+                        <td className="p-1 border-r border-black font-mono font-bold">{Number(ins.dose_planejada).toLocaleString('pt-BR')}</td>
+                        <td className="p-1 text-left border-r border-black truncate max-w-[120px]">{chemicalGroup}</td>
+                        <td className="p-1 border-r border-black font-bold">{carencia}</td>
+                        <td className="p-1 text-left truncate max-w-[100px]">{alvo}</td>
+                      </tr>
+                    );
+                  } else {
+                    rows.push(
+                      <tr key={i} className="border border-black h-5">
+                        <td className="p-1 border-r border-black font-bold text-slate-400">{i + 1}º</td>
+                        <td className="p-1 border-r border-black">&nbsp;</td>
+                        <td className="p-1 border-r border-black">&nbsp;</td>
+                        <td className="p-1 border-r border-black">&nbsp;</td>
+                        <td className="p-1 border-r border-black">&nbsp;</td>
+                        <td className="p-1">&nbsp;</td>
+                      </tr>
+                    );
+                  }
+                }
+                return rows;
+              })()}
+            </tbody>
+          </table>
+
+          {/* Grade de Pontas, RPM e Marcha */}
+          <table className="w-full border-collapse print-table border-t-0 -mt-px text-center">
+            <thead>
+              <tr className="border border-black bg-slate-100 font-bold">
+                <th className="w-[33.3%] p-1 text-center border-r border-black">Pontas</th>
+                <th className="w-[33.3%] p-1 text-center border-r border-black">RPM</th>
+                <th className="w-[33.4%] p-1 text-center">Marcha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const logsCount = 16;
+                const rows = [];
+                for (let i = 0; i < logsCount; i++) {
+                  rows.push(
+                    <tr key={i} className="border border-black">
+                      <td className="border-r border-black p-1 text-[8px] font-bold text-slate-500 text-left">Data: ____/____/____</td>
+                      <td className="border-r border-black p-1 text-[8px] font-bold text-slate-500 text-left">H. Inicial: ________________</td>
+                      <td className="p-1 text-[8px] font-bold text-slate-500 text-left">H. Final: __________________</td>
+                    </tr>
+                  );
+                }
+                return rows;
+              })()}
+            </tbody>
+          </table>
+
+          {/* Rodapé e Assinaturas */}
+          <div className="border border-black border-t-0 -mt-px p-2 text-left space-y-3">
+            <div>
+              <span className="font-bold text-[9px] text-slate-600 block">OBS:</span>
+              <p className="text-[10px] text-slate-900 font-bold min-h-[40px] leading-tight">
+                {selectedOS.observacao || 'Nenhuma observação informada.'}
+              </p>
+            </div>
+
+            <div className="flex justify-around pt-8 pb-3 text-center text-[10px] font-bold">
+              <div className="flex flex-col items-center">
+                <div className="w-48 border-t border-black"></div>
+                <span className="mt-1 text-slate-700">Operador</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="w-48 border-t border-black"></div>
+                <span className="mt-1 text-slate-700">Responsável</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
