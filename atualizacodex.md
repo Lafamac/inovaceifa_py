@@ -4,6 +4,27 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ## Alterações Realizadas
 
+### 🎨 Padronização de Formulários Modais e Botão Cancelar
+
+#### 1. Padronização Visual dos Modais para o Tema Escuro Premium (Glassmorphism)
+- Todos os formulários modais de planejamento e operacionais foram unificados visualmente para seguir o mesmo design escuro glassmorphism introduzido no modal de Pedidos de Compra.
+- Isso inclui a aplicação de um fundo escuro glassmorphism (`glass-panel bg-slate-900 border-white/[0.08]`), cabeçalho escuro contrastante (`bg-slate-950/40 border-b border-white/[0.06]`), títulos em caixa alta na cor branca e o botão de fechar "X" padronizado.
+- As labels foram convertidas para caixa alta com fonte pequena e cor suave de alto contraste (`text-[10px] font-black uppercase text-slate-400 mb-1.5`).
+- Os campos de input, select e textarea foram ajustados para fundo escuro (`bg-slate-950 border-white/[0.06] text-white`) com bordas sutis e comportamento de focus/disabled adaptado para o novo padrão.
+- Esta alteração foi aplicada nos seguintes modais:
+  - **Novo Planejamento de Safra** em [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx)
+  - **Adicionar/Editar Atividade Planejada** em [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx)
+  - **Nova OS Real Avulsa** em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx)
+  - **Apontar Atividade Operacional** em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx)
+  - **Registrar Abastecimento** em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx)
+  - **Lançar Gasto e Rateio Realizado** em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx)
+  - **Lançar Rateio Operacional** em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx)
+
+#### 2. Botão Cancelar e Ações no Rodapé
+- Adicionado o botão de ação **Cancelar** no rodapé do formulário de **Novo Planejamento de Safra** (que antes possuía apenas o botão de salvar abrangendo toda a largura).
+- Todas as ações de rodapé desses modais foram reestruturadas para exibir os botões **Cancelar** (secundário, borda suave) e **Salvar/Criar** (primário, gradiente esmeralda) alinhados à direita de forma consistente.
+
+
 ### 🔄 Edição de Atividades Planejadas e Ajustes Visuais
 
 #### 1. Edição e Exclusão de Atividades Planejadas no Frontend e Backend

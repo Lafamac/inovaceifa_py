@@ -1747,114 +1747,115 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
       {/* MODAL: Nova OS Real Avulsa */}
       {showNewOSModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 animate-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-lg bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
                 <span>Nova Ordem de Serviço Real</span>
               </h3>
-              <button onClick={() => setShowNewOSModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
+              <button type="button" onClick={() => setShowNewOSModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
 
-            <form onSubmit={handleCreateOSReal} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-              <div className="md:col-span-2">
-                <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Operação *</span>
+            <form onSubmit={handleCreateOSReal} className="p-6 space-y-6 text-left">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Operação *</label>
                   <select
                     required
                     value={newOSForm.tipo_operacao}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setNewOSForm(prev => ({ ...prev, tipo_operacao: e.target.value }))}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                   >
-                    <option value="">Selecione...</option>
+                    <option value="" className="bg-slate-900 text-white">Selecione...</option>
                     {tiposOperacao.map(op => (
-                      <option key={op.id} value={op.id} className="bg-slate-900">{op.nome}</option>
+                      <option key={op.id} value={op.id} className="bg-slate-900 text-white">{op.nome}</option>
                     ))}
                   </select>
-                </label>
-              </div>
-
-              <div>
-                <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data Início Planejada</span>
-                  <input
-                    type="date"
-                    required
-                    value={newOSForm.data_inicio_planejada}
-                    onKeyDown={handleKeyDown}
-                    onChange={(e) => setNewOSForm(prev => ({ ...prev, data_inicio_planejada: e.target.value }))}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
-                  />
-                </label>
-              </div>
-              
-              <div>
-                <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data Término Planejada</span>
-                  <input
-                    type="date"
-                    required
-                    value={newOSForm.data_fim_planejada}
-                    onKeyDown={handleKeyDown}
-                    onChange={(e) => setNewOSForm(prev => ({ ...prev, data_fim_planejada: e.target.value }))}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
-                  />
-                </label>
-              </div>
-
-              {/* Seleção de Talhões */}
-              <div className="md:col-span-2 space-y-2">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Talhões Selecionados * (Clique para selecionar)</span>
-                <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 bg-slate-950/40 rounded-xl border border-white/[0.04]">
-                  {talhoes.map(t => {
-                    const isSelected = newOSForm.talhoes_selecionados.includes(t.id);
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          const exists = newOSForm.talhoes_selecionados.includes(t.id);
-                          setNewOSForm(prev => ({
-                            ...prev,
-                            talhoes_selecionados: exists
-                              ? prev.talhoes_selecionados.filter(id => id !== t.id)
-                              : [...prev.talhoes_selecionados, t.id]
-                          }));
-                        }}
-                        className={`rounded-lg px-2 py-1 text-xs font-bold transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
-                            : 'bg-slate-900 border border-white/5 text-slate-400 hover:text-slate-300'
-                        }`}
-                      >
-                        {t.codigo}
-                      </button>
-                    );
-                  })}
                 </div>
-              </div>
 
-              <div className="md:col-span-2">
-                <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Recomendações Operacionais</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Data Início Planejada *</label>
+                    <input
+                      type="date"
+                      required
+                      value={newOSForm.data_inicio_planejada}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setNewOSForm(prev => ({ ...prev, data_inicio_planejada: e.target.value }))}
+                      className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Data Término Planejada *</label>
+                    <input
+                      type="date"
+                      required
+                      value={newOSForm.data_fim_planejada}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setNewOSForm(prev => ({ ...prev, data_fim_planejada: e.target.value }))}
+                      className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Talhões Selecionados * (Clique para selecionar)</label>
+                  <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 bg-slate-950/60 rounded-xl border border-white/[0.04]">
+                    {talhoes.map(t => {
+                      const isSelected = newOSForm.talhoes_selecionados.includes(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            const exists = newOSForm.talhoes_selecionados.includes(t.id);
+                            setNewOSForm(prev => ({
+                              ...prev,
+                              talhoes_selecionados: exists
+                                ? prev.talhoes_selecionados.filter(id => id !== t.id)
+                                : [...prev.talhoes_selecionados, t.id]
+                            }));
+                          }}
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                            isSelected 
+                              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
+                              : 'bg-slate-900 border border-white/5 text-white hover:bg-slate-800'
+                          }`}
+                        >
+                          {t.codigo}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Recomendações Operacionais</label>
                   <textarea
                     placeholder="Instruções para o tratorista/operador no campo..."
                     value={newOSForm.observacao}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => setNewOSForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
                     rows={2}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                    className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all uppercase"
                   />
-                </label>
+                </div>
               </div>
 
-              <div className="md:col-span-2">
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowNewOSModal(false)}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
                   {saving ? 'Criando...' : 'Criar OS Aprovada'}
                 </button>
@@ -1866,17 +1867,17 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
       {/* MODAL: Apontamento Operacional */}
       {showAptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-panel w-full max-w-2xl bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl my-8 animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-500" />
                 <span>Apontar Atividade Operacional</span>
               </h3>
-              <button onClick={() => setShowAptModal(false)} className="p-1 text-slate-400 hover:text-white rounded-lg"><X className="w-4 h-4" /></button>
+              <button type="button" onClick={() => setShowAptModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
 
-            <form onSubmit={handleSaveApontamentos} className="space-y-4 text-left">
+            <form onSubmit={handleSaveApontamentos} className="p-6 space-y-6 text-left">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="block space-y-1.5">
@@ -2192,25 +2193,34 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                 </div>
               </div>
 
-              <label className="block space-y-1.5 border-t border-white/[0.06] pt-4">
-                <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Notas de Campo / Observações</span>
+              <div className="space-y-1.5 border-t border-white/[0.06] pt-4">
+                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Notas de Campo / Observações</label>
                 <textarea
                   placeholder="Alguma intercorrência, quebra de máquina, chuva forte no dia..."
                   value={aptForm.observacao}
                   onKeyDown={handleKeyDown}
                   onChange={(e) => setAptForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
                   rows={2}
-                  className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
+                  className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all uppercase"
                 />
-              </label>
+              </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-              >
-                {saving ? 'Registrando...' : 'Salvar Apontamento Operacional'}
-              </button>
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAptModal(false)}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
+                >
+                  {saving ? 'Registrando...' : 'Salvar Apontamento'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -2218,22 +2228,18 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
       {/* MODAL: Novo Abastecimento */}
       {showNewAbtModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-panel w-full max-w-2xl bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl my-8 animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <Fuel className="w-4 h-4 text-emerald-500" />
                 <span>Registrar Abastecimento</span>
               </h3>
-              <button 
-                onClick={() => setShowNewAbtModal(false)} 
-                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <button type="button" onClick={() => setShowNewAbtModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
 
-            <form onSubmit={handleCreateAbastecimento} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+            <form onSubmit={handleCreateAbastecimento} className="p-6 space-y-6 text-left">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               <div>
                 <label className="block space-y-1.5">
@@ -2358,32 +2364,30 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block space-y-1.5">
-                  <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Observações / Notas</span>
-                  <textarea
-                    placeholder="Observações do abastecimento..."
-                    value={abtForm.observacao}
-                    onKeyDown={handleKeyDown}
-                    onChange={(e) => setAbtForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
-                    rows={2}
-                    className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none uppercase"
-                  />
-                </label>
+                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Observações / Notas</label>
+                <textarea
+                  placeholder="Observações do abastecimento..."
+                  value={abtForm.observacao}
+                  onKeyDown={handleKeyDown}
+                  onChange={(e) => setAbtForm(prev => ({ ...prev, observacao: e.target.value.toUpperCase() }))}
+                  rows={2}
+                  className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all uppercase"
+                />
               </div>
+              </div> {/* Close grid */}
 
-              <div className="md:col-span-2 flex justify-end gap-3 pt-3">
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
                 <button
                   type="button"
                   onClick={() => setShowNewAbtModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
-                  tabIndex={-1}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/25 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
                   {saving ? 'Gravando...' : 'Salvar Abastecimento'}
                 </button>
@@ -2396,22 +2400,17 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
       {/* MODAL: Novo Gasto e Rateio */}
       {showNewRateioModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-panel w-full max-w-3xl bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl my-8 animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <Coins className="w-4 h-4 text-emerald-500" />
                 <span>Lançar Gasto e Rateio Realizado</span>
               </h3>
-              <button 
-                onClick={() => setShowNewRateioModal(false)} 
-                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <button type="button" onClick={() => setShowNewRateioModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
 
-            <form onSubmit={handleCreateGastoRateio} className="space-y-4 text-left">
+            <form onSubmit={handleCreateGastoRateio} className="p-6 space-y-6 text-left">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
@@ -2635,19 +2634,18 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                 }
               })()}
 
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
                 <button
                   type="button"
                   onClick={() => setShowNewRateioModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
-                  tabIndex={-1}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/25 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
                   {saving ? 'Gravando...' : 'Salvar Rateio'}
                 </button>
@@ -2660,22 +2658,17 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
       {/* MODAL: Novo Rateio Operacional */}
       {showNewRateioOperacionalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-5xl rounded-2xl border border-white/[0.08] bg-slate-900 p-6 space-y-4 my-8 animate-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-[#070b13]/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-panel w-full max-w-5xl bg-slate-900 border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl my-8 animate-in scale-in duration-200">
+            <div className="border-b border-white/[0.06] bg-slate-950/40 p-5 flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-wider text-white flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-500" />
                 <span>Lançar Rateio Operacional</span>
               </h3>
-              <button 
-                onClick={() => setShowNewRateioOperacionalModal(false)} 
-                className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <button type="button" onClick={() => setShowNewRateioOperacionalModal(false)} className="text-slate-400 hover:text-white transition-all text-xs font-bold font-mono">X</button>
             </div>
 
-            <form onSubmit={handleCreateRateioOperacional} className="space-y-6">
+            <form onSubmit={handleCreateRateioOperacional} className="p-6 space-y-6 text-left">
               
               {/* Seção 1: Dados Gerais */}
               <div className="bg-slate-950/30 p-4 rounded-xl border border-white/[0.04] grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
@@ -3185,19 +3178,18 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
               </div>
 
               {/* Botões de Ação */}
-              <div className="flex justify-end gap-3 border-t border-white/[0.06] pt-4">
+              <div className="flex gap-3 justify-end border-t border-white/[0.06] pt-4">
                 <button
                   type="button"
                   onClick={() => setShowNewRateioOperacionalModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-400 hover:text-white text-xs font-bold uppercase transition-all cursor-pointer"
-                  tabIndex={-1}
+                  className="px-4.5 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 text-xs font-bold uppercase transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/25 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white text-xs font-bold uppercase transition-all shadow-lg"
                 >
                   {saving ? 'Gravando...' : 'Salvar Rateio Operacional'}
                 </button>

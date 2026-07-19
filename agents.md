@@ -27,6 +27,7 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Padronizados todos os formulários modais operacionais e de planejamento (Novo Planejamento de Safra, Nova OS Avulsa, Adicionar Atividade, Apontamento Operacional, Registrar Abastecimento, Gasto/Rateio e Rateio Operacional) para utilizarem o mesmo padrão visual escuro glassmorphism com tipografia de alta legibilidade do modal de Pedido de Compra, e adicionado botão "Cancelar" ao formulário de Novo Planejamento de Safra.
 - [x] Criada a ficha de impressão em PDF para Ordem de Serviço (OS) em formato de folha de campo A4 ("Informe de Operação"), com layout de alta fidelidade sem logotipos no cabeçalho e contendo tabela estruturada de 11 linhas para insumos, grade de logs de 16 linhas (pontas, RPM, marcha) e campos de anotação de campo.
 - [x] Adicionado suporte à edição e exclusão de atividades planejadas (`OrdemServicoPlanejada`) no Planejamento de Safra no frontend (através de botões com ícones dedicados de lápis e lixeira), com atualização completa e em cascata dos insumos associados via PUT e deleção lógica/física via DELETE no backend.
 - [x] Implementada inteligência na modal de atividades planejadas para incluir automaticamente na submissão os dados de insumos atualmente preenchidos no formulário temporário de rodapé caso o usuário não tenha clicado no botão `+`.
