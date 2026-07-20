@@ -77,6 +77,12 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 - Atualizado o frontend no componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx): exibe os presets de operador, máquina, implemento, terceirizado e turma planejada com seu valor histórico de panha. O preenchimento da turma executora no apontamento operacional permanece manual a partir do cadastro de turmas no momento em que a OS é executada.
 - Estendidos os testes automatizados do backend em [tests.py](file:///c:/workspace/inovaceifa/backend/planejamento/tests.py) para validar a persistência e cópia correta de `usar_turma` e `valor_planejado_turma`.
 
+#### 13. Correção de Contraste e Suporte a Tema Escuro no Tailwind CSS v4
+- No arquivo [index.css](file:///c:/workspace/inovaceifa/frontend/src/index.css), adicionamos a diretiva `@variant dark (&:where(.dark, .dark *));` logo após a importação do `@import "tailwindcss";`.
+- Por padrão no Tailwind CSS v4, as utilitárias pré-fixadas com `dark:` usam a media query `@media (prefers-color-scheme: dark)`. Como o sistema alterna temas aplicando a classe `.dark` no elemento `<html>` (`document.documentElement.classList.add('dark')`), os utilitários de classe do Tailwind não eram aplicados, enquanto as regras globais de CSS forçavam os textos a ficarem brancos/claros.
+- Com a inclusão do seletor da variante `@variant dark`, todas as classes `dark:bg-*`, `dark:text-*`, `dark:border-*` passam a responder perfeitamente ao toggle de classe do cabeçalho.
+- A correção resolveu definitivamente a falta de contraste e legibilidade das atividades planejadas e dos modais no Planejamento de Safra e em toda a plataforma.
+
 
 #### 9. Correção Visual do Planejamento Selecionado
 - No componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), o card selecionado na coluna esquerda deixou de usar contraste fraco e passou a usar destaque Índigo suave, com texto, data e rodapé ajustados para tema claro e escuro.
