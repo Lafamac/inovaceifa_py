@@ -19,6 +19,14 @@ class Proprietario(BaseModel):
     bairro = models.CharField(max_length=100, null=True, blank=True)
     cidade = models.CharField(max_length=100, null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if not is_new and not self.ativo:
+            for fazenda in self.fazendas.filter(ativo=True):
+                fazenda.ativo = False
+                fazenda.save()
+
     def __str__(self):
         return self.nome
 
@@ -32,6 +40,44 @@ class Fazenda(BaseModel):
     telefone = models.CharField(max_length=20, null=True, blank=True)
     cidade = models.CharField(max_length=100, null=True, blank=True)
     estado = models.CharField(max_length=50, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if not is_new and not self.ativo:
+            self.safras.filter(ativo=True).update(ativo=False)
+
+            for talhao in self.talhoes.filter(ativo=True):
+                talhao.ativo = False
+                talhao.save()
+
+            for maquina in self.maquinas.filter(ativo=True):
+                maquina.ativo = False
+                maquina.save()
+
+            for func in self.funcionarios.filter(ativo=True):
+                func.ativo = False
+                func.save()
+
+            self.terceirizados.filter(ativo=True).update(ativo=False)
+            self.turmas_terceirizadas.filter(ativo=True).update(ativo=False)
+            self.produtos.filter(ativo=True).update(ativo=False)
+            self.fornecedores.filter(ativo=True).update(ativo=False)
+            self.locacoes.filter(ativo=True).update(ativo=False)
+            self.planejamentos.filter(ativo=True).update(ativo=False)
+            self.ordens_servico_reais.filter(ativo=True).update(ativo=False)
+            self.gastos_rateio_realizados.filter(ativo=True).update(ativo=False)
+            self.abastecimentos.filter(ativo=True).update(ativo=False)
+            self.rateios_operacionais.filter(ativo=True).update(ativo=False)
+            self.pedidos_compra.filter(ativo=True).update(ativo=False)
+            self.contas_a_pagar.filter(ativo=True).update(ativo=False)
+            self.pedidos_venda.filter(ativo=True).update(ativo=False)
+            self.contas_a_receber.filter(ativo=True).update(ativo=False)
+            self.movimentacoes_estoque.filter(ativo=True).update(ativo=False)
+
+            from django.db.models import Q
+            from cadastros.models import TransferenciaAtivo
+            TransferenciaAtivo.objects.filter(Q(origem=self) | Q(destino=self), ativo=True).update(ativo=False)
 
     def __str__(self):
         return f"{self.nome} ({self.sigla})"

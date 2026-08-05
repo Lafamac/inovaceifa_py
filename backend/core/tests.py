@@ -331,3 +331,46 @@ class ProprietarioValidationTests(APITestCase):
         fazenda_a.refresh_from_db()
         self.assertFalse(fazenda_a.ativo)
 
+
+from referencias.models import Cultura, TipoIrrigacao, TipoMaquina
+from cadastros.models import Talhao, Maquina
+
+class CascadingDeactivationTests(TestCase):
+    def setUp(self):
+        self.prop = Proprietario.objects.create(nome="Proprietário Cascata", email="cascata@teste.com")
+        self.fazenda = Fazenda.objects.create(nome="Fazenda Cascata", sigla="FZC", proprietario=self.prop)
+        self.safra = Safra.objects.create(
+            fazenda=self.fazenda, nome="Safra Cascata",
+            data_inicio="2026-01-01", data_fim="2026-12-31", ativa=True
+        )
+        self.grupo_trabalhador, _ = GrupoTrabalhador.objects.get_or_create(nome="Mão de Obra Própria")
+        self.funcionario = Funcionario.objects.create(
+            fazenda=self.fazenda, nome="Funcionário Cascata",
+            grupo_trabalhador=self.grupo_trabalhador, salario=1000
+        )
+        self.maquina = Maquina.objects.create(
+            fazenda=self.fazenda, codigo="MQ-C", descricao="Máquina Cascata",
+            tipo=TipoMaquina.objects.get_or_create(nome="Trator")[0]
+        )
+        self.talhao = Talhao.objects.create(
+            fazenda=self.fazenda, codigo="TL-C", nome="Talhão Cascata", area=10,
+            tipo_irrigacao=TipoIrrigacao.objects.get_or_create(nome="Nenhuma")[0],
+            cultura=Cultura.objects.get_or_create(nome="Café")[0]
+        )
+
+    def test_deactivating_proprietario_deactivates_fazenda_and_children(self):
+        self.prop.ativo = False
+        self.prop.save()
+
+        self.fazenda.refresh_from_db()
+        self.safra.refresh_from_db()
+        self.funcionario.refresh_from_db()
+        self.maquina.refresh_from_db()
+        self.talhao.refresh_from_db()
+
+        self.assertFalse(self.fazenda.ativo)
+        self.assertFalse(self.safra.ativo)
+        self.assertFalse(self.funcionario.ativo)
+        self.assertFalse(self.maquina.ativo)
+        self.assertFalse(self.talhao.ativo)
+

@@ -4,6 +4,60 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ## Alterações Realizadas
 
+### 🎨 Ajuste de Contraste do Dropdown de Referências no Dark Mode e Melhoria de Conectividade API
+
+- **Ajuste Visual de Contraste (Frontend)**:
+  - Removemos as classes utilitárias `dark:bg-slate-950/50` e `dark:text-white` do componente `<select>` de seleção de tabelas de referência em [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx).
+  - Com isso, o elemento herda perfeitamente a regra global de estilo para campos `.dark select` em [index.css](file:///c:/workspace/inovaceifa/frontend/src/index.css) (fundo claro com fonte escura no dark mode), eliminando o contraste inadequado de texto claro sobre fundo branco.
+  - Removemos também as classes `dark:bg-slate-900` e `dark:text-white` das tags `<option>` internas, forçando-as a usar `bg-white text-slate-800` para garantir legibilidade impecável independente do tema ou navegador.
+- **Melhoria na URL da API (Frontend)**:
+  - Alteramos a definição da variável `API_BASE_URL` em [api.js](file:///c:/workspace/inovaceifa/frontend/src/services/api.js) para usar dinamicamente o hostname de carregamento do frontend (`window.location.hostname`) em vez do IP fixo `127.0.0.1`.
+  - Isso soluciona problemas onde o usuário acessa o frontend por `localhost` ou `[::1]`, mas as requisições API eram direcionadas para `127.0.0.1`, o que causava bloqueio silencioso por CORS ou falhas de rede no loopback local dependendo da resolução IPv4/IPv6 do sistema.
+- **Logs de Diagnóstico em Requisições GET**:
+  - Adicionamos um log explícito de erro (`console.error`) no bloco `catch` do método `fetchList` em [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx) para registrar qualquer falha de requisição GET, evitando que falhas de rede passem desapercebidas devido ao fallback automático dos mocks offline.
+
+### 🗑️ Inativação em Cascata (Soft Delete) e Ocultação de Órfãos
+
+- **Inativação Recursiva (Backend)**:
+  - Sobrescrevemos o método `save` nos modelos `Proprietario` e `Fazenda` em [models.py](file:///c:/workspace/inovaceifa/backend/core/models.py) para garantir que, quando desativados (`ativo = False`), todos os seus registros filhos dependentes também sejam desativados automaticamente em cascata (`ativo = False`).
+  - Proprietário desativa: todas as suas Fazendas.
+  - Fazenda desativa: Safras, Talhões, Máquinas, Funcionários, Terceirizados, Turmas Terceirizadas, Produtos, Fornecedores, Locações, Planejamentos, Ordens de Serviço Reais, Gastos de Rateio Realizados, Abastecimentos, Rateios Operacionais, Pedidos de Compra, Contas a Pagar, Pedidos de Venda, Contas a Receber e Movimentações de Estoque, além de Transferências de Ativos relacionadas.
+  - Talhão desativa: suas Estimativas de Produção em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py).
+  - Máquina desativa: suas Manutenções em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py).
+  - Funcionário desativa: seus Salários Mensais em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py).
+- **Filtro de Órfãos**:
+  - Atualizamos os métodos `get_queryset` em `BaseTenantViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/cadastros/views.py), `BaseTenantPlanejamentoViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/planejamento/views.py), `FazendaViewSet` e `SafraViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/core/views.py) para filtrar recursivamente e ocultar qualquer registro cujo pai Fazenda ou Proprietário esteja inativo, mesmo se a query parameter pedir registros inativos.
+
+
+### 🚜 Precisão do Talhão, Espaçamento e Mês/Ano Cultivo
+
+- **Ajuste de Precisão do Campo de Área (Backend e Banco de Dados)**:
+  - Alteramos a precisão da coluna `area` no modelo `Talhao` em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py) para `DecimalField(max_digits=12, decimal_places=5)` a fim de suportar até 5 casas decimais de precisão.
+  - Adicionamos o novo campo `mes_ano_cultivo` em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py) (`CharField(max_length=7, null=True, blank=True)`) com formato de preenchimento `MM/AAAA`.
+  - Criamos e executamos as migrações Django (`makemigrations` e `migrate`) para aplicar essas alterações estruturais no banco de dados.
+- **Aprimoramento do Formulário e Listagem de Talhões (Frontend)**:
+  - Adicionamos no formulário modal de Talhões em [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx) os inputs para os campos de **Espaçamento Rua**, **Espaçamento Planta**, **Estande (plantas/ha)**, **Número de Plantas** e o novo **Mês/Ano Cultivo**.
+  - Aumentamos o `step` do campo de `Área` para `"0.00001"` permitindo a digitação precisa de até 5 casas decimais.
+  - Atualizamos a listagem da tabela de talhões para exibir e formatar todas essas informações de forma estruturada: área com precisão de até 5 casas decimais, Espaçamento formatado como `Rua x Planta` e Mês/Ano Cultivo ao lado da fazenda.
+- **Painel Geral (Gestão à Vista)**:
+  - Em [GestaoAVista.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/GestaoAVista.jsx), atualizamos a formatação da área total de Hectares Cultivados no KPI geral de `kpis.hectares_cultivados` para utilizar a formatação pt-BR com precisão de até 5 casas decimais (`minimumFractionDigits: 2, maximumFractionDigits: 5`).
+
+
+### 📚 Correção do Salvamento e Inclusão de Tabelas de Referência
+
+- **Inicialização de Campos (Frontend)**:
+  - Atualizamos a estrutura de `emptyForms.referencias` em [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx) para conter todas as chaves utilizadas pelas 19 tabelas de referências (`nome`, `sigla`, `codigo`, `descricao`, `valor`), evitando inputs descontrolados no React e permitindo o correto reset de todos os campos.
+- **Filtragem de Atributos do Payload**:
+  - Ajustamos o método `handleSubmit` em [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx) para que, ao salvar dados de tabelas de referência, filtre dinamicamente o payload mantendo apenas os atributos declarados na especificação daquela referência em `ALL_REFERENCES`, prevenindo o envio de campos excedentes ou vazios herdados de formulários anteriores que causavam rejeição/erros no backend.
+
+
+### ⚡ Cache-Control Adicional no Backend
+
+- **Remoção de Cache em Todos os ViewSets**:
+  - Introduzimos a classe `BaseCoreViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/core/views.py) herdando `ModelViewSet` e implementando a injeção do header de `Cache-Control` estrito (`no-cache, no-store, must-revalidate, max-age=0`) nas respostas de requisições `GET` e `HEAD`. Fizemos com que `ProprietarioViewSet`, `FazendaViewSet` e `SafraViewSet` herdem desta base.
+  - Implementamos a injeção do mesmo header de `Cache-Control` no método `finalize_response` da classe `BaseTenantPlanejamentoViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/planejamento/views.py), estendendo automaticamente essa proteção anti-cache para todas as requisições GET/HEAD de planejamentos, ordens de serviço (operacional) e pedidos de compra/venda/contas (financeiro).
+
+
 ### 🎨 Padronização de Formulários Modais e Botão Cancelar
 
 #### 1. Padronização Visual dos Modais para o Tema Escuro Premium (Glassmorphism)

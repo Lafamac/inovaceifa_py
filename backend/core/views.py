@@ -3,10 +3,22 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from core.models import Proprietario, Fazenda, Safra
 from core.serializers import ProprietarioSerializer, FazendaSerializer, SafraSerializer
-
 from rest_framework.exceptions import PermissionDenied
+from planejamento.views import setup_tenant_context
 
-class ProprietarioViewSet(viewsets.ModelViewSet):
+class BaseCoreViewSet(viewsets.ModelViewSet):
+    """
+    Base ViewSet for core app that enforces Cache-Control headers to prevent client-side caching of GET requests.
+    """
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        if request.method in ['GET', 'HEAD']:
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+        return response
+
+class ProprietarioViewSet(BaseCoreViewSet):
     serializer_class = ProprietarioSerializer
     permission_classes = [IsAuthenticated]
 
@@ -38,7 +50,7 @@ class ProprietarioViewSet(viewsets.ModelViewSet):
         instance.ativo = False
         instance.save()
 
-class FazendaViewSet(viewsets.ModelViewSet):
+class FazendaViewSet(BaseCoreViewSet):
     serializer_class = FazendaSerializer
     permission_classes = [IsAuthenticated]
 
@@ -61,6 +73,8 @@ class FazendaViewSet(viewsets.ModelViewSet):
         else:
             qs = user.fazendas_permitidas.all()
             
+        qs = qs.filter(proprietario__ativo=True)
+
         if not (incluir_inativos or is_detail):
             qs = qs.filter(ativo=True)
             
@@ -84,9 +98,7 @@ class FazendaViewSet(viewsets.ModelViewSet):
         instance.ativo = False
         instance.save()
 
-from planejamento.views import setup_tenant_context
-
-class SafraViewSet(viewsets.ModelViewSet):
+class SafraViewSet(BaseCoreViewSet):
     serializer_class = SafraSerializer
     permission_classes = [IsAuthenticated]
 
@@ -98,11 +110,15 @@ class SafraViewSet(viewsets.ModelViewSet):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
         is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
         
+        qs = Safra.objects.filter(
+            fazenda__in=self.request.fazendas_permitidas,
+            fazenda__ativo=True,
+            fazenda__proprietario__ativo=True
+        )
         if incluir_inativos or is_detail:
-            return Safra.objects.filter(fazenda__in=self.request.fazendas_permitidas)
-        return Safra.objects.filter(fazenda__in=self.request.fazendas_permitidas, ativo=True)
+            return qs
+        return qs.filter(ativo=True)
 
     def perform_destroy(self, instance):
         instance.ativo = False
         instance.save()
-

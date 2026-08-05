@@ -152,7 +152,7 @@ const emptyForms = {
     observacao: '',
   },
   usuarios: { username: '', email: '', first_name: '', last_name: '', password: '', perfil_id: '', fazendas_permitidas_ids: [] },
-  referencias: { nome: '', sigla: '', codigo: '' },
+  referencias: { nome: '', sigla: '', codigo: '', descricao: '', valor: '' },
 };
 
 const endpoints = {
@@ -426,9 +426,9 @@ const SelectField = ({ label, value, onChange, options, required = false, defaul
       }}
       className="w-full bg-white border border-slate-200 focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-slate-800 outline-none transition-all"
     >
-      <option value="" className="bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500">{defaultOption}</option>
+      <option value="">{defaultOption}</option>
       {options.map((option) => (
-        <option key={option.value} value={option.value} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{option.label}</option>
+        <option key={option.value} value={option.value}>{option.label}</option>
       ))}
     </select>
   </label>
@@ -626,6 +626,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       const response = await api.get(`${url}?incluir_inativos=true&_=${new Date().getTime()}`);
       return asList(response.data);
     } catch (error) {
+      console.error(`[fetchList] Erro de requisição para ${url} (chave: ${fallbackKey}):`, error);
       // Se o backend respondeu com erro (error.response existe), propagamos o erro
       // ao invés de retornar os dados locais simulados do localStorage
       if (error.response) {
@@ -907,7 +908,19 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       return;
     }
 
-    let payload = fillRequiredRefs(cleanPayload(forms[targetKey]));
+    let payload = cleanPayload(forms[targetKey]);
+    if (activeTab === 'referencias') {
+      const allowedFields = ALL_REFERENCES[selectedRefTab].fields.map(f => f.name);
+      const filteredPayload = {};
+      allowedFields.forEach(field => {
+        if (payload[field] !== undefined) {
+          filteredPayload[field] = payload[field];
+        }
+      });
+      payload = filteredPayload;
+    } else {
+      payload = fillRequiredRefs(payload);
+    }
 
     if (activeTab === 'estoque') {
       payload.safra = payload.safra || currentSafraId;
@@ -1529,13 +1542,18 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputField required label="Código" value={currentForm.codigo} onChange={(value) => patchForm('codigo', value)} />
           <InputField required label="Nome do Talhão" value={currentForm.nome} onChange={(value) => patchForm('nome', value)} />
-          <InputField required label="Área (ha)" type="number" value={currentForm.area} onChange={(value) => patchForm('area', value)} />
+          <InputField required label="Área (ha)" type="number" step="0.00001" value={currentForm.area} onChange={(value) => patchForm('area', value)} />
           <SelectField required label="Irrigação" value={currentForm.tipo_irrigacao} onChange={(value) => patchForm('tipo_irrigacao', value)} options={refOptions('tiposIrrigacao')} />
           <SelectField required label="Cultura" value={currentForm.cultura} onChange={(value) => patchForm('cultura', value)} options={refOptions('culturas')} />
           <SelectField label="Status Cultivo" value={currentForm.status_cultivo} onChange={(value) => patchForm('status_cultivo', value)} options={refOptions('statusCultivo')} />
           <SelectField label="Resistência Ferrugem" value={currentForm.resistencia_ferrugem} onChange={(value) => patchForm('resistencia_ferrugem', value)} options={refOptions('resistenciasFerrugem')} />
+          <InputField label="Material Genético" value={currentForm.material_genetico} onChange={(value) => patchForm('material_genetico', value)} />
+          <InputField label="Espaçamento Rua (m)" type="number" step="0.01" value={currentForm.espacamento_rua} onChange={(value) => patchForm('espacamento_rua', value)} />
+          <InputField label="Espaçamento Planta (m)" type="number" step="0.01" value={currentForm.espacamento_planta} onChange={(value) => patchForm('espacamento_planta', value)} />
+          <InputField label="Estande (plantas/ha)" type="number" value={currentForm.estande} onChange={(value) => patchForm('estande', value)} />
+          <InputField label="Número de Plantas" type="number" value={currentForm.numero_plantas} onChange={(value) => patchForm('numero_plantas', value)} />
           <div className="md:col-span-2">
-            <InputField label="Material Genético" value={currentForm.material_genetico} onChange={(value) => patchForm('material_genetico', value)} />
+            <InputField label="Mês/Ano Cultivo" placeholder="MM/AAAA" value={currentForm.mes_ano_cultivo} onChange={(value) => patchForm('mes_ano_cultivo', value)} />
           </div>
         </div>
       );
@@ -1968,10 +1986,29 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
           <td className="py-3 px-5">
             <p className="text-xs font-black text-slate-800 dark:text-white">{item.codigo} - {item.nome}</p>
-            <p className="text-[10px] text-slate-455 dark:text-slate-500">{lookup(records.fazendas, fieldId(item, 'fazenda'))}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">
+              {lookup(records.fazendas, fieldId(item, 'fazenda'))}
+              {item.mes_ano_cultivo && ` • CULTIVO: ${item.mes_ano_cultivo}`}
+            </p>
           </td>
-          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.cultura_nome || 'Café'}</td>
-          <td className="py-3 px-5 text-right text-xs font-bold text-teal-600 dark:text-teal-400">{Number(item.area || 0).toLocaleString('pt-BR')} ha</td>
+          <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
+            <div>{item.cultura_nome || 'Café'}</div>
+            {(item.espacamento_rua || item.espacamento_planta) && (
+              <div className="text-[9px] text-slate-450 dark:text-slate-400 mt-0.5 font-bold">
+                ESPAÇAMENTO: {item.espacamento_rua ? Number(item.espacamento_rua).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '-'} x {item.espacamento_planta ? Number(item.espacamento_planta).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '-'} M
+              </div>
+            )}
+            {(item.estande || item.numero_plantas) && (
+              <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 font-semibold">
+                {item.estande && `ESTANDE: ${item.estande} PL/HA`}
+                {item.estande && item.numero_plantas && ` • `}
+                {item.numero_plantas && `PLANTAS: ${Number(item.numero_plantas).toLocaleString('pt-BR')}`}
+              </div>
+            )}
+          </td>
+          <td className="py-3 px-5 text-right text-xs font-bold text-teal-600 dark:text-teal-400">
+            {Number(item.area || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 })} ha
+          </td>
           <td className="py-3 px-5 text-center">
             <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
             <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
@@ -2592,12 +2629,12 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                       setSelectedRefTab(e.target.value);
                       setSearchQuery('');
                     }}
-                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-slate-800 dark:text-white outline-none transition-all font-bold cursor-pointer"
+                    className="w-full bg-white border border-slate-200 dark:border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-xs text-slate-800 outline-none transition-all font-bold cursor-pointer"
                   >
                     {Object.entries(ALL_REFERENCES)
                       .sort((a, b) => a[1].label.localeCompare(b[1].label))
                       .map(([key, val]) => (
-                        <option key={key} value={key} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">{val.label}</option>
+                        <option key={key} value={key}>{val.label}</option>
                       ))}
                   </select>
                 </div>

@@ -9,13 +9,14 @@ class Talhao(BaseModel):
     fazenda = models.ForeignKey(Fazenda, on_delete=models.PROTECT, related_name='talhoes')
     codigo = models.CharField(max_length=50) # Ex: "01"
     nome = models.CharField(max_length=150) # Ex: "01 - BR/Catuaí 62"
-    area = models.DecimalField(max_digits=10, decimal_places=2) # em hectares
+    area = models.DecimalField(max_digits=12, decimal_places=5) # em hectares
     tipo_irrigacao = models.ForeignKey(TipoIrrigacao, on_delete=models.PROTECT)
     cultura = models.ForeignKey(Cultura, on_delete=models.PROTECT)
     espacamento_rua = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     espacamento_planta = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     estande = models.IntegerField(null=True, blank=True) # plantas/ha
     numero_plantas = models.IntegerField(null=True, blank=True)
+    mes_ano_cultivo = models.CharField(max_length=7, null=True, blank=True, help_text="Mês/Ano de Cultivo (MM/AAAA)")
     material_genetico = models.CharField(max_length=150, null=True, blank=True)
     resistencia_ferrugem = models.ForeignKey(ResistenciaFerrugem, on_delete=models.PROTECT, null=True, blank=True)
     status_cultivo = models.ForeignKey(StatusCultivo, on_delete=models.PROTECT, null=True, blank=True)
@@ -24,6 +25,12 @@ class Talhao(BaseModel):
         verbose_name = "Talhão"
         verbose_name_plural = "Talhões"
         unique_together = ('fazenda', 'codigo', 'ativo')
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if not is_new and not self.ativo:
+            self.estimativas.filter(ativo=True).update(ativo=False)
 
     def __str__(self):
         return f"{self.nome} ({self.fazenda.sigla})"
@@ -59,6 +66,12 @@ class Maquina(BaseModel):
         verbose_name = "Máquina"
         verbose_name_plural = "Máquinas"
         unique_together = ('fazenda', 'codigo', 'ativo')
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if not is_new and not self.ativo:
+            self.manutencoes.filter(ativo=True).update(ativo=False)
 
     def __str__(self):
         return f"{self.codigo} - {self.descricao}"
@@ -101,6 +114,7 @@ class Funcionario(BaseModel):
         return self.nome
 
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         # Calculate encargos dynamically
         try:
             from referencias.models import EncargoFolha
@@ -113,6 +127,9 @@ class Funcionario(BaseModel):
             pass
 
         super().save(*args, **kwargs)
+
+        if not is_new and not self.ativo:
+            self.salarios.filter(ativo=True).update(ativo=False)
 
         try:
             from core.models import Safra

@@ -39,11 +39,29 @@ class BaseTenantViewSet(viewsets.ModelViewSet):
         super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
+        qs = self.queryset
+        model = qs.model
+
+        if hasattr(model, 'fazenda'):
+            if model.__name__ == 'Produto':
+                from django.db.models import Q
+                qs = qs.filter(Q(fazenda__isnull=True) | Q(fazenda__ativo=True, fazenda__proprietario__ativo=True))
+            else:
+                qs = qs.filter(fazenda__ativo=True, fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'talhao'):
+            qs = qs.filter(talhao__fazenda__ativo=True, talhao__fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'maquina'):
+            qs = qs.filter(maquina__fazenda__ativo=True, maquina__fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'funcionario'):
+            qs = qs.filter(funcionario__fazenda__ativo=True, funcionario__fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'origem'):
+            qs = qs.filter(origem__ativo=True, origem__proprietario__ativo=True)
+
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
         is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
         if incluir_inativos or is_detail:
-            return self.queryset
-        return self.queryset.filter(ativo=True)
+            return qs
+        return qs.filter(ativo=True)
 
     def perform_destroy(self, instance):
         # Soft delete mandatório

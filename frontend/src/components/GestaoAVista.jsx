@@ -125,7 +125,9 @@ export const GestaoAVista = () => {
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{kpis.hectares_cultivados.toFixed(1)} ha</h3>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">
+              {Number(kpis.hectares_cultivados || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 })} ha
+            </h3>
             <p className="text-[10px] text-slate-400 mt-1">Área total de talhões cadastrados</p>
           </div>
         </div>

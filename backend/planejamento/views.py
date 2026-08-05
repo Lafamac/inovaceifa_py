@@ -82,15 +82,37 @@ class BaseTenantPlanejamentoViewSet(viewsets.ModelViewSet):
         super().initial(request, *args, **kwargs)
 
     def get_queryset(self):
+        qs = self.queryset
+        model = qs.model
+
+        if hasattr(model, 'fazenda'):
+            qs = qs.filter(fazenda__ativo=True, fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'planejamento'):
+            qs = qs.filter(planejamento__fazenda__ativo=True, planejamento__fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'ordem_servico'):
+            qs = qs.filter(ordem_servico__fazenda__ativo=True, ordem_servico__fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'apontamento'):
+            qs = qs.filter(apontamento__ordem_servico__fazenda__ativo=True, apontamento__ordem_servico__fazenda__proprietario__ativo=True)
+        elif hasattr(model, 'safra'):
+            qs = qs.filter(safra__fazenda__ativo=True, safra__fazenda__proprietario__ativo=True)
+
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
         is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
         if incluir_inativos or is_detail:
-            return self.queryset
-        return self.queryset.filter(ativo=True)
+            return qs
+        return qs.filter(ativo=True)
 
     def perform_destroy(self, instance):
         instance.ativo = False
         instance.save()
+
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        if request.method in ['GET', 'HEAD']:
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+        return response
 
 
 class PlanejamentoSafraViewSet(BaseTenantPlanejamentoViewSet):
