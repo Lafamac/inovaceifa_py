@@ -27,6 +27,7 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso
+- [x] Ajustado o posicionamento do modal principal de Cadastros para abrir ancorado no topo da tela com altura máxima e rolagem interna, corrigindo o formulário de edição de Talhões que abria baixo demais após a inclusão de novos campos.
 - [x] Corrigido o contraste do dropdown/select de tabelas de referência no dark mode para evitar texto claro sobre fundo branco, e ajustada a inicialização dinâmica de `API_BASE_URL` no frontend para herdar o mesmo hostname da URL de acesso (`window.location.hostname`), prevenindo falhas silenciosas de rede ou CORS em ambientes locais mistos.
 - [x] Adicionado cabeçalho HTTP Cache-Control estrito (no-cache) em todos os ViewSets do backend (Core, Cadastros, Referências, Planejamento, Operações, Financeiro) para evitar que o navegador armazene cache local das listagens.
 - [x] Corrigido o salvamento e a inclusão de registros nas tabelas de referência no frontend, inicializando corretamente os campos descricao/valor e filtrando o payload no submit para evitar o envio de propriedades indesejadas.

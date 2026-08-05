@@ -4,6 +4,12 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ## Alterações Realizadas
 
+### 🪟 Ajuste de Posicionamento do Modal de Cadastros
+
+- No componente [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx), o modal principal de cadastro/edição deixou de ser centralizado verticalmente e passou a abrir ancorado próximo ao topo da tela.
+- O painel do modal agora possui altura máxima baseada na viewport (`max-h`) e `overflow-hidden`, enquanto o formulário interno mantém rolagem própria. Isso evita que formulários longos, como a edição de **Talhões**, abram muito abaixo da área visível após a inclusão de novos campos agronômicos.
+- A alteração melhora a ergonomia em telas menores sem afetar o layout em duas colunas dos formulários.
+
 ### 🎨 Ajuste de Contraste do Dropdown de Referências no Dark Mode e Melhoria de Conectividade API
 
 - **Ajuste Visual de Contraste (Frontend)**:
