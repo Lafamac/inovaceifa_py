@@ -1,0 +1,103 @@
+
+# Plano de Implementação - Entrada de Dados de Rateio (Aba Rateios)
+
+Este plano descreve as alterações necessárias para implementar o módulo de **Lançamento de Rateios Operacionais** (que reflete a aba "Aba Rateios" da planilha), permitindo registrar despesas planejadas e realizadas para mão de obra compartilhada, horas de máquinas, consumo de combustível e custos gerais, e integrando esses valores em todos os relatórios analíticos do ERP.
+
+---
+
+## 📐 Regras de Negócio e Cálculos
+
+1. **Estrutura Unificada (Planejado vs Realizado)**:
+   * Cada registro de rateio operacional conterá colunas de **Planejado** e **Realizado** lado a lado (assim como na planilha).
+2. **Propagação de Custo**:
+   * O valor do rateio operacional é distribuído entre os talhões ativos em proporção à sua **Área (Hectares)**.
+   * Se o campo `fazenda_rateio` for preenchido, o custo é distribuído apenas entre os talhões ativos daquela fazenda específica.
+   * Se `fazenda_rateio` for `null` (em branco), o custo é compartilhado entre **todas as fazendas ativas da safra**, distribuído proporcionalmente pela área de cada talhão em relação à área total de todas as fazendas do proprietário.
+3. **Integração em Relatórios**:
+   * **Custo por Talhão**: Soma a parcela calculada do rateio operacional no custo real e planejado de cada talhão.
+   * **Custo Mensal**: Agrupa os gastos por mês/ano e adiciona à categoria correspondente.
+   * **Mão de Obra Fixa (MOF)**: Soma as horas trabalhadas (`horas_homem_real`) de rateios operacionais ao total mensal de horas do funcionário para calcular o custo/hora exato.
+4. **Sincronização com Estoque**:
+   * Se o rateio possuir um combustível e quantidade real preenchidos, gerará automaticamente uma **SAÍDA** no estoque (`EstoqueMovimento`).
+
+---
+
+## Alterações Propostas
+
+### Backend - Módulo de Operações (`operacoes`)
+
+#### [MODIFY] [models.py](file:///c:/workspace/inovaceifa/backend/operacoes/models.py)
+Adicionaremos o modelo `RateioOperacional`:
+* `safra` (ForeignKey para `Safra`, obrigatório)
+* `data` (DateField, obrigatório)
+* `fazenda_rateio` (ForeignKey para `Fazenda`, opcional/null)
+* `atividade_educampo` (ForeignKey para `AtividadeEducampo`, obrigatório)
+* **Planejado**:
+  * `descricao_plan` (CharField, opcional)
+  * `funcionario_plan` (ForeignKey para `Funcionario`, opcional)
+  * `horas_homem_plan` (DecimalField)
+  * `valor_hora_homem_plan` (DecimalField)
+  * `valor_total_homem_plan` (DecimalField)
+  * `trator_plan` / `implemento_plan` (ForeignKey para `Maquina`, opcional)
+  * `horas_maq_plan` (DecimalField)
+  * `valor_hora_maq_plan` (DecimalField)
+  * `valor_total_maq_plan` (DecimalField)
+  * `combustivel_plan` (ForeignKey para `Produto`, opcional)
+  * `diesel_gasto_plan` / `valor_diesel_plan` / `valor_total_diesel_plan` (DecimalField)
+  * `qtd_plan` / `valor_unitario_plan` / `valor_total_plan` (DecimalField)
+* **Realizado**:
+  * `descricao_real` (CharField, opcional)
+  * `funcionario_real` (ForeignKey para `Funcionario`, opcional)
+  * `horas_homem_real` (DecimalField)
+  * `valor_hora_homem_real` (DecimalField)
+  * `valor_total_homem_real` (DecimalField)
+  * `trator_real` / `implemento_real` (ForeignKey para `Maquina`, opcional)
+  * `horas_maq_real` (DecimalField)
+  * `valor_hora_trator_real` / `valor_hora_implemento_real` / `valor_total_maq_real` (DecimalField)
+  * `combustivel_real` (ForeignKey para `Produto`, opcional)
+  * `diesel_gasto_real` / `valor_diesel_real` / `valor_total_diesel_real` (DecimalField)
+  * `qtd_real` / `valor_unitario_real` / `valor_total_real` (DecimalField)
+* Soft delete: herda de `BaseModel` (`ativo=True`).
+
+#### [MODIFY] [services.py](file:///c:/workspace/inovaceifa/backend/operacoes/services.py)
+* Criar funções `gerar_movimento_rateio_diesel(rateio)` e `remover_movimento_rateio_diesel(rateio)` para dar baixa automática no estoque quando houver consumo real de combustível no lançamento de rateio.
+
+#### [MODIFY] [serializers.py](file:///c:/workspace/inovaceifa/backend/operacoes/serializers.py)
+* Criar `RateioOperacionalSerializer` incluindo nomes legíveis em campos de consulta (ReadOnlyField).
+
+#### [MODIFY] [views.py](file:///c:/workspace/inovaceifa/backend/operacoes/views.py)
+* Criar `RateioOperacionalViewSet` herdando de `BaseTenantPlanejamentoViewSet`. Filtra registros da safra ativa.
+
+#### [MODIFY] [urls.py](file:///c:/workspace/inovaceifa/backend/operacoes/urls.py)
+* Registrar rota `/api/rateios-operacionais/`.
+
+---
+
+### Backend - Módulo de Relatórios (`relatorios`)
+
+#### [MODIFY] [services.py](file:///c:/workspace/inovaceifa/backend/relatorios/services.py)
+* **`custo_por_talhao`**: Adicionar cálculo para carregar os rateios operacionais da safra, determinar os talhões alvo com base em `fazenda_rateio` (ou todas as fazendas da safra caso seja null) e somar os valores planejados e realizados proporcionalmente à área do talhão.
+* **`custo_mensal`**: Incluir custos provenientes de `RateioOperacional` agrupados por mês na nova linha `custos_rateio_operacional`.
+* **`mao_obra_fixa`**: Acrescentar horas de rateio (`horas_homem_real`) nas horas mensais do funcionário.
+
+---
+
+### Frontend - Interface do Usuário (`frontend`)
+
+#### [MODIFY] [api.js](file:///c:/workspace/inovaceifa/frontend/src/services/api.js)
+* Adicionar chamadas CRUD para `/api/rateios-operacionais/`.
+
+#### [MODIFY] [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx)
+* Adicionar sub-aba **Rateios Operacionais** (Aba Rateios).
+* Criar listagem elegante com colunas para Descrição, Educampo, Funcionário, Trator, Quantidades Planejas/Reais e Valores Totais.
+* Criar modal de criação/edição em duas colunas, com inputs de texto convertendo em caixa alta (`value.toUpperCase()`), navegação por Enter/Tab pulando Cancelar, e cálculos automáticos de totais (`horas * valor = total`) ao digitar.
+
+---
+
+## Plano de Verificação
+
+### Testes Automatizados
+* Adicionar testes em `backend/operacoes/tests.py` verificando:
+  1. Criação de rateio com diesel gera a saída no estoque correspondente.
+  2. Distribuição matemática por talhão respeitando fazenda selecionada vs compartilhada.
+  3. Integração nos relatórios analíticos.

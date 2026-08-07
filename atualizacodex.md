@@ -22,7 +22,7 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 - **Logs de Diagnóstico em Requisições GET**:
   - Adicionamos um log explícito de erro (`console.error`) no bloco `catch` do método `fetchList` em [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx) para registrar qualquer falha de requisição GET, evitando que falhas de rede passem desapercebidas devido ao fallback automático dos mocks offline.
 
-### 🗑️ Inativação em Cascata (Soft Delete) e Ocultação de Órfãos
+### 🗑️ Inativação e Reativação em Cascata (Soft Delete) e Ocultação de Órfãos
 
 - **Inativação Recursiva (Backend)**:
   - Sobrescrevemos o método `save` nos modelos `Proprietario` e `Fazenda` em [models.py](file:///c:/workspace/inovaceifa/backend/core/models.py) para garantir que, quando desativados (`ativo = False`), todos os seus registros filhos dependentes também sejam desativados automaticamente em cascata (`ativo = False`).
@@ -31,6 +31,11 @@ Este documento registra as alterações de layout, formulários e estrutura de m
   - Talhão desativa: suas Estimativas de Produção em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py).
   - Máquina desativa: suas Manutenções em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py).
   - Funcionário desativa: seus Salários Mensais em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py).
+- **Reativação Recursiva (Backend)**:
+  - Implementamos a lógica inversa nos métodos `save` dos modelos `Proprietario` e `Fazenda` em [models.py](file:///c:/workspace/inovaceifa/backend/core/models.py) e de `Talhao`, `Maquina` e `Funcionario` em [models.py](file:///c:/workspace/inovaceifa/backend/cadastros/models.py) para detectar a alteração de `ativo` de `False` para `True`.
+  - Quando um Proprietário é reativado, todas as suas Fazendas inativas são reativadas.
+  - Quando uma Fazenda é reativada, todas as suas safras, talhões, máquinas, funcionários e outros dados vinculados são reativados automaticamente em cascata.
+  - Quando um Talhão, Máquina ou Funcionário é reativado, suas respectivas tabelas filhas (estimativas, manutenções, salários) são igualmente reativadas.
 - **Filtro de Órfãos**:
   - Atualizamos os métodos `get_queryset` em `BaseTenantViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/cadastros/views.py), `BaseTenantPlanejamentoViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/planejamento/views.py), `FazendaViewSet` e `SafraViewSet` em [views.py](file:///c:/workspace/inovaceifa/backend/core/views.py) para filtrar recursivamente e ocultar qualquer registro cujo pai Fazenda ou Proprietário esteja inativo, mesmo se a query parameter pedir registros inativos.
 
@@ -236,6 +241,21 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 - Atualizado o histórico de tarefas recentes no arquivo [agents.md](file:///c:/workspace/inovaceifa/agents.md) registrando a conclusão destas melhorias.
 - Atualizado este arquivo [atualizacodex.md](file:///c:/workspace/inovaceifa/atualizacodex.md) com a documentação da ficha de impressão.
+
+### 🚜 Insumos Ad-hoc e Consolidação de Pedido de Compra no Planejamento
+
+- **Ajustes no Modelo (Backend)**:
+  - Adicionado o campo `de_planejamento` no modelo `PedidoCompra` em [models.py](file:///c:/workspace/inovaceifa/backend/financeiro/models.py).
+- **Consolidação por Safra/Fazenda**:
+  - Criada a lógica de cálculo de déficit de insumos na safra atual. Se a demanda planejada exceder o estoque físico e as compras já aprovadas, gera/atualiza um `PedidoCompra` do tipo rascunho com a flag `de_planejamento=True`. Se o estoque for suficiente, remove o item do pedido de compras automático.
+  - Sinais Django sincronizam esse cálculo no `post_save` e `post_delete` de insumos planejados, planejamentos, OSs planejadas (com suporte a soft-deletes em cascata), movimentos de estoque e pedidos de compra.
+- **Insumos Ad-hoc no Frontend e Backend**:
+  - Ajustados os serializers para aceitar `produto_nome_novo` e `unidade_sigla`, criando dinamicamente os produtos não cadastrados no banco durante o salvamento da atividade planejada.
+  - Modificado o formulário de Nova OS em [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx) com um checkbox `"Não Cadastrado?"`, alternando para campos de digitação de nome e seleção de unidades de medida.
+- **Correção dos Dropdowns Vazios e Normalização de Tipagem**:
+  - Ajustado o hook `loadReferences` para incluir `safraAtiva` e `fazendaAtiva` nas dependências e não efetuar requisições se forem nulos, prevenindo erros HTTP 400 da middleware de Multi-Tenant do Django e travamentos.
+  - Mapeamento e comparação local de IDs de fazenda normalizados para `String` a fim de garantir consistência e evitar que dropdowns (Operador, Máquinas, Operação) fiquem em branco por conflito de tipos (Number vs String).
+  - Atualizado o seletor de Talhões no modal para exibir o **Nome do Talhão** (`t.nome`) ao invés do código.
 
 ## Validação
 

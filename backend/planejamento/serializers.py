@@ -8,14 +8,18 @@ from planejamento.models import (
     ItemInsumoOSPlanejado, ParametroOperacionalOS, PlanejamentoMaoObraTerceiros,
     PlanejamentoAdubo, PlanejamentoRateio
 )
+from planejamento.services import obter_ou_criar_produto_ad_hoc, atualizar_pedido_compra_planejamento
 
 class ItemInsumoOSPlanejadoSerializer(serializers.ModelSerializer):
+    produto = serializers.PrimaryKeyRelatedField(queryset=Produto.objects.all(), required=False, allow_null=True)
     produto_detalhe = ProdutoSerializer(source='produto', read_only=True)
     quantidade_planejada = serializers.DecimalField(max_digits=12, decimal_places=4, required=False)
+    produto_nome_novo = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    unidade_sigla = serializers.CharField(write_only=True, required=False, allow_null=True, allow_blank=True)
 
     class Meta:
         model = ItemInsumoOSPlanejado
-        fields = ['id', 'produto', 'produto_detalhe', 'dose_planejada', 'quantidade_planejada']
+        fields = ['id', 'produto', 'produto_detalhe', 'dose_planejada', 'quantidade_planejada', 'produto_nome_novo', 'unidade_sigla']
 
 
 class ParametroOperacionalOSSerializer(serializers.ModelSerializer):
@@ -91,16 +95,35 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
 
         # 2. Criar insumos
         total_area = sum(pt.talhao.area for pt in os_planejada.talhoes.filter(ativo=True))
+        fazenda = os_planejada.planejamento.fazenda
+        safra = os_planejada.planejamento.safra
         for insumo in insumos_data:
             qty = insumo.get('quantidade_planejada')
             if qty is None or qty <= 0:
                 qty = insumo.get('dose_planejada') * total_area
-            ItemInsumoOSPlanejado.objects.create(
-                ordem_servico_planejada=os_planejada,
-                produto=insumo.get('produto'),
-                dose_planejada=insumo.get('dose_planejada'),
-                quantidade_planejada=qty
-            )
+            
+            produto = insumo.get('produto')
+            produto_nome_novo = insumo.get('produto_nome_novo')
+            unidade_sigla = insumo.get('unidade_sigla')
+            
+            if not produto and produto_nome_novo:
+                produto = obter_ou_criar_produto_ad_hoc(
+                    nome_comercial=produto_nome_novo,
+                    fazenda=fazenda,
+                    safra=safra,
+                    unidade_sigla=unidade_sigla
+                )
+            
+            if produto:
+                ItemInsumoOSPlanejado.objects.create(
+                    ordem_servico_planejada=os_planejada,
+                    produto=produto,
+                    dose_planejada=insumo.get('dose_planejada'),
+                    quantidade_planejada=qty
+                )
+        
+        # Consolida pedido de compra para a fazenda e safra
+        atualizar_pedido_compra_planejamento(fazenda, safra)
 
         # 3. Criar parâmetros
         for p in parametros_data:
@@ -147,16 +170,35 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
         if insumos_data is not None:
             instance.insumos.all().delete()
             total_area = sum(pt.talhao.area for pt in instance.talhoes.filter(ativo=True))
+            fazenda = instance.planejamento.fazenda
+            safra = instance.planejamento.safra
             for insumo in insumos_data:
                 qty = insumo.get('quantidade_planejada')
                 if qty is None or qty <= 0:
                     qty = insumo.get('dose_planejada') * total_area
-                ItemInsumoOSPlanejado.objects.create(
-                    ordem_servico_planejada=instance,
-                    produto=insumo.get('produto'),
-                    dose_planejada=insumo.get('dose_planejada'),
-                    quantidade_planejada=qty
-                )
+                
+                produto = insumo.get('produto')
+                produto_nome_novo = insumo.get('produto_nome_novo')
+                unidade_sigla = insumo.get('unidade_sigla')
+                
+                if not produto and produto_nome_novo:
+                    produto = obter_ou_criar_produto_ad_hoc(
+                        nome_comercial=produto_nome_novo,
+                        fazenda=fazenda,
+                        safra=safra,
+                        unidade_sigla=unidade_sigla
+                    )
+                
+                if produto:
+                    ItemInsumoOSPlanejado.objects.create(
+                        ordem_servico_planejada=instance,
+                        produto=produto,
+                        dose_planejada=insumo.get('dose_planejada'),
+                        quantidade_planejada=qty
+                    )
+            
+            # Consolida pedido de compra
+            atualizar_pedido_compra_planejamento(fazenda, safra)
 
         return instance
 

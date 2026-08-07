@@ -374,3 +374,60 @@ class CascadingDeactivationTests(TestCase):
         self.assertFalse(self.maquina.ativo)
         self.assertFalse(self.talhao.ativo)
 
+    def test_reactivating_proprietario_reactivates_fazenda_and_children(self):
+        # Primeiro desativa
+        self.prop.ativo = False
+        self.prop.save()
+
+        self.fazenda.refresh_from_db()
+        self.safra.refresh_from_db()
+        self.funcionario.refresh_from_db()
+        self.maquina.refresh_from_db()
+        self.talhao.refresh_from_db()
+
+        self.assertFalse(self.fazenda.ativo)
+        self.assertFalse(self.safra.ativo)
+
+        # Agora reativa
+        self.prop.ativo = True
+        self.prop.save()
+
+        self.fazenda.refresh_from_db()
+        self.safra.refresh_from_db()
+        self.funcionario.refresh_from_db()
+        self.maquina.refresh_from_db()
+        self.talhao.refresh_from_db()
+
+        self.assertTrue(self.fazenda.ativo)
+        self.assertTrue(self.safra.ativo)
+        self.assertTrue(self.funcionario.ativo)
+        self.assertTrue(self.maquina.ativo)
+        self.assertTrue(self.talhao.ativo)
+
+    def test_reactivating_fazenda_reactivates_children(self):
+        # Primeiro desativa
+        self.fazenda.ativo = False
+        self.fazenda.save()
+
+        self.safra.refresh_from_db()
+        self.funcionario.refresh_from_db()
+        self.maquina.refresh_from_db()
+        self.talhao.refresh_from_db()
+
+        self.assertFalse(self.safra.ativo)
+        self.assertFalse(self.funcionario.ativo)
+
+        # Agora reativa
+        self.fazenda.ativo = True
+        self.fazenda.save()
+
+        self.safra.refresh_from_db()
+        self.funcionario.refresh_from_db()
+        self.maquina.refresh_from_db()
+        self.talhao.refresh_from_db()
+
+        self.assertTrue(self.safra.ativo)
+        self.assertTrue(self.funcionario.ativo)
+        self.assertTrue(self.maquina.ativo)
+        self.assertTrue(self.talhao.ativo)
+

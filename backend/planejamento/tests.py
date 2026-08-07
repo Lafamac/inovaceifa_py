@@ -246,3 +246,150 @@ class PlanejamentoAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("término planejado não pode ser menor", str(response.data))
 
+    def test_ad_hoc_product_creation_and_purchase_order(self):
+        planejamento = PlanejamentoSafra.objects.create(
+            fazenda=self.fazenda, safra=self.safra,
+            descricao="Plan AdHoc", data_planejamento="2026-05-19"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        self.client.credentials(HTTP_X_SAFRA_ID=str(self.safra.id), HTTP_X_FAZENDA_ID=str(self.fazenda.id))
+
+        os_data = {
+            "planejamento": planejamento.id,
+            "tipo_operacao": self.tipo_operacao.id,
+            "data_inicio_planejada": "2026-05-20",
+            "data_fim_planejada": "2026-05-22",
+            "talhoes_ids": [self.talhao1.id],
+            "insumos": [
+                {
+                    "produto_nome_novo": "ADUBO SECRETO XPTO",
+                    "unidade_sigla": "kg",
+                    "dose_planejada": "3.0000",
+                    "quantidade_planejada": "30.0000"
+                }
+            ]
+        }
+        os_url = reverse('planejamento-os-list')
+        response = self.client.post(os_url, os_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Verify product created
+        self.assertTrue(Produto.objects.filter(nome_comercial="ADUBO SECRETO XPTO", fazenda=self.fazenda).exists())
+        prod_created = Produto.objects.get(nome_comercial="ADUBO SECRETO XPTO", fazenda=self.fazenda)
+
+        # Verify PO created with total quantity
+        from financeiro.models import PedidoCompra, ItemPedidoCompra
+        self.assertTrue(PedidoCompra.objects.filter(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO').exists())
+        po = PedidoCompra.objects.get(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO')
+        self.assertTrue(ItemPedidoCompra.objects.filter(pedido_compra=po, produto=prod_created).exists())
+        po_item = ItemPedidoCompra.objects.get(pedido_compra=po, produto=prod_created)
+        self.assertEqual(float(po_item.quantidade), 30.0)
+
+    def test_deficit_calculation_with_existing_stock(self):
+        # 1. Add some initial stock
+        from cadastros.models import EstoqueMovimento
+        from decimal import Decimal
+        EstoqueMovimento.objects.create(
+            fazenda=self.fazenda,
+            safra=self.safra,
+            produto=self.produto,
+            tipo_movimento='ENTRADA',
+            quantidade=Decimal('20.0000'),
+            valor_unitario=Decimal('10.0000'),
+            valor_total=Decimal('200.00'),
+            data_movimento="2026-05-18",
+            documento_referencia="Initial stock"
+        )
+
+        planejamento = PlanejamentoSafra.objects.create(
+            fazenda=self.fazenda, safra=self.safra,
+            descricao="Plan Deficit", data_planejamento="2026-05-19"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        self.client.credentials(HTTP_X_SAFRA_ID=str(self.safra.id), HTTP_X_FAZENDA_ID=str(self.fazenda.id))
+
+        # Case A: Plan 50 units. Deficit = 50 - 20 = 30 units.
+        os_data = {
+            "planejamento": planejamento.id,
+            "tipo_operacao": self.tipo_operacao.id,
+            "data_inicio_planejada": "2026-05-20",
+            "data_fim_planejada": "2026-05-22",
+            "talhoes_ids": [self.talhao1.id],
+            "insumos": [
+                {
+                    "produto": self.produto.id,
+                    "dose_planejada": "5.0000",
+                    "quantidade_planejada": "50.0000"
+                }
+            ]
+        }
+        os_url = reverse('planejamento-os-list')
+        response = self.client.post(os_url, os_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        from financeiro.models import PedidoCompra, ItemPedidoCompra
+        po = PedidoCompra.objects.get(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO')
+        po_item = ItemPedidoCompra.objects.get(pedido_compra=po, produto=self.produto)
+        self.assertEqual(float(po_item.quantidade), 30.0)  # 50 planned - 20 stock = 30 required
+
+        # Case B: Update plan to 15 units. Stock (20) >= 15, so deficit <= 0. PO item should be removed.
+        os_plan = OrdemServicoPlanejada.objects.first()
+        os_data_update = {
+            "planejamento": planejamento.id,
+            "tipo_operacao": self.tipo_operacao.id,
+            "data_inicio_planejada": "2026-05-20",
+            "data_fim_planejada": "2026-05-22",
+            "talhoes_ids": [self.talhao1.id],
+            "insumos": [
+                {
+                    "produto": self.produto.id,
+                    "dose_planejada": "1.5000",
+                    "quantidade_planejada": "15.0000"
+                }
+            ]
+        }
+        update_url = reverse('planejamento-os-detail', args=[os_plan.id])
+        response_update = self.client.put(update_url, os_data_update, format='json')
+        self.assertEqual(response_update.status_code, status.HTTP_200_OK)
+
+        # PO shouldn't contain product anymore
+        self.assertFalse(ItemPedidoCompra.objects.filter(pedido_compra=po, produto=self.produto).exists())
+
+    def test_multi_plan_safra_consolidation(self):
+        # Plan 30 in Plan 1 and Plan 40 in Plan 2. Stock is 10. Required = (30 + 40) - 10 = 60.
+        from cadastros.models import EstoqueMovimento
+        from decimal import Decimal
+        EstoqueMovimento.objects.create(
+            fazenda=self.fazenda, safra=self.safra, produto=self.produto,
+            tipo_movimento='ENTRADA', quantidade=Decimal('10.0000'), data_movimento="2026-05-18"
+        )
+
+        plan1 = PlanejamentoSafra.objects.create(fazenda=self.fazenda, safra=self.safra, descricao="Plan 1", data_planejamento="2026-05-19")
+        plan2 = PlanejamentoSafra.objects.create(fazenda=self.fazenda, safra=self.safra, descricao="Plan 2", data_planejamento="2026-05-19")
+
+        self.client.force_authenticate(user=self.admin_user)
+        self.client.credentials(HTTP_X_SAFRA_ID=str(self.safra.id), HTTP_X_FAZENDA_ID=str(self.fazenda.id))
+
+        os_url = reverse('planejamento-os-list')
+
+        # Add OS to Plan 1
+        self.client.post(os_url, {
+            "planejamento": plan1.id, "tipo_operacao": self.tipo_operacao.id,
+            "data_inicio_planejada": "2026-05-20", "data_fim_planejada": "2026-05-22",
+            "talhoes_ids": [self.talhao1.id],
+            "insumos": [{"produto": self.produto.id, "dose_planejada": "3.0000", "quantidade_planejada": "30.0000"}]
+        }, format='json')
+
+        # Add OS to Plan 2
+        self.client.post(os_url, {
+            "planejamento": plan2.id, "tipo_operacao": self.tipo_operacao.id,
+            "data_inicio_planejada": "2026-05-20", "data_fim_planejada": "2026-05-22",
+            "talhoes_ids": [self.talhao1.id],
+            "insumos": [{"produto": self.produto.id, "dose_planejada": "4.0000", "quantidade_planejada": "40.0000"}]
+        }, format='json')
+
+        from financeiro.models import PedidoCompra, ItemPedidoCompra
+        po = PedidoCompra.objects.get(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO')
+        po_item = ItemPedidoCompra.objects.get(pedido_compra=po, produto=self.produto)
+        self.assertEqual(float(po_item.quantidade), 60.0)
+

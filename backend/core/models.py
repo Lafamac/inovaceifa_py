@@ -21,11 +21,22 @@ class Proprietario(BaseModel):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        old_ativo = None
+        if not is_new:
+            try:
+                old_ativo = Proprietario.objects.only('ativo').get(pk=self.pk).ativo
+            except Proprietario.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
-        if not is_new and not self.ativo:
-            for fazenda in self.fazendas.filter(ativo=True):
-                fazenda.ativo = False
-                fazenda.save()
+        if not is_new:
+            if old_ativo is True and self.ativo is False:
+                for fazenda in self.fazendas.filter(ativo=True):
+                    fazenda.ativo = False
+                    fazenda.save()
+            elif old_ativo is False and self.ativo is True:
+                for fazenda in self.fazendas.filter(ativo=False):
+                    fazenda.ativo = True
+                    fazenda.save()
 
     def __str__(self):
         return self.nome
@@ -43,41 +54,83 @@ class Fazenda(BaseModel):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        old_ativo = None
+        if not is_new:
+            try:
+                old_ativo = Fazenda.objects.only('ativo').get(pk=self.pk).ativo
+            except Fazenda.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
-        if not is_new and not self.ativo:
-            self.safras.filter(ativo=True).update(ativo=False)
+        if not is_new:
+            if old_ativo is True and self.ativo is False:
+                self.safras.filter(ativo=True).update(ativo=False)
 
-            for talhao in self.talhoes.filter(ativo=True):
-                talhao.ativo = False
-                talhao.save()
+                for talhao in self.talhoes.filter(ativo=True):
+                    talhao.ativo = False
+                    talhao.save()
 
-            for maquina in self.maquinas.filter(ativo=True):
-                maquina.ativo = False
-                maquina.save()
+                for maquina in self.maquinas.filter(ativo=True):
+                    maquina.ativo = False
+                    maquina.save()
 
-            for func in self.funcionarios.filter(ativo=True):
-                func.ativo = False
-                func.save()
+                for func in self.funcionarios.filter(ativo=True):
+                    func.ativo = False
+                    func.save()
 
-            self.terceirizados.filter(ativo=True).update(ativo=False)
-            self.turmas_terceirizadas.filter(ativo=True).update(ativo=False)
-            self.produtos.filter(ativo=True).update(ativo=False)
-            self.fornecedores.filter(ativo=True).update(ativo=False)
-            self.locacoes.filter(ativo=True).update(ativo=False)
-            self.planejamentos.filter(ativo=True).update(ativo=False)
-            self.ordens_servico_reais.filter(ativo=True).update(ativo=False)
-            self.gastos_rateio_realizados.filter(ativo=True).update(ativo=False)
-            self.abastecimentos.filter(ativo=True).update(ativo=False)
-            self.rateios_operacionais.filter(ativo=True).update(ativo=False)
-            self.pedidos_compra.filter(ativo=True).update(ativo=False)
-            self.contas_a_pagar.filter(ativo=True).update(ativo=False)
-            self.pedidos_venda.filter(ativo=True).update(ativo=False)
-            self.contas_a_receber.filter(ativo=True).update(ativo=False)
-            self.movimentacoes_estoque.filter(ativo=True).update(ativo=False)
+                self.terceirizados.filter(ativo=True).update(ativo=False)
+                self.turmas_terceirizadas.filter(ativo=True).update(ativo=False)
+                self.produtos.filter(ativo=True).update(ativo=False)
+                self.fornecedores.filter(ativo=True).update(ativo=False)
+                self.locacoes.filter(ativo=True).update(ativo=False)
+                self.planejamentos.filter(ativo=True).update(ativo=False)
+                self.ordens_servico_reais.filter(ativo=True).update(ativo=False)
+                self.gastos_rateio_realizados.filter(ativo=True).update(ativo=False)
+                self.abastecimentos.filter(ativo=True).update(ativo=False)
+                self.rateios_operacionais.filter(ativo=True).update(ativo=False)
+                self.pedidos_compra.filter(ativo=True).update(ativo=False)
+                self.contas_a_pagar.filter(ativo=True).update(ativo=False)
+                self.pedidos_venda.filter(ativo=True).update(ativo=False)
+                self.contas_a_receber.filter(ativo=True).update(ativo=False)
+                self.movimentacoes_estoque.filter(ativo=True).update(ativo=False)
 
-            from django.db.models import Q
-            from cadastros.models import TransferenciaAtivo
-            TransferenciaAtivo.objects.filter(Q(origem=self) | Q(destino=self), ativo=True).update(ativo=False)
+                from django.db.models import Q
+                from cadastros.models import TransferenciaAtivo
+                TransferenciaAtivo.objects.filter(Q(origem=self) | Q(destino=self), ativo=True).update(ativo=False)
+
+            elif old_ativo is False and self.ativo is True:
+                self.safras.filter(ativo=False).update(ativo=True)
+
+                for talhao in self.talhoes.filter(ativo=False):
+                    talhao.ativo = True
+                    talhao.save()
+
+                for maquina in self.maquinas.filter(ativo=False):
+                    maquina.ativo = True
+                    maquina.save()
+
+                for func in self.funcionarios.filter(ativo=False):
+                    func.ativo = True
+                    func.save()
+
+                self.terceirizados.filter(ativo=False).update(ativo=True)
+                self.turmas_terceirizadas.filter(ativo=False).update(ativo=True)
+                self.produtos.filter(ativo=False).update(ativo=True)
+                self.fornecedores.filter(ativo=False).update(ativo=True)
+                self.locacoes.filter(ativo=False).update(ativo=True)
+                self.planejamentos.filter(ativo=False).update(ativo=True)
+                self.ordens_servico_reais.filter(ativo=False).update(ativo=True)
+                self.gastos_rateio_realizados.filter(ativo=False).update(ativo=True)
+                self.abastecimentos.filter(ativo=False).update(ativo=True)
+                self.rateios_operacionais.filter(ativo=False).update(ativo=True)
+                self.pedidos_compra.filter(ativo=False).update(ativo=True)
+                self.contas_a_pagar.filter(ativo=False).update(ativo=True)
+                self.pedidos_venda.filter(ativo=False).update(ativo=True)
+                self.contas_a_receber.filter(ativo=False).update(ativo=True)
+                self.movimentacoes_estoque.filter(ativo=False).update(ativo=True)
+
+                from django.db.models import Q
+                from cadastros.models import TransferenciaAtivo
+                TransferenciaAtivo.objects.filter(Q(origem=self) | Q(destino=self), ativo=False).update(ativo=True)
 
     def __str__(self):
         return f"{self.nome} ({self.sigla})"

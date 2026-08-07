@@ -87,7 +87,11 @@
 - [x] Implementado apontamento de Turmas Terceirizadas no registro de execução da OS, informando valor total pago e vencimento, com criação automática do Contas a Pagar correspondente no financeiro.
 - [x] Removido bloco informativo de Contexto Obrigatório das telas de cadastro.
 - [x] Reestruturada a barra de navegação/menu para mover "Locação de Máquinas", "Funcionários", "Terceirizados" e "Turmas" do grupo "Financeiro & RH" para o grupo "Cadastros", renomeando a seção para "Financeiro" e a descrição para "Vendas e contas".
-- [x] Atualizado o model e endpoint de `LocacaoMaquina` no backend para referenciar `TipoMaquina` (tabela de referências) em vez de `Maquina` (máquina física própria), ajustando também o formulário no frontend para puxar as referências corretas.
+- [x] Atualizado o model e endpoint de `LocacaoMaquina` no backend para referenciar `TipoMaquina` (tabela de referências) in vez de `Maquina` (máquina física própria), ajustando também o formulário no frontend para puxar as referências corretas.
+- [x] Adicionado suporte à consolidação automática de Pedido de Compra de planejamento (`de_planejamento=True`) no backend baseado no déficit de estoque físico e compras aprovadas para a mesma safra e fazenda, com recálculos reativos disparados via Django Signals.
+- [x] Implementado cadastro ad-hoc (dinâmico) de novos produtos informados textualmente no planejamento de safra, com suporte no frontend a um toggle "Não Cadastrado?" e inputs de nome e unidade de medida.
+- [x] Corrigido o carregamento de referências operacionais no frontend (`loadReferences`) adicionando `safraAtiva` e `fazendaAtiva` como dependências e impedindo requisições quando nulos, sanando erros HTTP 400 da middleware de Multi-Tenant do Django e dropdowns em branco.
+- [x] Padronizadas as comparações de IDs de fazenda com conversão para String para evitar conflitos de tipos (Number vs String) no filtro do frontend, e alterado o seletor de Talhões para mostrar o nome do talhão (`t.nome`) ao invés do código.
 
 
 ### 🚀 Fase 1: Fundação do Backend e Autenticação (`accounts`)

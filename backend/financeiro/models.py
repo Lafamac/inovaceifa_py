@@ -16,6 +16,7 @@ class PedidoCompra(BaseModel):
     data_pedido = models.DateField()
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='RASCUNHO')
+    de_planejamento = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Pedido de Compra"

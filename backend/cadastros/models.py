@@ -28,9 +28,18 @@ class Talhao(BaseModel):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        old_ativo = None
+        if not is_new:
+            try:
+                old_ativo = Talhao.objects.only('ativo').get(pk=self.pk).ativo
+            except Talhao.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
-        if not is_new and not self.ativo:
-            self.estimativas.filter(ativo=True).update(ativo=False)
+        if not is_new:
+            if old_ativo is True and self.ativo is False:
+                self.estimativas.filter(ativo=True).update(ativo=False)
+            elif old_ativo is False and self.ativo is True:
+                self.estimativas.filter(ativo=False).update(ativo=True)
 
     def __str__(self):
         return f"{self.nome} ({self.fazenda.sigla})"
@@ -69,9 +78,18 @@ class Maquina(BaseModel):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        old_ativo = None
+        if not is_new:
+            try:
+                old_ativo = Maquina.objects.only('ativo').get(pk=self.pk).ativo
+            except Maquina.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
-        if not is_new and not self.ativo:
-            self.manutencoes.filter(ativo=True).update(ativo=False)
+        if not is_new:
+            if old_ativo is True and self.ativo is False:
+                self.manutencoes.filter(ativo=True).update(ativo=False)
+            elif old_ativo is False and self.ativo is True:
+                self.manutencoes.filter(ativo=False).update(ativo=True)
 
     def __str__(self):
         return f"{self.codigo} - {self.descricao}"
@@ -115,6 +133,13 @@ class Funcionario(BaseModel):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        old_ativo = None
+        if not is_new:
+            try:
+                old_ativo = Funcionario.objects.only('ativo').get(pk=self.pk).ativo
+            except Funcionario.DoesNotExist:
+                pass
+
         # Calculate encargos dynamically
         try:
             from referencias.models import EncargoFolha
@@ -128,8 +153,11 @@ class Funcionario(BaseModel):
 
         super().save(*args, **kwargs)
 
-        if not is_new and not self.ativo:
-            self.salarios.filter(ativo=True).update(ativo=False)
+        if not is_new:
+            if old_ativo is True and self.ativo is False:
+                self.salarios.filter(ativo=True).update(ativo=False)
+            elif old_ativo is False and self.ativo is True:
+                self.salarios.filter(ativo=False).update(ativo=True)
 
         try:
             from core.models import Safra

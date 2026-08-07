@@ -52,6 +52,7 @@ export const Planejamentos = () => {
   const [maquinas, setMaquinas] = useState([]);
   const [terceirizados, setTerceirizados] = useState([]);
   const [turmas, setTurmas] = useState([]);
+  const [unidades, setUnidades] = useState([]);
 
   // Formulário de Novo Planejamento
   const [showNewPlanModal, setShowNewPlanModal] = useState(false);
@@ -79,7 +80,7 @@ export const Planejamentos = () => {
   });
 
   // Temporários para adicionar Insumo na OS
-  const [tempInsumo, setTempInsumo] = useState({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+  const [tempInsumo, setTempInsumo] = useState({ produto_id: '', produto_nome_novo: '', unidade_sigla: '', dose_planejada: '', quantidade_planejada: '', is_novo: false });
   const [editingOS, setEditingOS] = useState(null);
   const [expandedActivities, setExpandedActivities] = useState({});
 
@@ -98,48 +99,66 @@ export const Planejamentos = () => {
   };
 
   const loadReferences = useCallback(async () => {
+    if (!fazendaAtiva || !safraAtiva) return;
     try {
-      const [resOps, resTalhoes, resProds, resFuncs, resMaqs, resTerceirizados, resTurmas] = await Promise.all([
+      const [resOps, resTalhoes, resProds, resFuncs, resMaqs, resTerceirizados, resTurmas, resUnidades] = await Promise.all([
         api.get('/api/ref/tipos-operacao/'),
         api.get('/api/talhoes/'),
         api.get('/api/produtos/'),
         api.get('/api/funcionarios/'),
         api.get('/api/maquinas/'),
         api.get('/api/terceirizados/'),
-        api.get('/api/turmas-terceirizadas/')
+        api.get('/api/turmas-terceirizadas/'),
+        api.get('/api/ref/unidades-medida/')
       ]);
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
       // Filtrar talões da fazenda ativa
       const allTalhoes = resTalhoes.data?.results || resTalhoes.data || [];
-      const currentTalhoes = allTalhoes.filter(t => t.fazenda_id === fazendaAtiva?.id || t.fazenda === fazendaAtiva?.id);
+      const currentTalhoes = allTalhoes.filter(t => {
+        const fId = t.fazenda_id || t.fazenda;
+        return fId && fazendaAtiva && String(fId) === String(fazendaAtiva.id);
+      });
       setTalhoes(currentTalhoes);
       
       setProdutos(resProds.data?.results || resProds.data || []);
+      setUnidades(resUnidades.data?.results || resUnidades.data || []);
 
       // Filtrar funcionários da fazenda ativa
       const allFuncs = resFuncs.data?.results || resFuncs.data || [];
-      const currentFuncs = allFuncs.filter(f => f.fazenda_id === fazendaAtiva?.id || f.fazenda === fazendaAtiva?.id);
+      const currentFuncs = allFuncs.filter(f => {
+        const fId = f.fazenda_id || f.fazenda;
+        return fId && fazendaAtiva && String(fId) === String(fazendaAtiva.id);
+      });
       setFuncionarios(currentFuncs);
 
       // Filtrar máquinas da fazenda ativa
       const allMaqs = resMaqs.data?.results || resMaqs.data || [];
-      const currentMaqs = allMaqs.filter(m => m.fazenda_id === fazendaAtiva?.id || m.fazenda === fazendaAtiva?.id);
+      const currentMaqs = allMaqs.filter(m => {
+        const fId = m.fazenda_id || m.fazenda;
+        return fId && fazendaAtiva && String(fId) === String(fazendaAtiva.id);
+      });
       setMaquinas(currentMaqs);
 
       // Filtrar terceirizados da fazenda ativa
       const allTerceirizados = resTerceirizados.data?.results || resTerceirizados.data || [];
-      const currentTerceirizados = allTerceirizados.filter(t => t.fazenda_id === fazendaAtiva?.id || t.fazenda === fazendaAtiva?.id);
+      const currentTerceirizados = allTerceirizados.filter(t => {
+        const fId = t.fazenda_id || t.fazenda;
+        return fId && fazendaAtiva && String(fId) === String(fazendaAtiva.id);
+      });
       setTerceirizados(currentTerceirizados);
 
       // Filtrar turmas da fazenda ativa
       const allTurmas = resTurmas.data?.results || resTurmas.data || [];
-      const currentTurmas = allTurmas.filter(t => t.fazenda_id === fazendaAtiva?.id || t.fazenda === fazendaAtiva?.id);
+      const currentTurmas = allTurmas.filter(t => {
+        const fId = t.fazenda_id || t.fazenda;
+        return fId && fazendaAtiva && String(fId) === String(fazendaAtiva.id);
+      });
       setTurmas(currentTurmas);
     } catch (err) {
       console.error("Erro ao carregar referências", err);
     }
-  }, [fazendaAtiva]);
+  }, [fazendaAtiva, safraAtiva]);
 
   const fetchPlanejamentos = useCallback(async () => {
     if (!safraAtiva || !fazendaAtiva) return [];
@@ -286,7 +305,7 @@ export const Planejamentos = () => {
       usar_turma: false,
       valor_planejado_turma: ''
     });
-    setTempInsumo({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+    setTempInsumo({ produto_id: '', produto_nome_novo: '', unidade_sigla: '', dose_planejada: '', quantidade_planejada: '', is_novo: false });
   };
 
   const handleEditOS = (os) => {
@@ -299,8 +318,11 @@ export const Planejamentos = () => {
       talhoes_selecionados: os.talhoes_detalhe ? os.talhoes_detalhe.map(t => t.id) : [],
       insumos_selecionados: os.insumos ? os.insumos.map(ins => ({
         produto_id: String(ins.produto),
+        produto_nome_novo: '',
+        unidade_sigla: '',
         dose_planejada: String(ins.dose_planejada),
-        quantidade_planejada: String(ins.quantidade_planejada)
+        quantidade_planejada: String(ins.quantidade_planejada),
+        is_novo: false
       })) : [],
       funcionario: os.funcionario || '',
       trator: os.trator || '',
@@ -309,7 +331,7 @@ export const Planejamentos = () => {
       usar_turma: !!os.usar_turma,
       valor_planejado_turma: os.valor_planejado_turma || ''
     });
-    setTempInsumo({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+    setTempInsumo({ produto_id: '', produto_nome_novo: '', unidade_sigla: '', dose_planejada: '', quantidade_planejada: '', is_novo: false });
     setShowNewOSModal(true);
   };
 
@@ -349,8 +371,14 @@ export const Planejamentos = () => {
     try {
       // Inteligência para auto-adicionar insumo digitado no rodapé caso o usuário não tenha clicado no "+"
       let finalInsumos = [...newOSForm.insumos_selecionados];
-      if (tempInsumo.produto_id && tempInsumo.dose_planejada && tempInsumo.quantidade_planejada) {
-        finalInsumos.push({ ...tempInsumo });
+      if (tempInsumo.is_novo) {
+        if (tempInsumo.produto_nome_novo && tempInsumo.dose_planejada && tempInsumo.quantidade_planejada) {
+          finalInsumos.push({ ...tempInsumo });
+        }
+      } else {
+        if (tempInsumo.produto_id && tempInsumo.dose_planejada && tempInsumo.quantidade_planejada) {
+          finalInsumos.push({ ...tempInsumo });
+        }
       }
 
       // Criar payload
@@ -369,7 +397,9 @@ export const Planejamentos = () => {
         usar_turma: !!newOSForm.usar_turma,
         valor_planejado_turma: newOSForm.usar_turma && newOSForm.valor_planejado_turma ? Number(newOSForm.valor_planejado_turma) : null,
         insumos: finalInsumos.map(ins => ({
-          produto: Number(ins.produto_id),
+          produto: ins.produto_id ? Number(ins.produto_id) : null,
+          produto_nome_novo: ins.produto_nome_novo || null,
+          unidade_sigla: ins.unidade_sigla || null,
           dose_planejada: Number(ins.dose_planejada),
           quantidade_planejada: Number(ins.quantidade_planejada)
         }))
@@ -397,15 +427,22 @@ export const Planejamentos = () => {
   };
 
   const addTempInsumo = () => {
-    if (!tempInsumo.produto_id || !tempInsumo.dose_planejada || !tempInsumo.quantidade_planejada) {
-      showAlert('error', 'Preencha todos os campos do insumo.');
-      return;
+    if (tempInsumo.is_novo) {
+      if (!tempInsumo.produto_nome_novo || !tempInsumo.dose_planejada || !tempInsumo.quantidade_planejada) {
+        showAlert('error', 'Preencha o nome, dose e quantidade planejada do novo insumo.');
+        return;
+      }
+    } else {
+      if (!tempInsumo.produto_id || !tempInsumo.dose_planejada || !tempInsumo.quantidade_planejada) {
+        showAlert('error', 'Preencha todos os campos do insumo.');
+        return;
+      }
     }
     setNewOSForm(prev => ({
       ...prev,
       insumos_selecionados: [...prev.insumos_selecionados, { ...tempInsumo }]
     }));
-    setTempInsumo({ produto_id: '', dose_planejada: '', quantidade_planejada: '' });
+    setTempInsumo({ produto_id: '', produto_nome_novo: '', unidade_sigla: '', dose_planejada: '', quantidade_planejada: '', is_novo: false });
   };
 
   const removeInsumoFromOS = (idx) => {
@@ -1123,7 +1160,7 @@ export const Planejamentos = () => {
                               : 'bg-slate-900 border border-white/5 text-white hover:bg-slate-800'
                           }`}
                         >
-                          {t.codigo} ({Number(t.area).toLocaleString('pt-BR')} ha)
+                          {t.nome} ({Number(t.area).toLocaleString('pt-BR')} ha)
                         </button>
                       );
                     })}
@@ -1139,11 +1176,17 @@ export const Planejamentos = () => {
                 {newOSForm.insumos_selecionados.length > 0 && (
                   <div className="space-y-2 mb-3">
                     {newOSForm.insumos_selecionados.map((ins, idx) => {
-                      const prodName = produtos.find(p => p.id === Number(ins.produto_id))?.nome_comercial || 'Insumo';
-                      const prodUnit = produtos.find(p => p.id === Number(ins.produto_id))?.unidade_sigla || 'un';
+                      const isNewProd = ins.is_novo;
+                      const prodName = isNewProd ? ins.produto_nome_novo : (produtos.find(p => p.id === Number(ins.produto_id))?.nome_comercial || 'Insumo');
+                      const prodUnit = isNewProd ? (ins.unidade_sigla || 'un') : (produtos.find(p => p.id === Number(ins.produto_id))?.unidade_sigla || 'un');
                       return (
                         <div key={idx} className="flex items-center justify-between bg-slate-950/40 border border-white/[0.04] p-2.5 rounded-xl text-xs">
-                          <span className="text-white font-bold">{prodName}</span>
+                          <span className="text-white font-bold flex items-center gap-1.5">
+                            {prodName}
+                            {isNewProd && (
+                              <span className="rounded bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 text-[8px] font-black uppercase text-emerald-400">Novo</span>
+                            )}
+                          </span>
                           <div className="flex items-center gap-3 text-slate-400">
                             <span>Dose: <strong className="text-emerald-400 font-mono">{ins.dose_planejada}</strong></span>
                             <span>Total: <strong className="text-emerald-400 font-mono">{ins.quantidade_planejada} {prodUnit}</strong></span>
@@ -1158,23 +1201,65 @@ export const Planejamentos = () => {
                 {/* Controles para adicionar insumo */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-950/20 p-3 rounded-xl border border-white/[0.04]">
                   <div className="md:col-span-5 text-left">
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Escolher Produto</label>
-                    <select
-                      value={tempInsumo.produto_id}
-                      onKeyDown={handleKeyDown}
-                      onChange={(e) => setTempInsumo(prev => ({ ...prev, produto_id: e.target.value }))}
-                      className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
-                    >
-                      <option value="" className="bg-slate-900 text-white">Selecione...</option>
-                      {produtos.map(p => (
-                        <option key={p.id} value={p.id} className="bg-slate-900 text-white">{p.nome_comercial} ({p.unidade_sigla || 'un'})</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[10px] font-black uppercase text-slate-400">Escolher Produto</label>
+                      <label className="flex items-center gap-1 text-[9px] font-bold text-emerald-450 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={tempInsumo.is_novo}
+                          onChange={(e) => setTempInsumo(prev => ({
+                            ...prev,
+                            is_novo: e.target.checked,
+                            produto_id: '',
+                            produto_nome_novo: '',
+                            unidade_sigla: ''
+                          }))}
+                          className="rounded border-white/10 text-emerald-500 bg-slate-950 focus:ring-0 w-3 h-3"
+                        />
+                        <span>Não Cadastrado?</span>
+                      </label>
+                    </div>
+                    {tempInsumo.is_novo ? (
+                      <div className="grid grid-cols-3 gap-1">
+                        <input
+                          type="text"
+                          placeholder="Nome comercial..."
+                          value={tempInsumo.produto_nome_novo}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setTempInsumo(prev => ({ ...prev, produto_nome_novo: e.target.value.toUpperCase() }))}
+                          className="col-span-2 w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all uppercase"
+                        />
+                        <select
+                          value={tempInsumo.unidade_sigla}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => setTempInsumo(prev => ({ ...prev, unidade_sigla: e.target.value }))}
+                          className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                        >
+                          <option value="" className="bg-slate-900 text-white">Un...</option>
+                          {unidades.map(u => (
+                            <option key={u.id} value={u.sigla} className="bg-slate-900 text-white">{u.sigla}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <select
+                        value={tempInsumo.produto_id}
+                        onKeyDown={handleKeyDown}
+                        onChange={(e) => setTempInsumo(prev => ({ ...prev, produto_id: e.target.value }))}
+                        className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
+                      >
+                        <option value="" className="bg-slate-900 text-white">Selecione...</option>
+                        {produtos.map(p => (
+                          <option key={p.id} value={p.id} className="bg-slate-900 text-white">{p.nome_comercial} ({p.unidade_sigla || 'un'})</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="md:col-span-3 text-left">
                     <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Dose (ha/planta)</label>
                     <input
                       type="number"
+                      step="any"
                       placeholder="Ex: 2.5"
                       value={tempInsumo.dose_planejada}
                       onKeyDown={handleKeyDown}
@@ -1186,6 +1271,7 @@ export const Planejamentos = () => {
                     <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Qtd Total Planejada</label>
                     <input
                       type="number"
+                      step="any"
                       placeholder="Ex: 500"
                       value={tempInsumo.quantidade_planejada}
                       onKeyDown={handleKeyDown}
