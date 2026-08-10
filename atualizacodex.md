@@ -1,6 +1,7 @@
 # Atualização do Codex - Ajustes de Transferência e Estrutura de Menus
 
 Este documento registra as alterações de layout, formulários e estrutura de menus realizadas recentemente no projeto Inova Ceifa.
+*Última Atualização: 10/08/2026*
 
 ## Alterações Realizadas
 
