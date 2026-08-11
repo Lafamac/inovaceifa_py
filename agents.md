@@ -2,7 +2,7 @@
 
 > Este arquivo atua como o `{task-slug}.md` requerido pelas diretrizes do `GEMINI.md` para monitoramento de progresso e detalhamento de tarefas.
 > *Baseado na arquitetura atualizada: `c:\workspace\inovaceifa\agentscodex.md`*
-> *Última Atualização: 10/08/2026*
+> *Última Atualização: 11/08/2026*
 
 ## Stack Tecnológica
 - **Backend**: Python, Django, Django REST Framework, SimpleJWT (`djangorestframework-simplejwt`).
@@ -26,6 +26,10 @@
 ---
 
 ## Fases de Implementação (Ordem Recomendada)
+
+### Atualizações recentes de ambiente e acesso (11/08/2026)
+- [x] Implementado o modelo, endpoints e serviços de **Rateios Operacionais** ("Aba Rateios") para lançar custos indivisíveis da fazenda, com rateio dinâmico proporcional à área dos talhões e baixa automática do diesel do estoque.
+- [x] Unificados os hovers e contrastes dos botões seletores (Fazenda, Safra e tema) e seus dropdowns em [Header.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Header.jsx) para ambos os temas (Claro e Escuro).
 
 ### Atualizações recentes de ambiente e acesso (10/08/2026)
 - [x] Ajustado o posicionamento do modal principal de Cadastros para abrir ancorado no topo da tela com altura máxima e rolagem interna, corrigindo o formulário de edição de Talhões que abria baixo demais após a inclusão de novos campos.

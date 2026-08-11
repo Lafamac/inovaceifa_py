@@ -1,7 +1,7 @@
 # Atualização do Codex - Ajustes de Transferência e Estrutura de Menus
 
 Este documento registra as alterações de layout, formulários e estrutura de menus realizadas recentemente no projeto Inova Ceifa.
-*Última Atualização: 10/08/2026*
+*Última Atualização: 11/08/2026*
 
 ## Alterações Realizadas
 
@@ -262,3 +262,27 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 - Executados os testes de integridade do sistema no backend Django com `manage.py check`, sem erros identificados.
 - Executado `npm run build` no frontend após os ajustes visuais, sem erros de compilação.
+
+---
+
+### 🔄 Rateios Operacionais e Correção Visual do Header (11/08/2026)
+
+#### 1. Módulo de Rateios Operacionais
+- **Backend (Modelos & Lógica)**:
+  - Criado o modelo [RateioOperacional](file:///c:/workspace/inovaceifa/backend/operacoes/models.py) contendo campos para horas homem, horas máquina, combustível (diesel) e outros gastos, com herança de `BaseModel` (soft delete) e relacionamento opcional com fazenda.
+  - Implementado service em [services.py](file:///c:/workspace/inovaceifa/backend/operacoes/services.py) para ratear dinamicamente os valores orçados/realizados proporcionalmente à área física (ha) de cada talhão ativo.
+  - Adicionado sinal (Signal) para baixa automática de estoque de diesel (`EstoqueMovimento` de saída) ao lançar combustível realizado no rateio.
+  - Registrado o endpoint `/api/rateios-operacionais/` e integrado seus custos nos relatórios analíticos (`custo-talhao`, `custo-mensal` e `mof`).
+- **Frontend (Telas & Formulários)**:
+  - Desenvolvida a aba **Rateios Operacionais** dentro do menu de Ordens de Serviço.
+  - Criada listagem dinâmica de rateios e modal de cadastro de duas colunas, com caixa alta obrigatória, suporte à navegação por teclado e preenchimento otimizado.
+
+#### 2. Correção de Contraste e Hover nos Comboboxes do Header
+- **Ajuste de Hover nos Botões do Header**:
+  - Atualizado [Header.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Header.jsx) para aplicar `hover:bg-slate-200` (Light Mode) e `dark:hover:bg-slate-800` (Dark Mode) com texto contrastante nos botões seletores de Fazenda, Safra e alternador de tema.
+- **Destaque Visual nas Listas Suspensas**:
+  - Implementadas cores de hover consistentes e nítidas nas opções dos menus suspensos em ambos os temas:
+    - Itens selecionados: `hover:bg-emerald-100` / `dark:hover:bg-emerald-900/50`.
+    - Itens comuns: `hover:bg-slate-100 hover:text-slate-950` / `dark:hover:bg-slate-800 dark:hover:text-white`.
+  - Isso resolveu a invisibilidade das letras ao passar o mouse ou selecionar itens.
+
