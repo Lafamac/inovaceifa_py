@@ -36,7 +36,8 @@ export const CropComparison = () => {
       try {
         const result = await relatorioService.getComparativoSafra(safraAtiva.id);
         // Colocar em array caso venha objeto único da safra ativa ou lista
-        setData(Array.isArray(result) ? result : [result]);
+        const list = result.comparativos || (Array.isArray(result) ? result : [result]);
+        setData(list);
       } catch (err) {
         console.error("Falha ao obter comparativo de safras", err);
         setError("Erro ao carregar dados do comparativo.");
@@ -80,11 +81,11 @@ export const CropComparison = () => {
 
   // Obter primeiro item (safra ativa)
   const currentReport = data[0] || {};
-  const planejado = currentReport.custo_planejado || 0;
-  const realizado = currentReport.custo_realizado || 0;
-  const economia = currentReport.economia || 0;
-  const atingimento = currentReport.atingimento_orcamento || 0;
-  const estouro = atingimento > 100;
+  const planejado = Number(currentReport.total_planejado || currentReport.custo_planejado || 0);
+  const realizado = Number(currentReport.total_real || currentReport.custo_realizado || 0);
+  const economia = currentReport.economia || (planejado > realizado ? planejado - realizado : 0);
+  const atingimento = currentReport.atingimento_orcamento || (planejado > 0 ? (realizado / planejado) * 100 : 0);
+  const estouro = realizado > planejado;
   const percentualDiferenca = planejado > 0 ? Math.abs(((realizado - planejado) / planejado) * 100).toFixed(1) : 0;
 
   return (

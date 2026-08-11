@@ -206,6 +206,7 @@ class RateioOperacional(BaseModel):
     data = models.DateField()
     fazenda_rateio = models.ForeignKey(Fazenda, on_delete=models.SET_NULL, null=True, blank=True, related_name='rateios_operacionais')
     atividade_educampo = models.ForeignKey(AtividadeEducampo, on_delete=models.PROTECT)
+    criterio_rateio = models.ForeignKey(CriterioRateio, on_delete=models.PROTECT, null=True, blank=True, related_name='rateios_operacionais')
 
     # Planejado
     descricao_plan = models.CharField(max_length=255, null=True, blank=True)

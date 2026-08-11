@@ -129,10 +129,21 @@ def obter_valor_rateio_para_talhao(rateio, safra, talhao, tipo='real'):
         return ZERO
         
     total_area = sum((t.area or ZERO) for t in talhoes_alvo)
-    if total_area <= ZERO:
-        return ZERO
+    
+    if rateio.criterio_rateio and rateio.criterio_rateio.nome == "Produção (Sacas)":
+        from cadastros.models import EstimativaProducaoTalhao
+        estimativas = {
+            e.talhao_id: e.estimativa_sacas 
+            for e in EstimativaProducaoTalhao.objects.filter(safra=safra, talhao__in=talhoes_alvo, ativo=True)
+        }
+        total_prod = sum(estimativas.values())
+        if total_prod > ZERO:
+            proporcao = (estimativas.get(talhao.id) or ZERO) / total_prod
+        else:
+            proporcao = (talhao.area or ZERO) / total_area if total_area > ZERO else ZERO
+    else:
+        proporcao = (talhao.area or ZERO) / total_area if total_area > ZERO else ZERO
         
-    proporcao = (talhao.area or ZERO) / total_area
     if tipo == 'real':
         valor_total = (
             (rateio.valor_total_homem_real or ZERO) +
@@ -240,6 +251,45 @@ def comparativo_safra(fazenda):
             ),
             "valor",
         )
+
+        # Somar custos dos Rateios Operacionais reais alocados para esta fazenda
+        rateios_ops = RateioOperacional.objects.filter(
+            safra__nome=safra.nome,
+            safra__fazenda__proprietario=safra.fazenda.proprietario,
+            ativo=True
+        )
+        total_rateio_real = ZERO
+        for rateio in rateios_ops:
+            val_real = (
+                (rateio.valor_total_homem_real or ZERO) +
+                (rateio.valor_total_maq_real or ZERO) +
+                (rateio.valor_total_diesel_real or ZERO) +
+                (rateio.valor_total_real or ZERO)
+            )
+            if val_real <= ZERO:
+                continue
+            if rateio.fazenda_rateio:
+                if rateio.fazenda_rateio_id != fazenda.id:
+                    continue
+                proporcao = Decimal('1.00')
+            else:
+                talhoes_alvo = obter_talhoes_alvo_rateio(rateio, safra)
+                if rateio.criterio_rateio and rateio.criterio_rateio.nome == "Produção (Sacas)":
+                    from cadastros.models import EstimativaProducaoTalhao
+                    estimativas = {
+                        e.talhao_id: e.estimativa_sacas 
+                        for e in EstimativaProducaoTalhao.objects.filter(safra=safra, talhao__in=talhoes_alvo, ativo=True)
+                    }
+                    total_prod = sum(estimativas.values())
+                    nossa_prod = sum(val for t_id, val in estimativas.items() if any(t.id == t_id and t.fazenda_id == fazenda.id for t in talhoes_alvo))
+                    proporcao = nossa_prod / total_prod if total_prod > ZERO else ZERO
+                else:
+                    total_area = sum(t.area for t in talhoes_alvo)
+                    nossa_area = sum(t.area for t in talhoes_alvo if t.fazenda_id == fazenda.id)
+                    proporcao = nossa_area / total_area if total_area > ZERO else ZERO
+            total_rateio_real += val_real * proporcao
+
+        total_real += total_rateio_real
         real_outros = max(total_real - real_insumos - real_mao_obra, ZERO)
 
         planejamento = PlanejamentoSafra.objects.filter(safra=safra, fazenda=fazenda, ativo=True).first()
@@ -461,9 +511,19 @@ def custo_mensal(safra, fazenda):
             proporcao = Decimal('1.00')
         else:
             talhoes_alvo = obter_talhoes_alvo_rateio(rateio, safra)
-            total_area = sum(t.area for t in talhoes_alvo)
-            nossa_area = sum(t.area for t in talhoes_alvo if t.fazenda_id == fazenda.id)
-            proporcao = nossa_area / total_area if total_area > ZERO else ZERO
+            if rateio.criterio_rateio and rateio.criterio_rateio.nome == "Produção (Sacas)":
+                from cadastros.models import EstimativaProducaoTalhao
+                estimativas = {
+                    e.talhao_id: e.estimativa_sacas 
+                    for e in EstimativaProducaoTalhao.objects.filter(safra=safra, talhao__in=talhoes_alvo, ativo=True)
+                }
+                total_prod = sum(estimativas.values())
+                nossa_prod = sum(val for t_id, val in estimativas.items() if any(t.id == t_id and t.fazenda_id == fazenda.id for t in talhoes_alvo))
+                proporcao = nossa_prod / total_prod if total_prod > ZERO else ZERO
+            else:
+                total_area = sum(t.area for t in talhoes_alvo)
+                nossa_area = sum(t.area for t in talhoes_alvo if t.fazenda_id == fazenda.id)
+                proporcao = nossa_area / total_area if total_area > ZERO else ZERO
             
         valor_fazenda = total_real * proporcao
         if valor_fazenda > ZERO:

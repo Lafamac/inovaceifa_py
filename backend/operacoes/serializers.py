@@ -227,6 +227,7 @@ class AbastecimentoMaquinaSerializer(serializers.ModelSerializer):
 class RateioOperacionalSerializer(serializers.ModelSerializer):
     fazenda_rateio_nome = serializers.CharField(source='fazenda_rateio.nome', read_only=True, allow_null=True)
     atividade_educampo_nome = serializers.CharField(source='atividade_educampo.nome', read_only=True)
+    criterio_rateio_nome = serializers.CharField(source='criterio_rateio.nome', read_only=True, allow_null=True)
     funcionario_plan_nome = serializers.CharField(source='funcionario_plan.nome', read_only=True, allow_null=True)
     funcionario_real_nome = serializers.CharField(source='funcionario_real.nome', read_only=True, allow_null=True)
     trator_plan_codigo = serializers.CharField(source='trator_plan.codigo', read_only=True, allow_null=True)

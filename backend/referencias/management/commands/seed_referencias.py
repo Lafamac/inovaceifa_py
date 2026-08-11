@@ -152,7 +152,17 @@ class Command(BaseCommand):
             "Podas",
             "Arruação",
             "Rastreamento",
-            "Tratos Culturais"
+            "Tratos Culturais",
+            "Ad. Via Folha",
+            "Ad. Via Solo",
+            "Administração",
+            "Comercialização",
+            "Compostagem",
+            "Condução da lavoura",
+            "Cont. Plantas Daninhas",
+            "Gestão",
+            "Irrigação",
+            "Plantio"
         ]
         for nome in atividades:
             AtividadeEducampo.objects.get_or_create(nome=nome)

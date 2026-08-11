@@ -453,4 +453,57 @@ class OperacoesAPITests(APITestCase):
         mov = EstoqueMovimento.objects.filter(documento_referencia=f"RATEIO #{rateio_id}")
         self.assertFalse(mov.filter(ativo=True).exists())
 
+    def test_rateio_operacional_criterio_rateio(self):
+        # 1. Setup
+        from referencias.models import AtividadeEducampo, TipoIrrigacao, Cultura
+        from cadastros.models import EstimativaProducaoTalhao
+        
+        ti = TipoIrrigacao.objects.create(nome="Nenhum")
+        cult = Cultura.objects.create(nome="Café")
+        t1 = Talhao.objects.create(codigo="T01", nome="Talhao 01", area=20.00, fazenda=self.fazenda, tipo_irrigacao=ti, cultura=cult)
+        t2 = Talhao.objects.create(codigo="T02", nome="Talhao 02", area=30.00, fazenda=self.fazenda, tipo_irrigacao=ti, cultura=cult)
+        
+        # Criterio
+        criterio_prod = CriterioRateio.objects.create(nome="Produção (Sacas)")
+        
+        # Estimativas de produção (Total 400 sacas)
+        EstimativaProducaoTalhao.objects.create(safra=self.safra, talhao=t1, estimativa_sacas=100.00, produtividade_esperada=50.00)
+        EstimativaProducaoTalhao.objects.create(safra=self.safra, talhao=t2, estimativa_sacas=300.00, produtividade_esperada=60.00)
+        
+        atividade = AtividadeEducampo.objects.create(nome="Mão de Obra Geral")
+        
+        # 2. Post RateioOperacional via API com Criterio "Produção (Sacas)"
+        url = reverse('operacao-rateio-operacional-list')
+        data = {
+            "safra": self.safra.id,
+            "data": "2026-06-01",
+            "fazenda_rateio": self.fazenda.id,
+            "atividade_educampo": atividade.id,
+            "criterio_rateio": criterio_prod.id,
+            "qtd_real": "1.00",
+            "valor_unitario_real": "800.00"
+        }
+        res = self.client.post(url, data, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        rateio_id = res.data['id']
+        
+        # 3. Verify report integration for Custo por Talhao
+        from relatorios import services as report_services
+        
+        # Total real: 800.00
+        # Distributed by production (100 / 400 = 25%, 300 / 400 = 75%):
+        # T01 share real = 800 * 0.25 = 200.00
+        # T02 share real = 800 * 0.75 = 600.00
+        talhoes_report = report_services.custo_por_talhao(self.safra, self.fazenda)
+        t1_rep = next(r for r in talhoes_report if r["talhao_id"] == t1.id)
+        t2_rep = next(r for r in talhoes_report if r["talhao_id"] == t2.id)
+        self.assertEqual(float(t1_rep["custo_real"]), 200.00)
+        self.assertEqual(float(t2_rep["custo_real"]), 600.00)
+        
+        # 4. Verify report integration for Comparativo de Safra
+        comp_report = report_services.comparativo_safra(self.fazenda)
+        current_comp = next(r for r in comp_report["comparativos"] if r["safra_id"] == self.safra.id)
+        self.assertEqual(float(current_comp["total_real"]), 800.00)
+
+
 

@@ -58,6 +58,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
     data: new Date().toISOString().slice(0, 10),
     fazenda_rateio: '',
     atividade_educampo: '',
+    criterio_rateio: '',
     descricao_plan: '',
     funcionario_plan: '',
     horas_homem_plan: '',
@@ -855,6 +856,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
         data: rateioOperacionalForm.data,
         fazenda_rateio: rateioOperacionalForm.fazenda_rateio ? Number(rateioOperacionalForm.fazenda_rateio) : null,
         atividade_educampo: Number(rateioOperacionalForm.atividade_educampo),
+        criterio_rateio: rateioOperacionalForm.criterio_rateio ? Number(rateioOperacionalForm.criterio_rateio) : null,
         
         // Planejado
         descricao_plan: cleanString(rateioOperacionalForm.descricao_plan),
@@ -891,10 +893,12 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
       await relatorioService.createRateioOperacional(payload);
       showAlert('success', 'Rateio operacional registrado com sucesso.');
       setShowNewRateioOperacionalModal(false);
+      const areaC = criteriosRateio.find(c => c.nome.includes('Área') || c.nome.includes('Area')) || { id: '' };
       setRateioOperacionalForm({
         data: new Date().toISOString().slice(0, 10),
         fazenda_rateio: '',
         atividade_educampo: '',
+        criterio_rateio: areaC.id || '',
         descricao_plan: '',
         funcionario_plan: '',
         horas_homem_plan: '',
@@ -930,6 +934,44 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleOpenNewRateioOperacional = () => {
+    const areaC = criteriosRateio.find(c => c.nome.includes('Área') || c.nome.includes('Area')) || { id: '' };
+    setRateioOperacionalForm({
+      data: new Date().toISOString().slice(0, 10),
+      fazenda_rateio: '',
+      atividade_educampo: '',
+      criterio_rateio: areaC.id || '',
+      descricao_plan: '',
+      funcionario_plan: '',
+      horas_homem_plan: '',
+      valor_hora_homem_plan: '',
+      trator_plan: '',
+      implemento_plan: '',
+      horas_maq_plan: '',
+      valor_hora_maq_plan: '',
+      combustivel_plan: '',
+      diesel_gasto_plan: '',
+      valor_diesel_plan: '',
+      qtd_plan: '',
+      valor_unitario_plan: '',
+      descricao_real: '',
+      funcionario_real: '',
+      horas_homem_real: '',
+      valor_hora_homem_real: '',
+      trator_real: '',
+      implemento_real: '',
+      horas_maq_real: '',
+      valor_hora_trator_real: '',
+      valor_hora_implemento_real: '',
+      combustivel_real: '',
+      diesel_gasto_real: '',
+      valor_diesel_real: '',
+      qtd_real: '',
+      valor_unitario_real: ''
+    });
+    setShowNewRateioOperacionalModal(true);
   };
 
   const handleDeleteRateioOperacional = async (id) => {
@@ -1067,7 +1109,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
         {safraAtiva && activeSubTab === 'rateio_operacional' && (
           <button
-            onClick={() => setShowNewRateioOperacionalModal(true)}
+            onClick={handleOpenNewRateioOperacional}
             className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 text-white font-bold py-2.5 px-5 text-xs uppercase shadow-md cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -1642,6 +1684,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                     <th className="p-4">Data</th>
                     <th className="p-4">Fazenda Alvo</th>
                     <th className="p-4">Educampo</th>
+                    <th className="p-4">Critério</th>
                     <th className="p-4">Mão de Obra Real</th>
                     <th className="p-4">Trator / Implemento Real</th>
                     <th className="p-4">Diesel Real</th>
@@ -1683,6 +1726,9 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                         </td>
                         <td className="p-4 font-semibold text-emerald-400">
                           {r.atividade_educampo_nome}
+                        </td>
+                        <td className="p-4 font-semibold text-slate-400">
+                          {r.criterio_rateio_nome || 'ÁREA (HECTARES)'}
                         </td>
                         <td className="p-4">
                           {r.funcionario_real_nome ? (
@@ -2671,7 +2717,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
             <form onSubmit={handleCreateRateioOperacional} className="p-6 space-y-6 text-left">
               
               {/* Seção 1: Dados Gerais */}
-              <div className="bg-slate-950/30 p-4 rounded-xl border border-white/[0.04] grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div className="bg-slate-950/30 p-4 rounded-xl border border-white/[0.04] grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
                 <div>
                   <label className="block space-y-1.5">
                     <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Data *</span>
@@ -2716,6 +2762,24 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                       <option value="">Selecione a atividade...</option>
                       {atividadesEducampo?.map(a => (
                         <option key={a.id} value={a.id} className="bg-slate-900">{a.nome}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Critério de Rateio *</span>
+                    <select
+                      required
+                      value={rateioOperacionalForm.criterio_rateio}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, criterio_rateio: e.target.value }))}
+                      className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2 px-3 text-sm text-white outline-none"
+                    >
+                      <option value="">Selecione o critério...</option>
+                      {criteriosRateio?.filter(c => ["Área (Hectares)", "Produção (Sacas)"].includes(c.nome)).map(c => (
+                        <option key={c.id} value={c.id} className="bg-slate-900">{c.nome}</option>
                       ))}
                     </select>
                   </label>
@@ -2851,7 +2915,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                           className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Selecione o combustível...</option>
-                          {produtos?.filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL' || p.classificacao?.toUpperCase() === 'COMBUSTÍVEIS' || p.classificacao?.toUpperCase() === 'COMBUSTIVEL').map(p => (
+                          {produtos?.filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL' || (typeof p.classificacao === 'string' && (p.classificacao.toUpperCase() === 'COMBUSTÍVEIS' || p.classificacao.toUpperCase() === 'COMBUSTIVEL'))).map(p => (
                             <option key={p.id} value={p.id} className="bg-slate-900">{p.nome_comercial}</option>
                           ))}
                         </select>
@@ -3081,7 +3145,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                           className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Selecione o combustível...</option>
-                          {produtos?.filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL' || p.classificacao?.toUpperCase() === 'COMBUSTÍVEIS' || p.classificacao?.toUpperCase() === 'COMBUSTIVEL').map(p => (
+                          {produtos?.filter(p => p.classificacao_nome?.toUpperCase() === 'COMBUSTÍVEL' || p.classificacao_nome?.toUpperCase() === 'COMBUSTIVEL' || (typeof p.classificacao === 'string' && (p.classificacao.toUpperCase() === 'COMBUSTÍVEIS' || p.classificacao.toUpperCase() === 'COMBUSTIVEL'))).map(p => (
                             <option key={p.id} value={p.id} className="bg-slate-900">{p.nome_comercial}</option>
                           ))}
                         </select>
