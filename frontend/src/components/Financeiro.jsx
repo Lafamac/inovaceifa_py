@@ -20,7 +20,8 @@ import {
   FileCheck,
   ShoppingBag,
   ListOrdered,
-  Pencil
+  Pencil,
+  Check
 } from 'lucide-react';
 import { relatorioService } from '../services/api';
 
@@ -63,6 +64,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   const [editingPagarId, setEditingPagarId] = useState(null);
   const [editingReceberId, setEditingReceberId] = useState(null);
   const [editingVendaId, setEditingVendaId] = useState(null);
+  const [editingItemIndex, setEditingItemIndex] = useState(null);
 
   // New States for Custom Installments on Recebimento
   const [showReceberFormModal, setShowReceberFormModal] = useState(false);
@@ -270,10 +272,19 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
       valor_total: Number(tempItem.quantidade) * Number(tempItem.valor_unitario)
     };
 
-    setNewCompra(prev => ({
-      ...prev,
-      itens: [...prev.itens, newItem]
-    }));
+    if (editingItemIndex !== null) {
+      setNewCompra(prev => {
+        const newItens = [...prev.itens];
+        newItens[editingItemIndex] = newItem;
+        return { ...prev, itens: newItens };
+      });
+      setEditingItemIndex(null);
+    } else {
+      setNewCompra(prev => ({
+        ...prev,
+        itens: [...prev.itens, newItem]
+      }));
+    }
 
     setTempItem({
       produto: '',
@@ -283,10 +294,30 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   };
 
   const handleRemoveItemFromCompra = (index) => {
+    if (editingItemIndex === index) {
+      setEditingItemIndex(null);
+      setTempItem({
+        produto: '',
+        quantidade: '',
+        valor_unitario: ''
+      });
+    } else if (editingItemIndex !== null && index < editingItemIndex) {
+      setEditingItemIndex(prev => prev - 1);
+    }
     setNewCompra(prev => ({
       ...prev,
       itens: prev.itens.filter((_, idx) => idx !== index)
     }));
+  };
+
+  const handleStartEditItemInCompra = (index) => {
+    const item = newCompra.itens[index];
+    setTempItem({
+      produto: String(item.produto || item.produto_id),
+      quantidade: String(item.quantidade),
+      valor_unitario: String(item.valor_unitario)
+    });
+    setEditingItemIndex(index);
   };
 
   const handleStartEditCompra = (p) => {
@@ -309,6 +340,12 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   const handleCloseNewCompraModal = () => {
     setShowNewCompraModal(false);
     setEditingCompraId(null);
+    setEditingItemIndex(null);
+    setTempItem({
+      produto: '',
+      quantidade: '',
+      valor_unitario: ''
+    });
     setNewCompra({
       fornecedor: '',
       data_pedido: new Date().toISOString().slice(0, 10),
@@ -1541,8 +1578,9 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                       type="button"
                       onClick={handleAddItemToCompra}
                       className="w-full h-9 flex items-center justify-center rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer transition-all font-bold"
+                      title={editingItemIndex !== null ? "Salvar Item" : "Adicionar Item"}
                     >
-                      +
+                      {editingItemIndex !== null ? <Check className="w-4.5 h-4.5" /> : '+'}
                     </button>
                   </div>
                 </div>
@@ -1553,7 +1591,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                     <p className="text-[11px] text-slate-500 text-center italic py-2">Nenhum produto adicionado ainda.</p>
                   ) : (
                     newCompra.itens.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between gap-4 p-2.5 rounded-lg bg-slate-950 border border-white/[0.03] text-[11px]">
+                      <div key={index} className={`flex items-center justify-between gap-4 p-2.5 rounded-lg bg-slate-950 border text-[11px] transition-all ${editingItemIndex === index ? 'border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/10' : 'border-white/[0.03]'}`}>
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-emerald-400" />
                           <span className="font-bold text-white">{item.produto_nome}</span>
@@ -1563,10 +1601,19 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                           <span className="font-black text-white">R$ {money(item.valor_total)}</span>
                           <button
                             type="button"
+                            onClick={() => handleStartEditItemInCompra(index)}
+                            className="text-amber-400 hover:text-amber-300 cursor-pointer"
+                            title="Editar Item"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleRemoveItemFromCompra(index)}
                             className="text-rose-400 hover:text-rose-300 cursor-pointer"
+                            title="Remover Item"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>

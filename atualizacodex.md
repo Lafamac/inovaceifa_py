@@ -304,4 +304,8 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 - **Exibição do Nome Comercial nos Itens de Compra**:
   - No componente [Financeiro.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Financeiro.jsx), na listagem de Pedidos de Compra, atualizamos a exibição dos itens e quantidades para renderizar o nome comercial (`item.produto_nome`) em vez do código numérico genérico.
   - Como camada de resiliência, adicionamos uma busca local de fallback no estado de produtos (`produtos.find`) para garantir que o nome seja exibido mesmo se a API ainda não tiver processado o campo.
+- **Edição Individual de Itens no Pedido de Compra**:
+  - No formulário modal de Novo/Editar Pedido de Compra no componente [Financeiro.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Financeiro.jsx), implementamos a funcionalidade de editar itens já inseridos na lista temporária.
+  - Adicionamos um ícone de lápis (`Pencil`) ao lado do botão de lixeira para cada item. Ao clicar, o item correspondente tem seus valores (produto, quantidade e preço unitário) carregados de volta para os campos de entrada superiores, e o índice é armazenado no estado `editingItemIndex`.
+  - A linha que está sendo editada ganha um destaque visual dinâmico no tema escuro (borda amarela/amber e fundo translúcido suave). O botão de adição `+` muda dinamicamente para o ícone de confirmação (`Check`) para salvar as alterações do registro no mesmo índice correspondente.
 
