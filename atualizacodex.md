@@ -286,3 +286,17 @@ Este documento registra as alterações de layout, formulários e estrutura de m
     - Itens comuns: `hover:bg-slate-100 hover:text-slate-950` / `dark:hover:bg-slate-800 dark:hover:text-white`.
   - Isso resolveu a invisibilidade das letras ao passar o mouse ou selecionar itens.
 
+---
+
+### 🔄 Permissão de Produtos Globais e Inicialização de Horímetro (12/08/2026)
+
+#### 1. Backend (Views)
+- **Filtro de Produtos Globais**:
+  - Ajustamos o método `get_queryset` em [views.py](file:///c:/workspace/inovaceifa/backend/cadastros/views.py) (`ProdutoViewSet`) para incluir produtos que possuam `fazenda__isnull=True` ou `safra__isnull=True`.
+  - Isso garante que produtos globais cadastrados sem uma fazenda/safra específica (insumos universais) continuem visíveis e selecionáveis pelas fazendas ativas.
+
+#### 2. Frontend (Formulários)
+- **Inicialização Automática de Horímetro**:
+  - No componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), no formulário de abastecimento de máquinas (`abtForm`), configuramos a ação `onChange` do seletor de máquinas para buscar a máquina correspondente na lista de máquinas cadastradas.
+  - Caso a máquina seja encontrada, o campo de `horimetro` é automaticamente inicializado com o valor de `horimetro_inicial` dela (ou vazio se não definido), otimizando o fluxo de preenchimento.
+
