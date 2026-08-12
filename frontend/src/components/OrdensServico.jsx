@@ -2294,7 +2294,16 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                     required
                     value={abtForm.maquina}
                     onKeyDown={handleKeyDown}
-                    onChange={(e) => setAbtForm(prev => ({ ...prev, maquina: e.target.value }))}
+                    onChange={(e) => {
+                      const maqId = e.target.value;
+                      const selectedMaq = maquinas.find(m => String(m.id) === String(maqId));
+                      const horimetroInit = selectedMaq ? (selectedMaq.horimetro_inicial !== undefined && selectedMaq.horimetro_inicial !== null ? selectedMaq.horimetro_inicial : '') : '';
+                      setAbtForm(prev => ({ 
+                        ...prev, 
+                        maquina: maqId,
+                        horimetro: horimetroInit
+                      }));
+                    }}
                     className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
                   >
                     <option value="">Selecione a máquina...</option>

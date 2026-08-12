@@ -173,12 +173,13 @@ class ProdutoViewSet(BaseTenantViewSet):
     serializer_class = ProdutoSerializer
 
     def get_queryset(self):
-        # Filtra produtos pertencentes às fazendas permitidas
+        from django.db.models import Q
+        # Filtra produtos pertencentes às fazendas permitidas ou globais
         qs = super().get_queryset().filter(
-            fazenda__in=self.request.fazendas_permitidas
+            Q(fazenda__in=self.request.fazendas_permitidas) | Q(fazenda__isnull=True)
         )
         if self.request.safra_ativa:
-            qs = qs.filter(safra=self.request.safra_ativa)
+            qs = qs.filter(Q(safra=self.request.safra_ativa) | Q(safra__isnull=True))
         return qs
 
     @action(detail=False, methods=['post'], url_path='copiar-safra')
