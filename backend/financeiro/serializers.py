@@ -4,6 +4,7 @@ from .models import PedidoCompra, ItemPedidoCompra, ContasAPagar, PedidoVenda, C
 
 class ItemPedidoCompraSerializer(serializers.ModelSerializer):
     produto_detalhe = ProdutoSerializer(source='produto', read_only=True)
+    produto_nome = serializers.ReadOnlyField(source='produto.nome_comercial')
     pedido_compra = serializers.PrimaryKeyRelatedField(
         queryset=PedidoCompra.objects.all(),
         required=False

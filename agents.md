@@ -30,6 +30,7 @@
 ### Atualizações recentes de ambiente e acesso (12/08/2026)
 - [x] Ajustada a listagem de produtos no backend para retornar também produtos globais e sem safra definida (`fazenda__isnull=True` ou `safra__isnull=True`) para garantir acesso a insumos universais.
 - [x] Implementada a inicialização automática do horímetro no formulário de abastecimento ao selecionar uma máquina no frontend, buscando o `horimetro_inicial` do cadastro de máquinas.
+- [x] Ajustada a visualização dos itens de pedidos de compra no módulo financeiro para exibir o nome comercial do produto em vez de "Produto #id".
 
 ### Atualizações recentes de ambiente e acesso (11/08/2026)
 - [x] Implementado o modelo, endpoints e serviços de **Rateios Operacionais** ("Aba Rateios") para lançar custos indivisíveis da fazenda, com rateio dinâmico proporcional à área dos talhões e baixa automática do diesel do estoque.

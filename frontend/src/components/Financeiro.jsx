@@ -1079,7 +1079,9 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                               {p.itens.map((item, idx) => (
                                 <div key={idx} className="flex gap-1 items-center text-[10.5px]">
                                   <Package className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                                  <span className="font-bold text-slate-700 dark:text-slate-300">{item.produto_nome || `Produto #${item.produto}`}:</span>
+                                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                                    {item.produto_nome || (produtos.find(prod => String(prod.id) === String(item.produto || item.produto_id))?.nome_comercial) || `Produto #${item.produto}`}:
+                                  </span>
                                   <span>{Number(item.quantidade)} un. (R$ {money(item.valor_unitario)}/un)</span>
                                 </div>
                               ))}

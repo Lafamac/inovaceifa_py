@@ -288,15 +288,20 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ---
 
-### 🔄 Permissão de Produtos Globais e Inicialização de Horímetro (12/08/2026)
+### 🔄 Permissão de Produtos Globais, Inicialização de Horímetro e Nomes nos Pedidos de Compra (12/08/2026)
 
-#### 1. Backend (Views)
+#### 1. Backend (Views & Serializers)
 - **Filtro de Produtos Globais**:
   - Ajustamos o método `get_queryset` em [views.py](file:///c:/workspace/inovaceifa/backend/cadastros/views.py) (`ProdutoViewSet`) para incluir produtos que possuam `fazenda__isnull=True` ou `safra__isnull=True`.
   - Isso garante que produtos globais cadastrados sem uma fazenda/safra específica (insumos universais) continuem visíveis e selecionáveis pelas fazendas ativas.
+- **Nome do Produto no Item do Pedido de Compra**:
+  - Adicionamos o campo `produto_nome` (como `ReadOnlyField(source='produto.nome_comercial')`) no serializer [ItemPedidoCompraSerializer](file:///c:/workspace/inovaceifa/backend/financeiro/serializers.py). Isso expõe diretamente o nome comercial do produto no payload da API de pedidos de compra.
 
-#### 2. Frontend (Formulários)
+#### 2. Frontend (Formulários & Visualização)
 - **Inicialização Automática de Horímetro**:
   - No componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), no formulário de abastecimento de máquinas (`abtForm`), configuramos a ação `onChange` do seletor de máquinas para buscar a máquina correspondente na lista de máquinas cadastradas.
   - Caso a máquina seja encontrada, o campo de `horimetro` é automaticamente inicializado com o valor de `horimetro_inicial` dela (ou vazio se não definido), otimizando o fluxo de preenchimento.
+- **Exibição do Nome Comercial nos Itens de Compra**:
+  - No componente [Financeiro.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Financeiro.jsx), na listagem de Pedidos de Compra, atualizamos a exibição dos itens e quantidades para renderizar o nome comercial (`item.produto_nome`) em vez do código numérico genérico.
+  - Como camada de resiliência, adicionamos uma busca local de fallback no estado de produtos (`produtos.find`) para garantir que o nome seja exibido mesmo se a API ainda não tiver processado o campo.
 
