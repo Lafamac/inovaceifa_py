@@ -668,6 +668,31 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
   const lookup = (list, id, field = 'nome') => list.find(item => item.id === Number(id))?.[field] || '-';
 
+  const handleAbtQtyOrPriceChange = (field, val) => {
+    setAbtForm(prev => {
+      const updated = { ...prev, [field]: val };
+      const qty = Number(updated.quantidade || 0);
+      const prc = Number(updated.valor_unitario || 0);
+      updated.valor_total = Number((qty * prc).toFixed(2));
+      return updated;
+    });
+  };
+
+  const handleAbtCombustivelChange = (prodId) => {
+    const prodObj = produtos.find(p => String(p.id) === String(prodId));
+    const defaultPrice = prodObj ? String(prodObj.valor_unitario || '') : '';
+    setAbtForm(prev => {
+      const qty = Number(prev.quantidade || 0);
+      const prc = Number(defaultPrice || 0);
+      return {
+        ...prev,
+        combustivel: prodId,
+        valor_unitario: defaultPrice,
+        valor_total: Number((qty * prc).toFixed(2))
+      };
+    });
+  };
+
   // Salvar Abastecimento
   const handleCreateAbastecimento = async (e) => {
     e.preventDefault();
@@ -2327,7 +2352,7 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                     required
                     value={abtForm.combustivel}
                     onKeyDown={handleKeyDown}
-                    onChange={(e) => setAbtForm(prev => ({ ...prev, combustivel: e.target.value }))}
+                    onChange={(e) => handleAbtCombustivelChange(e.target.value)}
                     className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl py-2.5 px-3 text-sm text-white outline-none"
                   >
                     <option value="">Selecione o combustível...</option>
@@ -2920,7 +2945,16 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                         <select
                           value={rateioOperacionalForm.combustivel_plan}
                           onKeyDown={handleKeyDown}
-                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, combustivel_plan: e.target.value }))}
+                          onChange={(e) => {
+                            const prodId = e.target.value;
+                            const prodObj = produtos.find(p => String(p.id) === String(prodId));
+                            const defaultPrice = prodObj ? String(prodObj.valor_unitario || '') : '';
+                            setRateioOperacionalForm(prev => ({
+                              ...prev,
+                              combustivel_plan: prodId,
+                              valor_diesel_plan: defaultPrice
+                            }));
+                          }}
                           className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Selecione o combustível...</option>
@@ -3150,7 +3184,16 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
                         <select
                           value={rateioOperacionalForm.combustivel_real}
                           onKeyDown={handleKeyDown}
-                          onChange={(e) => setRateioOperacionalForm(prev => ({ ...prev, combustivel_real: e.target.value }))}
+                          onChange={(e) => {
+                            const prodId = e.target.value;
+                            const prodObj = produtos.find(p => String(p.id) === String(prodId));
+                            const defaultPrice = prodObj ? String(prodObj.valor_unitario || '') : '';
+                            setRateioOperacionalForm(prev => ({
+                              ...prev,
+                              combustivel_real: prodId,
+                              valor_diesel_real: defaultPrice
+                            }));
+                          }}
                           className="w-full bg-slate-950/50 border border-white/[0.08] focus:border-emerald-500/60 rounded-lg py-1.5 px-2.5 text-xs text-white outline-none"
                         >
                           <option value="">Selecione o combustível...</option>

@@ -1,9 +1,26 @@
 # Atualização do Codex - Ajustes de Transferência e Estrutura de Menus
 
 Este documento registra as alterações de layout, formulários e estrutura de menus realizadas recentemente no projeto Inova Ceifa.
-*Última Atualização: 11/08/2026*
+*Última Atualização: 13/08/2026*
 
 ## Alterações Realizadas
+
+### 🔄 Busca de Preços de Insumos e Ajustes de Volume Planejado (13/08/2026)
+
+#### 1. Cálculo de Insumo por Hectare no Planejamento de Safra
+- **Cálculo Automático por Área (Frontend)**:
+  - No componente [Planejamentos.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Planejamentos.jsx), a quantidade total planejada (`quantidade_planejada`) de cada insumo passou a ser calculada automaticamente multiplicando a dose por hectare pela área combinada de todos os talhões selecionados na atividade planejada.
+  - A lógica foi adicionada ao manipulador de seleção de talhões (`handleToggleTalhaoSelection`) para atualizar em tempo real a quantidade de todos os insumos já listados e do insumo temporário na tela.
+  - Adicionado cálculo automático no campo **Dose** para recalcular a **Qtd Total Planejada** instantaneamente enquanto o usuário digita.
+
+#### 2. Busca Automática de Preço Unitário de Insumos e Combustíveis
+- **Pedidos de Compra (Financeiro)**:
+  - No modal de Novo/Editar Pedido de Compra em [Financeiro.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Financeiro.jsx), configuramos a ação `onChange` do dropdown de insumos/produtos. Ao selecionar um produto, o sistema recupera o valor correspondente no cadastro de produtos e preenche automaticamente o campo **Preço Unitário (R$)**.
+- **Abastecimento de Máquina (Operacional)**:
+  - No modal de Registrar Abastecimento em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), a seleção de combustível preenche automaticamente o campo **Valor Unitário (R$)** com a propriedade `valor_unitario` do combustível cadastrado.
+  - Corrigido o bug do manipulador de digitação do formulário (`handleAbtQtyOrPriceChange`), que não estava declarado e causava erros ao alterar quantidade ou preço.
+- **Rateios Operacionais (Operacional)**:
+  - No formulário de Rateio Operacional em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), a seleção de combustível planejado (`combustivel_plan`) ou realizado (`combustivel_real`) preenche automaticamente o respectivo preço unitário do diesel (`valor_diesel_plan` / `valor_diesel_real`) cadastrado na tabela de produtos.
 
 ### 🪟 Ajuste de Posicionamento do Modal de Cadastros
 

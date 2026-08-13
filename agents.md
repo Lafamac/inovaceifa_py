@@ -27,6 +27,11 @@
 
 ## Fases de Implementação (Ordem Recomendada)
 
+### Atualizações recentes de ambiente e acesso (13/08/2026)
+- [x] Implementada busca e preenchimento automático do preço unitário nos formulários de Pedido de Compra, Abastecimento de Máquina e Rateio Operacional (planejado e realizado) a partir do valor cadastrado no produto/insumo selecionado.
+- [x] Corrigido o manipulador de estado `handleAbtQtyOrPriceChange` no formulário de Abastecimento para permitir a digitação de valores e recalcular o valor total de forma reativa no frontend.
+- [x] Implementado cálculo dinâmico da dose por hectare para obter o volume total planejado (`quantidade_planejada`) somando a área de todos os talhões selecionados no Planejamento de Safra (e atualizado dinamicamente nos insumos temporários e já adicionados).
+
 ### Atualizações recentes de ambiente e acesso (12/08/2026)
 - [x] Ajustada a listagem de produtos no backend para retornar também produtos globais e sem safra definida (`fazenda__isnull=True` ou `safra__isnull=True`) para garantir acesso a insumos universais.
 - [x] Implementada a inicialização automática do horímetro no formulário de abastecimento ao selecionar uma máquina no frontend, buscando o `horimetro_inicial` do cadastro de máquinas.

@@ -261,6 +261,7 @@ class Produto(BaseModel):
     periodo_carencia = models.IntegerField(null=True, blank=True) # dias
     alvo = models.CharField(max_length=255, null=True, blank=True)
     recomendacoes_tecnicas = models.TextField(null=True, blank=True)
+    valor_unitario = models.DecimalField(max_digits=12, decimal_places=4, default=0.0000)
 
     class Meta:
         verbose_name = "Produto/Insumo"

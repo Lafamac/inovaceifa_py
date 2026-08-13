@@ -474,11 +474,41 @@ export const Planejamentos = () => {
   const handleToggleTalhaoSelection = (tId) => {
     setNewOSForm(prev => {
       const exists = prev.talhoes_selecionados.includes(tId);
+      const nextTalhoes = exists
+        ? prev.talhoes_selecionados.filter(id => id !== tId)
+        : [...prev.talhoes_selecionados, tId];
+
+      const totalArea = talhoes
+        .filter(t => nextTalhoes.includes(t.id))
+        .reduce((sum, curr) => sum + Number(curr.area || 0), 0);
+
+      // Recalculate tempInsumo quantity
+      const tempDose = Number(tempInsumo.dose_planejada || 0);
+      if (tempDose > 0) {
+        const qty = (tempDose * totalArea).toFixed(5);
+        setTempInsumo(tempPrev => ({
+          ...tempPrev,
+          quantidade_planejada: parseFloat(qty).toString()
+        }));
+      }
+
+      // Recalculate already selected insumos
+      const nextInsumos = prev.insumos_selecionados.map(ins => {
+        const dose = Number(ins.dose_planejada || 0);
+        if (dose > 0) {
+          const qty = (dose * totalArea).toFixed(5);
+          return {
+            ...ins,
+            quantidade_planejada: parseFloat(qty).toString()
+          };
+        }
+        return ins;
+      });
+
       return {
         ...prev,
-        talhoes_selecionados: exists
-          ? prev.talhoes_selecionados.filter(id => id !== tId)
-          : [...prev.talhoes_selecionados, tId]
+        talhoes_selecionados: nextTalhoes,
+        insumos_selecionados: nextInsumos
       };
     });
   };
@@ -1263,7 +1293,20 @@ export const Planejamentos = () => {
                       placeholder="Ex: 2.5"
                       value={tempInsumo.dose_planejada}
                       onKeyDown={handleKeyDown}
-                      onChange={(e) => setTempInsumo(prev => ({ ...prev, dose_planejada: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const dose = Number(val || 0);
+                        const totalArea = talhoes
+                          .filter(t => newOSForm.talhoes_selecionados.includes(t.id))
+                          .reduce((sum, curr) => sum + Number(curr.area || 0), 0);
+                        const qty = (dose * totalArea).toFixed(5);
+                        const calculatedQty = dose > 0 && totalArea > 0 ? parseFloat(qty).toString() : '';
+                        setTempInsumo(prev => ({
+                          ...prev,
+                          dose_planejada: val,
+                          quantidade_planejada: calculatedQty
+                        }));
+                      }}
                       className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                     />
                   </div>

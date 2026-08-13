@@ -1540,7 +1540,16 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                     <select
                       value={tempItem.produto}
                       onKeyDown={handleKeyDown}
-                      onChange={(e) => setTempItem(prev => ({ ...prev, produto: e.target.value }))}
+                      onChange={(e) => {
+                        const prodId = e.target.value;
+                        const prodObj = produtos.find(p => String(p.id) === String(prodId));
+                        const defaultPrice = prodObj ? String(prodObj.valor_unitario || '') : '';
+                        setTempItem(prev => ({
+                          ...prev,
+                          produto: prodId,
+                          valor_unitario: defaultPrice
+                        }));
+                      }}
                       className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 transition-all"
                     >
                       <option value="">Selecione um insumo...</option>

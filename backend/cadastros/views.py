@@ -250,7 +250,8 @@ class ProdutoViewSet(BaseTenantViewSet):
                     concentracao=p.concentracao,
                     periodo_carencia=p.periodo_carencia,
                     alvo=p.alvo,
-                    recomendacoes_tecnicas=p.recomendacoes_tecnicas
+                    recomendacoes_tecnicas=p.recomendacoes_tecnicas,
+                    valor_unitario=p.valor_unitario
                 )
                 prod_destino.save()
                 count += 1

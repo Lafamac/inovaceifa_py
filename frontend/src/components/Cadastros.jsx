@@ -112,6 +112,7 @@ const emptyForms = {
     concentracao: '',
     periodo_carencia: '',
     alvo: '',
+    valor_unitario: '',
     quantidade_inicial: '',
     valor_unitario_inicial: '',
   },
@@ -1759,6 +1760,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
           <InputField label="Concentração" value={currentForm.concentracao} onChange={(value) => patchForm('concentracao', value)} />
           <InputField label="Período de Carência (dias)" type="number" value={currentForm.periodo_carencia} onChange={(value) => patchForm('periodo_carencia', value)} />
           <InputField label="Alvo" value={currentForm.alvo} onChange={(value) => patchForm('alvo', value)} />
+          <InputField label="Valor do Produto/Insumo (R$)" type="number" step="0.0001" value={currentForm.valor_unitario || ''} onChange={(value) => patchForm('valor_unitario', value)} />
           {editingId ? (
             <InputField label="Quantidade Atual em Estoque" type="number" value={currentStockQty} disabled onChange={() => {}} />
           ) : (
@@ -2157,6 +2159,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">{item.classificacao_nome || 'Insumo'}</td>
             <td className="py-3 px-5 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
               {Number(qtdSaldo).toLocaleString('pt-BR')} {item.unidade_sigla || item.unidade_nome || '-'}
+              <p className="text-[10px] text-slate-450 dark:text-slate-500 font-normal mt-0.5">
+                Valor: R$ {money(item.valor_unitario)}
+              </p>
             </td>
             <td className="py-3 px-5 text-center">
               <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
