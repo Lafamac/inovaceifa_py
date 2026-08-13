@@ -36,7 +36,17 @@ def me(request):
     except Proprietario.DoesNotExist:
         # If superuser or operator, check context fazenda or default
         if (perfil_nivel == 1 or user.is_superuser) or (perfil_nivel == 3):
-            if hasattr(request, 'fazendas_permitidas') and request.fazendas_permitidas.exists():
+            # Manually extract context safra from headers since this is an exempt path
+            safra_id = request.headers.get('X-Safra-ID') or request.META.get('HTTP_X_SAFRA_ID')
+            if safra_id:
+                try:
+                    from core.models import Safra
+                    safra = Safra.objects.get(id=safra_id, ativo=True)
+                    data_ultimo_backup = safra.fazenda.proprietario.data_ultimo_backup
+                except (Safra.DoesNotExist, ValueError):
+                    pass
+            
+            if data_ultimo_backup is None and hasattr(request, 'fazendas_permitidas') and request.fazendas_permitidas.exists():
                 first_farm = request.fazendas_permitidas.first()
                 data_ultimo_backup = first_farm.proprietario.data_ultimo_backup
 
