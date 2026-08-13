@@ -18,6 +18,7 @@ class Proprietario(BaseModel):
     endereco = models.CharField(max_length=255, null=True, blank=True)
     bairro = models.CharField(max_length=100, null=True, blank=True)
     cidade = models.CharField(max_length=100, null=True, blank=True)
+    data_ultimo_backup = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None

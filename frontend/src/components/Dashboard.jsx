@@ -27,8 +27,10 @@ import {
   Users, 
   Package, 
   Scale, 
-  ChevronDown
+  ChevronDown,
+  Database
 } from 'lucide-react';
+import { ModalBackup } from './ModalBackup';
 
 const REPORTS = [
   { id: 'gestao-a-vista', label: 'Gestão à Vista', category: 'Geral', icon: Activity, component: GestaoAVista, desc: 'Indicadores chave e distribuição de OS' },
@@ -56,6 +58,10 @@ export const Dashboard = () => {
   const { fazendaAtiva, safraAtiva, tenantVersion, loading } = useTenant();
   const [activeReportId, setActiveReportId] = useState('gestao-a-vista');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+
+  const dataUltimoBackup = user?.data_ultimo_backup;
+  const showBackupWarning = !dataUltimoBackup || (new Date() - new Date(dataUltimoBackup)) > (7 * 24 * 60 * 60 * 1000);
 
   if (loading) {
     return (
@@ -78,7 +84,8 @@ export const Dashboard = () => {
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       
       {/* Welcome Banner */}
       <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600/95 to-teal-700/95 p-6 sm:p-8 shadow-xl shadow-emerald-600/10">
@@ -114,6 +121,31 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Alert Banner for Backup */}
+      {showBackupWarning && (
+        <div className="mb-6 p-4 rounded-xl border border-amber-550/15 dark:border-amber-500/10 bg-amber-50 dark:bg-amber-500/5 text-amber-800 dark:text-amber-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-0.5 text-left">
+              <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">Recomendação de Segurança: Realize um Backup</h4>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                {dataUltimoBackup 
+                  ? `Seu último backup foi realizado em ${new Date(dataUltimoBackup).toLocaleDateString('pt-BR')}. Evite perder seus registros de safra e finanças realizando um backup periódico.`
+                  : "Você ainda não realizou nenhum backup dos seus dados! Baixe uma cópia de segurança para garantir a integridade dos seus dados contra imprevistos."
+                }
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsBackupModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-800 dark:text-amber-400 px-3 py-1.5 text-xs font-bold transition-all border border-amber-200 dark:border-amber-500/15 cursor-pointer shrink-0 align-middle self-start sm:self-center"
+          >
+            <Database className="w-3.5 h-3.5" />
+            <span>Fazer Backup</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Switcher and Report Container */}
       {!safraAtiva ? (
@@ -243,6 +275,12 @@ export const Dashboard = () => {
         </div>
       )}
 
-    </main>
+      </main>
+
+      <ModalBackup 
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+      />
+    </>
   );
 };

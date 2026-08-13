@@ -27,6 +27,19 @@ def me(request):
     if hasattr(request, 'fazendas_permitidas') and request.fazendas_permitidas.exists():
         fazenda_padrao = request.fazendas_permitidas.first().id
 
+    # Resolve last backup date for the owner
+    data_ultimo_backup = None
+    from core.models import Proprietario
+    try:
+        prop = Proprietario.objects.get(email__iexact=user.email)
+        data_ultimo_backup = prop.data_ultimo_backup
+    except Proprietario.DoesNotExist:
+        # If superuser or operator, check context fazenda or default
+        if (perfil_nivel == 1 or user.is_superuser) or (perfil_nivel == 3):
+            if hasattr(request, 'fazendas_permitidas') and request.fazendas_permitidas.exists():
+                first_farm = request.fazendas_permitidas.first()
+                data_ultimo_backup = first_farm.proprietario.data_ultimo_backup
+
     return Response({
         "id": user.id,
         "username": user.username,
@@ -36,7 +49,8 @@ def me(request):
         "avatar": avatar,
         "perfil_id": perfil_nivel,
         "is_superuser": user.is_superuser,
-        "fazenda_padrao": fazenda_padrao
+        "fazenda_padrao": fazenda_padrao,
+        "data_ultimo_backup": data_ultimo_backup
     })
 
 @extend_schema(

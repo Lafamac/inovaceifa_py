@@ -28,6 +28,8 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso (13/08/2026)
+- [x] Implementado o **Módulo de Backup e Restauração de Dados** (exportação para JSON e importação restauradora) exclusivo para o proprietário logado, salvando a data do último backup no modelo `Proprietario`.
+- [x] Adicionado banner de alerta de backup inteligente no topo do `Dashboard.jsx` (exibido se nunca foi feito ou após 7 dias), integrado ao menu do perfil no `Header.jsx`.
 - [x] Implementada busca e preenchimento automático do preço unitário nos formulários de Pedido de Compra, Abastecimento de Máquina e Rateio Operacional (planejado e realizado) a partir do valor cadastrado no produto/insumo selecionado.
 - [x] Corrigido o manipulador de estado `handleAbtQtyOrPriceChange` no formulário de Abastecimento para permitir a digitação de valores e recalcular o valor total de forma reativa no frontend.
 - [x] Implementado cálculo dinâmico da dose por hectare para obter o volume total planejado (`quantidade_planejada`) somando a área de todos os talhões selecionados no Planejamento de Safra (e atualizado dinamicamente nos insumos temporários e já adicionados).

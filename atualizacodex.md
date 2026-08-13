@@ -5,6 +5,29 @@ Este documento registra as alterações de layout, formulários e estrutura de m
 
 ## Alterações Realizadas
 
+### 💾 Módulo de Backup de Dados e Alertas Inteligentes (13/08/2026)
+
+#### 1. Backend (Lógica de Backup e Importação)
+- **Estruturação de Schema (Proprietario)**:
+  - Adicionado o campo `data_ultimo_backup` (DateTimeField) ao modelo `Proprietario` para controle do histórico de backups.
+  - Criada e executada a migração Django `core.0006_proprietario_data_ultimo_backup`.
+- **Lógica Utility (backup.py)**:
+  - Criado o arquivo [backup.py](file:///c:/workspace/inovaceifa/backend/core/backup.py) encapsulando os relacionamentos e dependências de todos os modelos do sistema.
+  - Implementada a deleção em cascata segura em ordem reversa para ignorar conflitos de chaves protegidas (`on_delete=models.PROTECT`).
+  - Utilizado o deserializador nativo de fixtures do Django para restaurar dados preservando as chaves primárias (`pk`) e relacionamentos ManyToMany.
+- **Roteamento e Login**:
+  - Registrada a rota `/api/backup/` com suporte a `GET` (download do backup atualizando data) e `POST` (upload do arquivo JSON e restauração).
+  - Atualizada a API `/api/auth/me/` para incluir a `data_ultimo_backup` na resposta do perfil.
+
+#### 2. Frontend (Modais e Alertas no Dashboard)
+- **Modal de Backup (ModalBackup.jsx)**:
+  - Desenvolvido modal premium escuro glassmorphism em [ModalBackup.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/ModalBackup.jsx).
+  - Inclui botões para download do arquivo JSON (`relatorioService.exportBackup`) e restauração com aviso proeminente confirmando a sobrescrita definitiva.
+- **Destaque Visual e Acesso (Header.jsx)**:
+  - Inserida opção "Backup de Dados" no menu do perfil de usuário em [Header.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Header.jsx).
+- **Aviso Inteligente de Segurança (Dashboard.jsx)**:
+  - Incluído um banner de alerta no topo do [Dashboard.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Dashboard.jsx) caso não haja backups ou o último tenha mais de 7 dias, induzindo o usuário a manter seus dados salvos.
+
 ### 🔄 Busca de Preços de Insumos e Ajustes de Volume Planejado (13/08/2026)
 
 #### 1. Cálculo de Insumo por Hectare no Planejamento de Safra

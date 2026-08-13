@@ -290,6 +290,20 @@ export const relatorioService = {
     return res.data;
   },
 
+  exportBackup: () => {
+    return api.get('/api/backup/', { responseType: 'blob' });
+  },
+
+  importBackup: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/api/backup/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
   getUsuario: () => {
     return requestHandler(
       () => api.get('/api/auth/me/'),

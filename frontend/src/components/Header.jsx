@@ -17,8 +17,10 @@ import {
   FileSpreadsheet,
   Tractor,
   Calendar,
-  WalletCards
+  WalletCards,
+  Database
 } from 'lucide-react';
+import { ModalBackup } from './ModalBackup';
 
 export const Header = ({ activeView, setActiveView }) => {
   const { user, logout } = useAuth();
@@ -44,6 +46,7 @@ export const Header = ({ activeView, setActiveView }) => {
   const [showFazendaMenu, setShowFazendaMenu] = useState(false);
   const [showSafraMenu, setShowSafraMenu] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const isFazendaSelecionada = (fazenda) => String(fazendaAtiva?.id ?? '') === String(fazenda.id);
   const isSafraSelecionada = (safra) => String(safraAtiva?.id ?? '') === String(safra.id);
 
@@ -310,6 +313,17 @@ export const Header = ({ activeView, setActiveView }) => {
 
                     <button
                       onClick={() => {
+                        setIsBackupModalOpen(true);
+                        setShowProfileMenu(false);
+                      }}
+                      className="flex w-full items-center space-x-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      <Database className="h-4.5 w-4.5 text-slate-400" />
+                      <span>Backup de Dados</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
                         logout();
                         setShowProfileMenu(false);
                       }}
@@ -426,6 +440,11 @@ export const Header = ({ activeView, setActiveView }) => {
       <ModalChangePassword 
         isOpen={isPasswordModalOpen} 
         onClose={() => setIsPasswordModalOpen(false)} 
+      />
+
+      <ModalBackup 
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
       />
     </>
   );

@@ -1,6 +1,7 @@
 from django.test import TestCase, override_settings
 from django.core import mail
 from django.urls import reverse
+import json
 from rest_framework import status
 from rest_framework.test import APITestCase
 from core.models import Proprietario
@@ -430,4 +431,91 @@ class CascadingDeactivationTests(TestCase):
         self.assertTrue(self.funcionario.ativo)
         self.assertTrue(self.maquina.ativo)
         self.assertTrue(self.talhao.ativo)
+
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+class BackupTests(APITestCase):
+    def setUp(self):
+        # 1. Configurar perfis e proprietário
+        self.perfil_prop, _ = Perfil.objects.get_or_create(nivel=2, defaults={'nome': 'Proprietário'})
+        self.prop = Proprietario.objects.create(
+            nome="Proprietario Backup Teste",
+            email="backup_test@teste.com",
+            documento="44444444444"
+        )
+        # O signal cria automaticamente o Usuario correspondente ao e-mail
+        self.user = Usuario.objects.get(email="backup_test@teste.com")
+        self.user.perfil = self.perfil_prop
+        self.user.save()
+        
+        # 2. Criar fazendas, safras, talhões
+        self.fazenda = Fazenda.objects.create(
+            nome="Fazenda Backup",
+            sigla="FZB",
+            proprietario=self.prop
+        )
+        self.safra = Safra.objects.create(
+            fazenda=self.fazenda,
+            nome="Safra Backup",
+            data_inicio="2026-01-01",
+            data_fim="2026-12-31",
+            ativa=True
+        )
+        self.talhao = Talhao.objects.create(
+            fazenda=self.fazenda,
+            codigo="TL-B1",
+            nome="Talhao Original",
+            area=12.50000,
+            tipo_irrigacao=TipoIrrigacao.objects.get_or_create(nome="Nenhuma")[0],
+            cultura=Cultura.objects.get_or_create(nome="Café")[0]
+        )
+
+        self.client.force_authenticate(user=self.user)
+        self.backup_url = reverse('backup')
+
+    def test_export_and_restore_backup(self):
+        # 1. Testar GET (Exportar Backup)
+        response = self.client.get(self.backup_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], "application/json")
+        self.assertTrue(response['Content-Disposition'].startswith('attachment; filename="backup_'))
+        
+        backup_content = response.content.decode('utf-8')
+        backup_data = json.loads(backup_content)
+        
+        # Verificar se os registros exportados estão no JSON
+        models_in_backup = [item['model'] for item in backup_data]
+        self.assertIn("core.proprietario", models_in_backup)
+        self.assertIn("core.fazenda", models_in_backup)
+        self.assertIn("core.safra", models_in_backup)
+        self.assertIn("cadastros.talhao", models_in_backup)
+
+        # Verificar se data_ultimo_backup foi preenchida
+        self.prop.refresh_from_db()
+        self.assertIsNotNone(self.prop.data_ultimo_backup)
+
+        # Verificar se a view 'me' retorna data_ultimo_backup
+        me_url = reverse('auth_me')
+        me_response = self.client.get(me_url)
+        self.assertEqual(me_response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(me_response.data['data_ultimo_backup'])
+
+        # 2. Modificar o banco de dados (Simular alterações)
+        self.talhao.nome = "Talhao Modificado"
+        self.talhao.save()
+        
+        # Confirmar que foi modificado no banco
+        self.assertEqual(Talhao.objects.get(id=self.talhao.id).nome, "Talhao Modificado")
+
+        # 3. Testar POST (Importar/Restaurar Backup)
+        uploaded_file = SimpleUploadedFile("backup.json", response.content, content_type="application/json")
+        restore_response = self.client.post(self.backup_url, {'file': uploaded_file}, format='multipart')
+        self.assertEqual(restore_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(restore_response.data['success'], "Backup restaurado com sucesso!")
+
+        # 4. Verificar se o estado foi restaurado
+        # O nome do talhão deve ter voltado para "Talhao Original"
+        self.assertEqual(Talhao.objects.get(id=self.talhao.id).nome, "Talhao Original")
+
 
