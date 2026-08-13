@@ -1,4 +1,6 @@
 import json
+import zipfile
+import io
 from django.db import transaction
 from django.core import serializers
 from django.http import HttpResponse
@@ -178,9 +180,17 @@ class BackupViewSet(APIView):
             
         serialized_json = serializers.serialize("json", all_objs, indent=2)
         
-        # Prepare response as a downloadable attachment
-        filename = f"backup_{owner.nome.lower().replace(' ', '_')}_{owner.id}.json"
-        response = HttpResponse(serialized_json, content_type="application/json")
+        # Create a zip file in memory
+        zip_buffer = io.BytesIO()
+        owner_slug = owner.nome.lower().replace(' ', '_')
+        json_filename = f"backup_{owner_slug}_{owner.id}.json"
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr(json_filename, serialized_json)
+            
+        # Prepare response as a downloadable zip attachment
+        filename = f"backup_{owner_slug}_{owner.id}.zip"
+        response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -191,11 +201,27 @@ class BackupViewSet(APIView):
             return Response({"error": "Nenhum arquivo enviado."}, status=status.HTTP_400_BAD_REQUEST)
             
         uploaded_file = request.FILES['file']
+        
+        # Determine if it's a ZIP or a raw JSON file
+        if uploaded_file.name.endswith('.zip'):
+            try:
+                with zipfile.ZipFile(uploaded_file) as zip_file:
+                    json_files = [f for f in zip_file.namelist() if f.endswith('.json')]
+                    if not json_files:
+                        return Response({"error": "Nenhum arquivo JSON encontrado dentro do arquivo ZIP."}, status=status.HTTP_400_BAD_REQUEST)
+                    file_content = zip_file.read(json_files[0]).decode('utf-8')
+            except Exception as e:
+                return Response({"error": f"Falha ao ler o arquivo ZIP: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            try:
+                file_content = uploaded_file.read().decode('utf-8')
+            except Exception as e:
+                return Response({"error": f"Falha ao ler o arquivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            file_content = uploaded_file.read().decode('utf-8')
             data = json.loads(file_content)
         except Exception as e:
-            return Response({"error": f"Arquivo inválido: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": f"Conteúdo do backup inválido (não é um JSON válido): {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
             
         if not isinstance(data, list):
             return Response({"error": "Formato de backup inválido. Deve ser uma lista de objetos."}, status=status.HTTP_400_BAD_REQUEST)

@@ -25,7 +25,7 @@ export const ModalBackup = ({ isOpen, onClose }) => {
       
       const ownerName = user?.nome ? user.nome.toLowerCase().replace(/\s+/g, '_') : 'proprietario';
       const dateStr = new Date().toISOString().slice(0, 10);
-      link.setAttribute('download', `backup_${ownerName}_${dateStr}.json`);
+      link.setAttribute('download', `backup_${ownerName}_${dateStr}.zip`);
       
       document.body.appendChild(link);
       link.click();
@@ -56,7 +56,7 @@ export const ModalBackup = ({ isOpen, onClose }) => {
   const handleImport = async (e) => {
     e.preventDefault();
     if (!selectedFile) {
-      setErrorMsg('Selecione um arquivo de backup (.json) para restaurar.');
+      setErrorMsg('Selecione um arquivo de backup (.zip ou .json) para restaurar.');
       return;
     }
 
@@ -140,7 +140,7 @@ export const ModalBackup = ({ isOpen, onClose }) => {
           <div className="space-y-3">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-350">1. Exportar Dados do Proprietário</h4>
             <p className="text-[11px] text-slate-400">
-              Gere e baixe uma cópia completa e compactada em formato JSON contendo todas as fazendas, talhões, máquinas, movimentações, planejamentos e transações financeiras sob sua conta.
+              Gere e baixe uma cópia completa e compactada em formato ZIP contendo todas as fazendas, talhões, máquinas, movimentações, planejamentos e transações financeiras sob sua conta.
             </p>
             <button
               type="button"
@@ -180,10 +180,10 @@ export const ModalBackup = ({ isOpen, onClose }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-[10px] font-black uppercase text-slate-400">Selecionar arquivo de backup (.json)</label>
+              <label className="block text-[10px] font-black uppercase text-slate-400">Selecionar arquivo de backup (.zip ou .json)</label>
               <input
                 type="file"
-                accept=".json"
+                accept=".zip,.json"
                 onChange={handleFileChange}
                 disabled={exporting || importing}
                 className="w-full bg-slate-950 border border-white/[0.06] rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-emerald-500/40 file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700 transition-all"

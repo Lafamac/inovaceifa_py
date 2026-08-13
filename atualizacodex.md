@@ -15,14 +15,15 @@ Este documento registra as alterações de layout, formulários e estrutura de m
   - Criado o arquivo [backup.py](file:///c:/workspace/inovaceifa/backend/core/backup.py) encapsulando os relacionamentos e dependências de todos os modelos do sistema.
   - Implementada a deleção em cascata segura em ordem reversa para ignorar conflitos de chaves protegidas (`on_delete=models.PROTECT`).
   - Utilizado o deserializador nativo de fixtures do Django para restaurar dados preservando as chaves primárias (`pk`) e relacionamentos ManyToMany.
+  - Adicionado suporte a compressão ZIP integrada na exportação dos dados (GET) e importação retrocompatível aceitando arquivos `.zip` ou `.json` (POST).
 - **Roteamento e Login**:
-  - Registrada a rota `/api/backup/` com suporte a `GET` (download do backup atualizando data) e `POST` (upload do arquivo JSON e restauração).
+  - Registrada a rota `/api/backup/` com suporte a `GET` (download do backup em arquivo `.zip` atualizando data) e `POST` (upload do arquivo `.zip`/`.json` e restauração).
   - Atualizada a API `/api/auth/me/` para incluir a `data_ultimo_backup` na resposta do perfil.
 
 #### 2. Frontend (Modais e Alertas no Dashboard)
 - **Modal de Backup (ModalBackup.jsx)**:
   - Desenvolvido modal premium escuro glassmorphism em [ModalBackup.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/ModalBackup.jsx).
-  - Inclui botões para download do arquivo JSON (`relatorioService.exportBackup`) e restauração com aviso proeminente confirmando a sobrescrita definitiva.
+  - Inclui botões para download do arquivo compactado `.zip` (que armazena internamente a fixture JSON) e restauração (suportando upload de `.zip` e `.json`) com aviso proeminente confirmando a sobrescrita definitiva.
 - **Destaque Visual e Acesso (Header.jsx)**:
   - Inserida opção "Backup de Dados" no menu do perfil de usuário em [Header.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Header.jsx).
 - **Aviso Inteligente de Segurança (Dashboard.jsx)**:

@@ -478,10 +478,15 @@ class BackupTests(APITestCase):
         # 1. Testar GET (Exportar Backup)
         response = self.client.get(self.backup_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response['Content-Type'], "application/json")
+        self.assertEqual(response['Content-Type'], "application/zip")
         self.assertTrue(response['Content-Disposition'].startswith('attachment; filename="backup_'))
         
-        backup_content = response.content.decode('utf-8')
+        # Ler conteúdo JSON do arquivo ZIP retornado
+        import zipfile
+        import io
+        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
+        json_filename = [f for f in zip_file.namelist() if f.endswith('.json')][0]
+        backup_content = zip_file.read(json_filename).decode('utf-8')
         backup_data = json.loads(backup_content)
         
         # Verificar se os registros exportados estão no JSON
@@ -508,8 +513,8 @@ class BackupTests(APITestCase):
         # Confirmar que foi modificado no banco
         self.assertEqual(Talhao.objects.get(id=self.talhao.id).nome, "Talhao Modificado")
 
-        # 3. Testar POST (Importar/Restaurar Backup)
-        uploaded_file = SimpleUploadedFile("backup.json", response.content, content_type="application/json")
+        # 3. Testar POST (Importar/Restaurar Backup a partir do ZIP)
+        uploaded_file = SimpleUploadedFile("backup.zip", response.content, content_type="application/zip")
         restore_response = self.client.post(self.backup_url, {'file': uploaded_file}, format='multipart')
         self.assertEqual(restore_response.status_code, status.HTTP_200_OK)
         self.assertEqual(restore_response.data['success'], "Backup restaurado com sucesso!")
