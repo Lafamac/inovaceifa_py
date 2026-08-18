@@ -371,14 +371,23 @@ export const Planejamentos = () => {
     try {
       // Inteligência para auto-adicionar insumo digitado no rodapé caso o usuário não tenha clicado no "+"
       let finalInsumos = [...newOSForm.insumos_selecionados];
-      if (tempInsumo.is_novo) {
-        if (tempInsumo.produto_nome_novo && tempInsumo.dose_planejada && tempInsumo.quantidade_planejada) {
-          finalInsumos.push({ ...tempInsumo });
+      const hasTempInsumo = tempInsumo.is_novo
+        ? (tempInsumo.produto_nome_novo && tempInsumo.dose_planejada)
+        : (tempInsumo.produto_id && tempInsumo.dose_planejada);
+
+      if (hasTempInsumo) {
+        let qty = tempInsumo.quantidade_planejada;
+        if (!qty || Number(qty) <= 0) {
+          const totalArea = talhoes
+            .filter(t => newOSForm.talhoes_selecionados.includes(t.id))
+            .reduce((sum, curr) => sum + Number(curr.area || 0), 0);
+          const dose = Number(tempInsumo.dose_planejada || 0);
+          qty = (dose * totalArea).toFixed(5);
         }
-      } else {
-        if (tempInsumo.produto_id && tempInsumo.dose_planejada && tempInsumo.quantidade_planejada) {
-          finalInsumos.push({ ...tempInsumo });
-        }
+        finalInsumos.push({
+          ...tempInsumo,
+          quantidade_planejada: parseFloat(qty || 0).toString()
+        });
       }
 
       // Criar payload
@@ -428,19 +437,33 @@ export const Planejamentos = () => {
 
   const addTempInsumo = () => {
     if (tempInsumo.is_novo) {
-      if (!tempInsumo.produto_nome_novo || !tempInsumo.dose_planejada || !tempInsumo.quantidade_planejada) {
-        showAlert('error', 'Preencha o nome, dose e quantidade planejada do novo insumo.');
+      if (!tempInsumo.produto_nome_novo || !tempInsumo.dose_planejada) {
+        showAlert('error', 'Preencha o nome e a dose planejada do novo insumo.');
         return;
       }
     } else {
-      if (!tempInsumo.produto_id || !tempInsumo.dose_planejada || !tempInsumo.quantidade_planejada) {
-        showAlert('error', 'Preencha todos os campos do insumo.');
+      if (!tempInsumo.produto_id || !tempInsumo.dose_planejada) {
+        showAlert('error', 'Preencha o produto e a dose planejada.');
         return;
       }
     }
+
+    // Calcular quantidade se estiver vazia
+    let qty = tempInsumo.quantidade_planejada;
+    if (!qty || Number(qty) <= 0) {
+      const totalArea = talhoes
+        .filter(t => newOSForm.talhoes_selecionados.includes(t.id))
+        .reduce((sum, curr) => sum + Number(curr.area || 0), 0);
+      const dose = Number(tempInsumo.dose_planejada || 0);
+      qty = (dose * totalArea).toFixed(5);
+    }
+
     setNewOSForm(prev => ({
       ...prev,
-      insumos_selecionados: [...prev.insumos_selecionados, { ...tempInsumo }]
+      insumos_selecionados: [...prev.insumos_selecionados, { 
+        ...tempInsumo,
+        quantidade_planejada: parseFloat(qty || 0).toString()
+      }]
     }));
     setTempInsumo({ produto_id: '', produto_nome_novo: '', unidade_sigla: '', dose_planejada: '', quantidade_planejada: '', is_novo: false });
   };
