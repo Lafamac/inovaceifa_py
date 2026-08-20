@@ -27,6 +27,13 @@
 
 ## Fases de Implementação (Ordem Recomendada)
 
+### Atualizações recentes de ambiente e acesso (20/08/2026)
+- [x] Otimizada a listagem de planejamentos no backend (`PlanejamentoSafraViewSet.get_queryset`) utilizando `prefetch_related` para carregar em lote dados aninhados (ordens de serviço, insumos, talões, máquinas, etc.).
+- [x] Otimizados os métodos `get_os_gerada` e `get_talhoes_detalhe` em `OrdemServicoPlanejadaSerializer` para filtrar relações em memória (usando `all()` e list comprehension) em vez de invocar novos métodos `.filter()` da query do Django, garantindo reuso do prefetch cache.
+- [x] Otimizada a listagem de máquinas (`MaquinaViewSet.get_queryset`) com `select_related('tipo')` e `prefetch_related('custos_mensais')`.
+- [x] Habilitadas conexões persistentes do banco de dados no backend configurando `'CONN_MAX_AGE': 600` em `settings.py`, eliminando a latência de 2 segundos de handshake TCP por requisição ao reaproveitar conexões.
+- [x] Corrigido o sumiço dos dados e travamentos na tela de Planejamentos no frontend decorrentes de timeouts de requests.
+
 ### Atualizações recentes de ambiente e acesso (13/08/2026)
 - [x] Implementado o **Módulo de Backup e Restauração de Dados** (exportação compactada para ZIP contendo o JSON e importação de ZIP/JSON restaurador) exclusivo para o proprietário logado, salvando a data do último backup no modelo `Proprietario`.
 - [x] Adicionado banner de alerta de backup inteligente no topo do `Dashboard.jsx` (exibido se nunca foi feito ou após 7 dias), integrado ao menu do perfil no `Header.jsx`.

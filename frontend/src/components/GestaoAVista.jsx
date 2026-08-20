@@ -241,7 +241,7 @@ export const GestaoAVista = () => {
         {/* Pie Chart of OS */}
         <div className="glass-panel rounded-2xl border border-slate-200/50 bg-white/50 dark:border-slate-800/50 dark:bg-slate-900/50 p-5 shadow-sm flex flex-col justify-between">
           <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 mb-2">Distribuição Operacional</h3>
-          <div className="h-[180px] w-full flex items-center justify-center">
+          <div className="h-[180px] w-full relative">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

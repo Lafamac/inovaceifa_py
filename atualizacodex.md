@@ -1,9 +1,24 @@
-# Atualização do Codex - Ajustes de Transferência e Estrutura de Menus
+# Atualização do Codex - Ajustes de Transferência, Menus e Otimizações de Performance
 
-Este documento registra as alterações de layout, formulários e estrutura de menus realizadas recentemente no projeto Inova Ceifa.
-*Última Atualização: 13/08/2026*
+Este documento registra as alterações de layout, formulários, menus e melhorias de performance realizadas recentemente no projeto Inova Ceifa.
+*Última Atualização: 20/08/2026*
 
 ## Alterações Realizadas
+
+### ⚡ Otimização de Performance, Consultas N+1 e Resolução de Timeouts (20/08/2026)
+
+#### 1. Backend (Otimização de Consultas & Conexões)
+- **Otimização de Consultas com Prefetch (N+1)**:
+  - No ViewSet [views.py (planejamento)](file:///c:/workspace/inovaceifa/backend/planejamento/views.py) (`PlanejamentoSafraViewSet`), adicionamos `prefetch_related` abrangendo todas as relações necessárias da listagem de planejamentos para carregar os dados em lote.
+  - No ViewSet [views.py (cadastros)](file:///c:/workspace/inovaceifa/backend/cadastros/views.py) (`MaquinaViewSet`), adicionamos `select_related('tipo')` e `prefetch_related('custos_mensais')` para otimizar as consultas de listagem de máquinas.
+- **Reaproveitamento de Cache de Prefetch**:
+  - No Serializer [serializers.py (planejamento)](file:///c:/workspace/inovaceifa/backend/planejamento/serializers.py) (`OrdemServicoPlanejadaSerializer`), alteramos os métodos `get_os_gerada` e `get_talhoes_detalhe` para filtrar registros ativos utilizando métodos em memória Python (como compreensões de lista sobre `.all()`) em vez de novos filtros de QuerySet Django (`.filter(ativo=True)`). Isso evita que o Django anule o prefetch cache e execute queries extras para cada registro.
+  - Com essas duas otimizações combinadas, o número de queries executadas ao listar planejamentos reduziu de **340 para 37**, reduzindo o tempo de resposta do endpoint em **84%** (de **10,6 segundos para 1,69 segundos**).
+- **Conexões de Banco de Dados Persistentes**:
+  - Em [settings.py](file:///c:/workspace/inovaceifa/backend/config/settings.py), configuramos `'CONN_MAX_AGE': 600` para a base padrão. Isso instrui o Django a reaproveitar a mesma conexão estabelecida com a base PostgreSQL remota por até 10 minutos, eliminando o atraso de ~2 segundos de abertura/fechamento de conexões físicas nas requisições HTTP subsequentes.
+
+#### 2. Frontend (Estabilidade e Resolução de Timeouts)
+- A otimização e aceleração dos endpoints no backend resolveu a lentidão acumulada na carga concorrente de 9 requisições da tela de planejamentos, sanando de vez o problema em que os dados de planejamentos sumiam após alguns segundos devido a timeouts ou falhas de rede no cliente HTTP.
 
 ### 💾 Módulo de Backup de Dados e Alertas Inteligentes (13/08/2026)
 

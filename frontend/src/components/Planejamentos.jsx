@@ -111,6 +111,7 @@ export const Planejamentos = () => {
         api.get('/api/turmas-terceirizadas/'),
         api.get('/api/ref/unidades-medida/')
       ]);
+
       setTiposOperacao(resOps.data?.results || resOps.data || []);
       
       // Filtrar talões da fazenda ativa
@@ -121,7 +122,13 @@ export const Planejamentos = () => {
       });
       setTalhoes(currentTalhoes);
       
-      setProdutos(resProds.data?.results || resProds.data || []);
+      // Filtrar produtos da fazenda ativa (ou globais)
+      const allProds = resProds.data?.results || resProds.data || [];
+      const currentProds = allProds.filter(p => {
+        const fId = p.fazenda_id || p.fazenda;
+        return !fId || (fazendaAtiva && String(fId) === String(fazendaAtiva.id));
+      });
+      setProdutos(currentProds);
       setUnidades(resUnidades.data?.results || resUnidades.data || []);
 
       // Filtrar funcionários da fazenda ativa
@@ -141,12 +148,12 @@ export const Planejamentos = () => {
       setMaquinas(currentMaqs);
 
       // Filtrar terceirizados da fazenda ativa
-      const allTerceirizados = resTerceirizados.data?.results || resTerceirizados.data || [];
-      const currentTerceirizados = allTerceirizados.filter(t => {
+      const allTercs = resTerceirizados.data?.results || resTerceirizados.data || [];
+      const currentTercs = allTercs.filter(t => {
         const fId = t.fazenda_id || t.fazenda;
         return fId && fazendaAtiva && String(fId) === String(fazendaAtiva.id);
       });
-      setTerceirizados(currentTerceirizados);
+      setTerceirizados(currentTercs);
 
       // Filtrar turmas da fazenda ativa
       const allTurmas = resTurmas.data?.results || resTurmas.data || [];
@@ -166,10 +173,12 @@ export const Planejamentos = () => {
     try {
       const list = await relatorioService.getPlanejamentos();
       // Filtrar por fazenda e safra ativas
-      const filtrados = list.filter(p => 
-        (p.fazenda_id === fazendaAtiva.id || p.fazenda === fazendaAtiva.id) && 
-        (p.safra_id === safraAtiva.id || p.safra === safraAtiva.id)
-      );
+      const filtrados = list.filter(p => {
+        const pFazendaId = p.fazenda_id || p.fazenda;
+        const pSafraId = p.safra_id || p.safra;
+        return String(pFazendaId) === String(fazendaAtiva.id) && 
+               String(pSafraId) === String(safraAtiva.id);
+      });
       setPlanejamentos(filtrados);
       return filtrados;
     } catch (err) {

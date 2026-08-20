@@ -64,10 +64,13 @@ class OrdemServicoPlanejadaSerializer(serializers.ModelSerializer):
         ]
 
     def get_os_gerada(self, obj):
-        return obj.execucoes.filter(ativo=True).exists()
+        # Utiliza filtragem em memória para aproveitar o prefetch_related
+        return any(getattr(e, 'ativo', True) for e in obj.execucoes.all())
 
     def get_talhoes_detalhe(self, obj):
-        talhoes = [pt.talhao for pt in obj.talhoes.filter(ativo=True)]
+        # Utiliza filtragem em memória para aproveitar o prefetch_related
+        talhoes_vinculados = [pt for pt in obj.talhoes.all() if getattr(pt, 'ativo', True)]
+        talhoes = [pt.talhao for pt in talhoes_vinculados if pt.talhao and getattr(pt.talhao, 'ativo', True)]
         return TalhaoSerializer(talhoes, many=True).data
 
     def create(self, validated_data):

@@ -59,8 +59,10 @@ class BaseTenantViewSet(viewsets.ModelViewSet):
 
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
         is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
+        
         if incluir_inativos or is_detail:
             return qs
+            
         return qs.filter(ativo=True)
 
     def perform_destroy(self, instance):
@@ -109,7 +111,7 @@ class MaquinaViewSet(BaseTenantViewSet):
     def get_queryset(self):
         return super().get_queryset().filter(
             fazenda__in=self.request.fazendas_permitidas
-        )
+        ).select_related('tipo').prefetch_related('custos_mensais')
 
 
 class CustoMensalMaquinaViewSet(BaseTenantViewSet):

@@ -125,7 +125,29 @@ class PlanejamentoSafraViewSet(BaseTenantPlanejamentoViewSet):
         )
         if self.request.safra_ativa:
             qs = qs.filter(safra=self.request.safra_ativa)
-        return qs
+        return qs.prefetch_related(
+            'ordens_servico',
+            'ordens_servico__funcionario',
+            'ordens_servico__trator',
+            'ordens_servico__implemento',
+            'ordens_servico__terceirizado',
+            'ordens_servico__turma',
+            'ordens_servico__execucoes',
+            'ordens_servico__insumos',
+            'ordens_servico__insumos__produto',
+            'ordens_servico__insumos__produto__unidade',
+            'ordens_servico__parametros',
+            'ordens_servico__mao_obra_terceiros',
+            'ordens_servico__talhoes',
+            'ordens_servico__talhoes__talhao',
+            'ordens_servico__talhoes__talhao__tipo_irrigacao',
+            'ordens_servico__talhoes__talhao__cultura',
+            'ordens_servico__talhoes__talhao__resistencia_ferrugem',
+            'ordens_servico__talhoes__talhao__status_cultivo',
+            'ordens_servico__talhoes__talhao__estimativas',
+            'adubacoes',
+            'rateios'
+        )
 
     @action(detail=True, methods=['post'], url_path='aprovar')
     def aprovar(self, request, pk=None):

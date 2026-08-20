@@ -181,11 +181,13 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
     if (!safraAtiva || !fazendaAtiva) return;
     try {
       const list = await relatorioService.getAbastecimentos();
-      const filtrados = list.filter(a => 
-        (a.fazenda_id === fazendaAtiva.id || a.fazenda === fazendaAtiva.id) &&
-        (a.safra_id === safraAtiva.id || a.safra === safraAtiva.id) &&
-        a.ativo !== false
-      );
+      const filtrados = list.filter(a => {
+        const aFazendaId = a.fazenda_id || a.fazenda;
+        const aSafraId = a.safra_id || a.safra;
+        return String(aFazendaId) === String(fazendaAtiva.id) &&
+               String(aSafraId) === String(safraAtiva.id) &&
+               a.ativo !== false;
+      });
       setAbastecimentos(filtrados);
     } catch (err) {
       console.error("Erro ao carregar abastecimentos", err);
@@ -196,11 +198,13 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
     if (!safraAtiva || !fazendaAtiva) return;
     try {
       const list = await relatorioService.getGastosRateio();
-      const filtrados = list.filter(g => 
-        (g.fazenda_id === fazendaAtiva.id || g.fazenda === fazendaAtiva.id) &&
-        (g.safra_id === safraAtiva.id || g.safra === safraAtiva.id) &&
-        g.ativo !== false
-      );
+      const filtrados = list.filter(g => {
+        const gFazendaId = g.fazenda_id || g.fazenda;
+        const gSafraId = g.safra_id || g.safra;
+        return String(gFazendaId) === String(fazendaAtiva.id) &&
+               String(gSafraId) === String(safraAtiva.id) &&
+               g.ativo !== false;
+      });
       setGastosRateio(filtrados);
     } catch (err) {
       console.error("Erro ao carregar gastos de rateio", err);
@@ -211,10 +215,11 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
     if (!safraAtiva) return;
     try {
       const list = await relatorioService.getRateiosOperacionais();
-      const filtrados = list.filter(r => 
-        (r.safra_id === safraAtiva.id || r.safra === safraAtiva.id) &&
-        r.ativo !== false
-      );
+      const filtrados = list.filter(r => {
+        const rSafraId = r.safra_id || r.safra;
+        return String(rSafraId) === String(safraAtiva.id) &&
+               r.ativo !== false;
+      });
       setRateiosOperacionais(filtrados);
     } catch (err) {
       console.error("Erro ao carregar rateios operacionais", err);
@@ -270,10 +275,12 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
     setLoading(true);
     try {
       const list = await relatorioService.getOrdensServicoReais();
-      const filtradas = list.filter(o => 
-        (o.fazenda_id === fazendaAtiva.id || o.fazenda === fazendaAtiva.id) && 
-        (o.safra_id === safraAtiva.id || o.safra === safraAtiva.id)
-      );
+      const filtradas = list.filter(o => {
+        const oFazendaId = o.fazenda_id || o.fazenda;
+        const oSafraId = o.safra_id || o.safra;
+        return String(oFazendaId) === String(fazendaAtiva.id) && 
+               String(oSafraId) === String(safraAtiva.id);
+      });
       setOrdens(filtradas);
 
       if (selectedOS) {
