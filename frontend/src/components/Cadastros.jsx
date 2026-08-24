@@ -303,6 +303,25 @@ const addDaysToDate = (dateValue, daysValue) => {
   return date.toISOString().slice(0, 10);
 };
 
+const formatDateSafe = (dateStr) => {
+  if (!dateStr) return '-';
+  try {
+    const cleanStr = String(dateStr).trim();
+    if (cleanStr === 'null' || cleanStr === 'undefined' || !cleanStr) return '-';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(cleanStr)) return cleanStr;
+    const fullStr = cleanStr.includes('T') ? cleanStr : `${cleanStr}T12:00:00`;
+    const d = new Date(fullStr);
+    if (isNaN(d.getTime())) {
+      return cleanStr;
+    }
+    return d.toLocaleDateString('pt-BR');
+  } catch (e) {
+    return String(dateStr);
+  }
+};
+
+
+
 const formatMask = (val, mask) => {
   if (!val) return '';
   if (mask === 'telefone') {
@@ -2181,7 +2200,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
           <td className="py-3 px-5">
             <p className="text-xs font-black text-slate-800 dark:text-white">{item.nome}</p>
-            <p className="text-[10px] text-slate-455 dark:text-slate-500">Última compra: {item.data_ultima_compra ? new Date(item.data_ultima_compra + 'T00:00:00').toLocaleDateString('pt-BR') : 'Nenhuma compra'}</p>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500">Última compra: {item.data_ultima_compra ? formatDateSafe(item.data_ultima_compra) : 'Nenhuma compra'}</p>
           </td>
           <td className="py-3 px-5 text-[10px] text-slate-655 dark:text-slate-300">
             <p className="font-semibold">{item.documento ? formatMask(item.documento, 'documento') : 'Sem documento'}</p>
@@ -2998,13 +3017,13 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                         {((records.manutencoes_maquinas || []).filter(m => sameId(m.maquina, maintenanceMachine.id) && m.ativo !== false)).map((m) => (
                           <tr key={m.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-950/10">
                             <td className="py-2.5 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                              {m.data ? new Date(m.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                              {formatDateSafe(m.data)}
                             </td>
                             <td className="py-2.5 px-4 text-xs text-slate-500 dark:text-slate-400 uppercase break-all">
                               {m.descricao}{m.nota_fiscal ? ` (NF: ${m.nota_fiscal})` : ''}
                             </td>
                             <td className="py-2.5 px-4 text-xs text-slate-500 dark:text-slate-400">
-                              {m.data_vencimento ? new Date(m.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                              {formatDateSafe(m.data_vencimento)}
                             </td>
                             <td className="py-2.5 px-4 text-xs font-black text-slate-800 dark:text-white text-right">
                               {Number(m.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
