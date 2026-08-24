@@ -2034,27 +2034,29 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             <p className="text-[10px] text-slate-450 dark:text-slate-500">Horímetro Inicial: {Number(item.horimetro_inicial || 0).toLocaleString('pt-BR')} h</p>
           </td>
           <td className="py-3 px-5 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setMaintenanceMachine(item);
-                setNewMaintenance({
-                  data: new Date().toISOString().slice(0, 10),
-                  data_vencimento: new Date().toISOString().slice(0, 10),
-                  descricao: '',
-                  valor: '',
-                  nota_fiscal: ''
-                });
-              }}
-              className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 mr-2 cursor-pointer"
-              title="Manutenções"
-            >
-              <Wrench className="h-3.5 w-3.5" />
-            </button>
-            <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 mr-2 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
-            <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
-              {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-            </button>
+            <div className="flex justify-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMaintenanceMachine(item);
+                  setNewMaintenance({
+                    data: new Date().toISOString().slice(0, 10),
+                    data_vencimento: new Date().toISOString().slice(0, 10),
+                    descricao: '',
+                    valor: '',
+                    nota_fiscal: ''
+                  });
+                }}
+                className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 cursor-pointer"
+                title="Manutenções"
+              >
+                <Wrench className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onClick={() => handleStartEdit(item)} className="p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 hover:border-amber-500/30 hover:bg-amber-500/10 text-amber-500 dark:text-amber-400 cursor-pointer" title="Editar"><Pencil className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => handleToggleAtivo(item)} className={`p-1.5 rounded-lg border border-slate-200/50 dark:border-white/5 cursor-pointer ${item.ativo !== false ? 'hover:border-rose-500/30 hover:bg-rose-500/10 text-rose-500' : 'hover:border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500'}`} title={item.ativo !== false ? 'Desativar' : 'Reativar'}>
+                {item.ativo !== false ? <Trash2 className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              </button>
+            </div>
           </td>
         </tr>
       ));

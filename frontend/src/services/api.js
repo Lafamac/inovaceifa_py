@@ -1570,9 +1570,11 @@ export const relatorioService = {
         const db = getDB();
         return (db.pedidos_compra || []).map(p => {
           const forn = (db.fornecedores || []).find(f => Number(f.id) === Number(p.fornecedor));
+          const saf = (db.safras || []).find(s => Number(s.id) === Number(p.safra));
           return {
             ...p,
             fornecedor_nome: forn ? forn.nome : (p.fornecedor_nome || String(p.fornecedor)),
+            safra_nome: saf ? saf.nome : (p.safra_nome || `Safra #${p.safra}`),
             itens: (db.itens_pedido_compra || []).filter(item => Number(item.pedido_compra_id || item.pedido_compra) === Number(p.id))
           };
         });
@@ -1760,7 +1762,16 @@ export const relatorioService = {
   getContasAPagar: () => {
     return requestHandler(
       () => api.get('/api/financeiro/contas-pagar/'),
-      () => getDB().contas_a_pagar || []
+      () => {
+        const db = getDB();
+        return (db.contas_a_pagar || []).map(c => {
+          const saf = (db.safras || []).find(s => Number(s.id) === Number(c.safra));
+          return {
+            ...c,
+            safra_nome: saf ? saf.nome : (c.safra_nome || `Safra #${c.safra}`)
+          };
+        });
+      }
     );
   },
 
@@ -1788,7 +1799,16 @@ export const relatorioService = {
   getPedidosVenda: () => {
     return requestHandler(
       () => api.get('/api/financeiro/pedidos-venda/'),
-      () => getDB().pedidos_venda || []
+      () => {
+        const db = getDB();
+        return (db.pedidos_venda || []).map(v => {
+          const saf = (db.safras || []).find(s => Number(s.id) === Number(v.safra));
+          return {
+            ...v,
+            safra_nome: saf ? saf.nome : (v.safra_nome || `Safra #${v.safra}`)
+          };
+        });
+      }
     );
   },
 
@@ -1923,7 +1943,16 @@ export const relatorioService = {
   getContasAReceber: () => {
     return requestHandler(
       () => api.get('/api/financeiro/contas-receber/'),
-      () => getDB().contas_a_receber || []
+      () => {
+        const db = getDB();
+        return (db.contas_a_receber || []).map(c => {
+          const saf = (db.safras || []).find(s => Number(s.id) === Number(c.safra));
+          return {
+            ...c,
+            safra_nome: saf ? saf.nome : (c.safra_nome || `Safra #${c.safra}`)
+          };
+        });
+      }
     );
   },
 

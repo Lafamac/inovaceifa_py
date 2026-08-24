@@ -19,6 +19,7 @@ class ItemPedidoCompraSerializer(serializers.ModelSerializer):
 class PedidoCompraSerializer(serializers.ModelSerializer):
     itens = ItemPedidoCompraSerializer(many=True, required=False)
     fornecedor_nome = serializers.ReadOnlyField(source='fornecedor.nome')
+    safra_nome = serializers.ReadOnlyField(source='safra.nome')
 
     class Meta:
         model = PedidoCompra
@@ -52,12 +53,16 @@ class PedidoCompraSerializer(serializers.ModelSerializer):
 
 
 class ContasAPagarSerializer(serializers.ModelSerializer):
+    safra_nome = serializers.ReadOnlyField(source='safra.nome')
+
     class Meta:
         model = ContasAPagar
         fields = '__all__'
 
 
 class PedidoVendaSerializer(serializers.ModelSerializer):
+    safra_nome = serializers.ReadOnlyField(source='safra.nome')
+
     class Meta:
         model = PedidoVenda
         fields = '__all__'
@@ -65,6 +70,8 @@ class PedidoVendaSerializer(serializers.ModelSerializer):
 
 
 class ContasAReceberSerializer(serializers.ModelSerializer):
+    safra_nome = serializers.ReadOnlyField(source='safra.nome')
+
     class Meta:
         model = ContasAReceber
         fields = '__all__'

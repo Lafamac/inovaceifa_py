@@ -1108,7 +1108,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
                         </td>
                         <td className="py-4 px-6 text-slate-600 dark:text-slate-300">
                           <span className="block">{p.data_pedido}</span>
-                          <span className="text-[10px] text-emerald-400 font-semibold">Safra ID {p.safra}</span>
+                          <span className="text-[10px] text-emerald-400 font-semibold">Safra: {p.safra_nome || p.safra}</span>
                         </td>
                         <td className="py-4 px-6 text-slate-600 dark:text-slate-400">
                           {p.itens && p.itens.length > 0 ? (
