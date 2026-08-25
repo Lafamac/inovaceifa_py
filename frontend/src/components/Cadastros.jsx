@@ -511,6 +511,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
   });
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [maintenanceMachine, setMaintenanceMachine] = useState(null);
+  const [modalError, setModalError] = useState('');
   const [rentalToClose, setRentalToClose] = useState(null);
   const [rentalToExtend, setRentalToExtend] = useState(null);
   const [rentalCloseForm, setRentalCloseForm] = useState({
@@ -1331,8 +1332,9 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
   const handleAddMaintenance = async () => {
     if (!maintenanceMachine) return;
+    setModalError('');
     if (!newMaintenance.descricao || !newMaintenance.valor || !newMaintenance.data || !newMaintenance.data_vencimento) {
-      showAlert('error', 'Preencha a data, vencimento, trabalho realizado e o valor da manutenção.');
+      setModalError('Preencha a data, vencimento, trabalho realizado e o valor da manutenção.');
       return;
     }
     setSavingMaintenance(true);
@@ -1357,8 +1359,17 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
       await loadData();
     } catch (err) {
       console.error(err);
-      const detail = err.response?.data?.detail || err.message;
-      showAlert('error', `Erro ao registrar manutenção: ${detail}`);
+      let detail = '';
+      if (err.response?.data) {
+        if (typeof err.response.data === 'object') {
+          detail = Object.entries(err.response.data)
+            .map(([field, msgs]) => `${field.toUpperCase()}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+            .join(' | ');
+        } else {
+          detail = String(err.response.data);
+        }
+      }
+      setModalError(`Erro ao registrar manutenção: ${detail || err.message}`);
     } finally {
       setSavingMaintenance(false);
     }
@@ -2058,6 +2069,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 type="button"
                 onClick={() => {
                   setMaintenanceMachine(item);
+                  setModalError('');
                   setNewMaintenance({
                     data: new Date().toISOString().slice(0, 10),
                     data_vencimento: new Date().toISOString().slice(0, 10),
@@ -2939,7 +2951,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 <span>Manutenções: {maintenanceMachine.codigo} - {maintenanceMachine.descricao}</span>
               </h2>
               <button
-                onClick={() => setMaintenanceMachine(null)}
+                onClick={() => { setMaintenanceMachine(null); setModalError(''); }}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black cursor-pointer"
               >
                 ✕
@@ -2948,6 +2960,29 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
             {/* Modal Content */}
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              {modalError && (
+                <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-950/20 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 text-sm font-semibold flex items-center justify-between gap-3 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+                    <p className="flex-1 text-left">{modalError}</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setModalError('')} 
+                    className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-200 font-black cursor-pointer text-base px-2 focus:outline-none"
+                    title="Fechar"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {!safraAtiva && (
+                <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-950/20 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-sm font-semibold flex items-center gap-3 animate-in fade-in duration-150">
+                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <p className="flex-1 text-left">Atenção: Nenhuma safra ativa selecionada para esta fazenda. Por favor, selecione ou crie uma safra no cabeçalho antes de registrar manutenções.</p>
+                </div>
+              )}
               {/* Sub-form to Add Maintenance */}
               <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border border-slate-200 dark:border-white/[0.08] space-y-3">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Nova Manutenção</p>
@@ -2987,7 +3022,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
                 <div className="flex justify-end pt-2">
                   <button
                     type="button"
-                    disabled={savingMaintenance}
+                    disabled={savingMaintenance || !safraAtiva}
                     onClick={handleAddMaintenance}
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 disabled:opacity-60 text-white text-xs font-bold uppercase transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
                   >

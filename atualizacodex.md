@@ -1,9 +1,23 @@
 # Atualização do Codex - Ajustes de Transferência, Menus e Otimizações de Performance
 
 Este documento registra as alterações de layout, formulários, menus e melhorias de performance realizadas recentemente no projeto Inova Ceifa.
-*Última Atualização: 20/08/2026*
+*Última Atualização: 25/08/2026*
 
 ## Alterações Realizadas
+
+### 🔧 Resolução de Travamentos e Validações no Modal de Manutenção de Máquinas (25/08/2026)
+
+#### 1. Frontend (Interface de Alertas e Resiliência Contextual)
+- **Estado de Erro Interno do Modal (`modalError`)**:
+  - Implementado o estado `modalError` em [Cadastros.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/Cadastros.jsx) para reter mensagens de erro e alertas de validação diretamente dentro da caixa de diálogo. Isso soluciona o bug em que os toasts ou alertas principais do componente eram renderizados atrás do modal escuro com backdrop (`fixed z-50`), fazendo com que o modal parecesse congelado ou sem resposta após falhas de API ou campos obrigatórios.
+  - Implementada a exibição detalhada de erros de campos retornados do Django REST Framework (DRF), mapeando as chaves de erros do backend para uma string amigável de fácil visualização (ex: `SAFRA: Este campo é obrigatório`).
+- **Banner de Alerta de Safra Ausente e Bloqueio de Ação**:
+  - Inserido banner de aviso em tom âmbar no topo do modal quando nenhuma safra ativa está selecionada para a fazenda atual (`safraAtiva` é nulo).
+  - O botão de registrar manutenção é automaticamente desabilitado (`disabled={savingMaintenance || !safraAtiva}`) para prevenir requisições inválidas que gerariam erros HTTP 400 no backend.
+- **Ciclo de Vida de Mensagens**:
+  - Ajustadas as ações de abertura (ícone da chave inglesa) e fechamento do modal (botão de fechar "✕") para limpar de forma limpa os erros armazenados no estado `modalError`.
+
+## Histórico Anterior de Alterações
 
 ### ⚡ Otimização de Performance, Consultas N+1 e Resolução de Timeouts (20/08/2026)
 

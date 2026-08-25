@@ -27,6 +27,12 @@
 
 ## Fases de Implementação (Ordem Recomendada)
 
+### Atualizações recentes de ambiente e acesso (25/08/2026)
+- [x] Corrigida a ausência de feedback visual/sensação de travamento no modal de manutenção de máquinas no frontend quando nenhuma safra ativa está selecionada no cabeçalho ou há erros de validação.
+- [x] Implementado alerta de erro dinâmico/validações do Django REST Framework diretamente dentro do modal de manutenção (`modalError`).
+- [x] Implementado banner de aviso no modal de manutenção de máquinas informando a ausência de safra ativa e desabilitando o botão de envio para evitar erros de requisição.
+- [x] Ajustada a limpeza de estados de erros do modal nas ações de abrir e fechar a janela.
+
 ### Atualizações recentes de ambiente e acesso (20/08/2026)
 - [x] Otimizada a listagem de planejamentos no backend (`PlanejamentoSafraViewSet.get_queryset`) utilizando `prefetch_related` para carregar em lote dados aninhados (ordens de serviço, insumos, talões, máquinas, etc.).
 - [x] Otimizados os métodos `get_os_gerada` e `get_talhoes_detalhe` em `OrdemServicoPlanejadaSerializer` para filtrar relações em memória (usando `all()` e list comprehension) em vez de invocar novos métodos `.filter()` da query do Django, garantindo reuso do prefetch cache.
