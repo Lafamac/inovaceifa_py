@@ -16,6 +16,13 @@ Este documento registra as alterações de layout, formulários, menus e melhori
   - O botão de registrar manutenção é automaticamente desabilitado (`disabled={savingMaintenance || !safraAtiva}`) para prevenir requisições inválidas que gerariam erros HTTP 400 no backend.
 - **Ciclo de Vida de Mensagens**:
   - Ajustadas as ações de abertura (ícone da chave inglesa) e fechamento do modal (botão de fechar "✕") para limpar de forma limpa os erros armazenados no estado `modalError`.
+- **Ajuste de Alinhamento e Rolagem do Modal**:
+  - Reestruturado o posicionamento do modal de `items-center` para `items-start` com `overflow-y-auto` e altura máxima (`max-h-[calc(100vh-1.5rem)]`). Isso garante que em tabelas longas (onde a altura da página é muito grande) o modal seja ancorado no topo da área visível (viewport) em vez de ser renderizado centralizado no meio da altura total da página (ocasionando sumiço/impressão de travamento sob o backdrop escuro).
+- **Padronização Estética no Dark Mode (`app-modal-panel`)**:
+  - Adicionada a classe `app-modal-panel` ao modal de manutenções de máquinas, garantindo que suas cores de fundo, inputs e textos se adaptem perfeitamente aos padrões de dark mode já existentes nos demais formulários densos do sistema.
+- **Resolução de Bug no Campo de Vencimento**:
+  - Corrigido o `onChange` do campo "Vencimento do Pagamento", que incorretamente sobrescrevia o campo de data base (`data`) em vez de atualizar a propriedade correta `data_vencimento` no objeto de estado.
+
 
 ## Histórico Anterior de Alterações
 

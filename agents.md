@@ -28,10 +28,14 @@
 ## Fases de Implementação (Ordem Recomendada)
 
 ### Atualizações recentes de ambiente e acesso (25/08/2026)
+- [x] Corrigido o posicionamento e alinhamento vertical do modal de manutenção de máquinas (mudando de `items-center` para `items-start` com `overflow-y-auto` e altura máxima controlada), garantindo que ele abra na área visível (viewport) mesmo em páginas densas com transformações CSS.
+- [x] Aplicada a classe `app-modal-panel` no modal de manutenção de máquinas para padronizar cores, inputs e contrastes no dark mode.
+- [x] Corrigido bug no manipulador de estado da Data de Vencimento do Pagamento (`data_vencimento`) no modal, que incorretamente sobrescrevia o campo da Data de Manutenção (`data`).
 - [x] Corrigida a ausência de feedback visual/sensação de travamento no modal de manutenção de máquinas no frontend quando nenhuma safra ativa está selecionada no cabeçalho ou há erros de validação.
 - [x] Implementado alerta de erro dinâmico/validações do Django REST Framework diretamente dentro do modal de manutenção (`modalError`).
 - [x] Implementado banner de aviso no modal de manutenção de máquinas informando a ausência de safra ativa e desabilitando o botão de envio para evitar erros de requisição.
 - [x] Ajustada a limpeza de estados de erros do modal nas ações de abrir e fechar a janela.
+
 
 ### Atualizações recentes de ambiente e acesso (20/08/2026)
 - [x] Otimizada a listagem de planejamentos no backend (`PlanejamentoSafraViewSet.get_queryset`) utilizando `prefetch_related` para carregar em lote dados aninhados (ordens de serviço, insumos, talões, máquinas, etc.).

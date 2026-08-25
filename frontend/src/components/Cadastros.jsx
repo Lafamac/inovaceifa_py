@@ -2941,11 +2941,11 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
 
       {/* POPUP MODAL DEDICADO PARA MANUTENÇÃO DE MÁQUINAS */}
       {maintenanceMachine && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="app-modal-panel my-3 sm:my-4 w-full max-w-2xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-6 relative animate-in scale-in duration-200 flex flex-col">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4 mb-4">
               <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Wrench className="w-5 h-5 text-emerald-500" />
                 <span>Manutenções: {maintenanceMachine.codigo} - {maintenanceMachine.descricao}</span>
@@ -2959,7 +2959,7 @@ export const Cadastros = ({ currentSafraId, setActiveView }) => {
             </div>
 
             {/* Modal Content */}
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1">
               {modalError && (
                 <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-950/20 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 text-sm font-semibold flex items-center justify-between gap-3 animate-in fade-in duration-150">
                   <div className="flex items-center gap-3">
