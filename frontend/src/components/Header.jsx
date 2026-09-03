@@ -88,12 +88,16 @@ export const Header = ({ activeView, setActiveView }) => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200/50 bg-white/70 dark:border-slate-800/50 dark:bg-slate-900/70 backdrop-blur-md transition-colors duration-300">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/50 bg-white/80 dark:border-slate-800/50 dark:bg-slate-900/80 backdrop-blur-md transition-colors duration-300">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           
           {/* Left: Logo and Tab Navigation */}
@@ -179,10 +183,14 @@ export const Header = ({ activeView, setActiveView }) => {
             <div className="hidden xl:flex items-center space-x-4 shrink-0">
               
               {/* Fazenda Selector */}
-              <div className="relative" ref={desktopFazendaRef}>
+              <div className="relative z-50" ref={desktopFazendaRef}>
                 <button
-                  onClick={() => setShowFazendaMenu(!showFazendaMenu)}
-                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none max-w-[160px] xl:max-w-[240px]"
+                  onClick={() => {
+                    setShowFazendaMenu(!showFazendaMenu);
+                    setShowSafraMenu(false);
+                    setShowProfileMenu(false);
+                  }}
+                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none max-w-[160px] xl:max-w-[240px] cursor-pointer"
                 >
                   <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                   <span className="truncate">{fazendaAtiva ? fazendaAtiva.nome : 'Carregando fazenda...'}</span>
@@ -190,8 +198,8 @@ export const Header = ({ activeView, setActiveView }) => {
                 </button>
                 
                 {showFazendaMenu && (
-                  <div className="absolute left-0 mt-1.5 w-56 rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <div className="absolute left-0 z-50 mt-1.5 w-56 max-h-64 overflow-y-auto rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-1 z-10 border-b border-slate-100 dark:border-slate-800/60 mb-1">
                       Selecionar Fazenda
                     </div>
                     {sortedFazendas.map((f) => (
@@ -207,8 +215,8 @@ export const Header = ({ activeView, setActiveView }) => {
                             : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
                         }`}
                       >
-                        <span>{f.nome}</span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">{f.municipio}</span>
+                        <span className="truncate pr-2">{f.nome}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{f.municipio}</span>
                       </button>
                     ))}
                   </div>
@@ -216,10 +224,14 @@ export const Header = ({ activeView, setActiveView }) => {
               </div>
 
               {/* Safra Selector */}
-              <div className="relative" ref={desktopSafraRef}>
+              <div className="relative z-50" ref={desktopSafraRef}>
                 <button
-                  onClick={() => setShowSafraMenu(!showSafraMenu)}
-                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none max-w-[120px] xl:max-w-[180px]"
+                  onClick={() => {
+                    setShowSafraMenu(!showSafraMenu);
+                    setShowFazendaMenu(false);
+                    setShowProfileMenu(false);
+                  }}
+                  className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none max-w-[120px] xl:max-w-[180px] cursor-pointer"
                 >
                   <Sprout className="h-3.5 w-3.5 text-teal-500 shrink-0" />
                   <span className="truncate">{safraAtiva ? safraAtiva.nome : 'Carregando safra...'}</span>
@@ -227,8 +239,8 @@ export const Header = ({ activeView, setActiveView }) => {
                 </button>
                 
                 {showSafraMenu && (
-                  <div className="absolute left-0 mt-1.5 w-48 rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <div className="absolute left-0 z-50 mt-1.5 w-48 max-h-64 overflow-y-auto rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-1 z-10 border-b border-slate-100 dark:border-slate-800/60 mb-1">
                       Cultura / Safra
                     </div>
                     {safras.map((s) => (
@@ -244,9 +256,9 @@ export const Header = ({ activeView, setActiveView }) => {
                             : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
                         }`}
                       >
-                        <span>{s.nome}</span>
+                        <span className="truncate pr-2">{s.nome}</span>
                         {s.ativa && (
-                          <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400">
+                          <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 shrink-0">
                             Ativa
                           </span>
                         )}
@@ -277,10 +289,10 @@ export const Header = ({ activeView, setActiveView }) => {
 
             {/* Profile Dropdown */}
             {user && (
-              <div className="relative" ref={profileRef}>
+              <div className="relative z-50" ref={profileRef}>
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="flex items-center space-x-2 rounded-xl border border-slate-200/60 p-1.5 pr-3 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-all focus:outline-none"
+                  className="flex items-center space-x-2 rounded-xl border border-slate-200/60 p-1.5 pr-3 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-all focus:outline-none cursor-pointer"
                 >
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400 font-display">
                     <span className="text-xs font-black uppercase">{user.nome.charAt(0)}</span>
@@ -294,7 +306,7 @@ export const Header = ({ activeView, setActiveView }) => {
                 </button>
 
                 {showProfileMenu && (
-                  <div className="absolute right-0 mt-1.5 w-52 rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="absolute right-0 z-50 mt-1.5 w-52 rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
                     <div className="border-b border-slate-100 dark:border-slate-800/80 px-2.5 pb-2 pt-1.5 mb-1.5">
                       <div className="text-xs font-bold text-slate-700 dark:text-slate-400">{user.nome}</div>
                       <div className="text-[10px] text-slate-400 dark:text-slate-500">{user.email}</div>
@@ -339,102 +351,104 @@ export const Header = ({ activeView, setActiveView }) => {
           </div>
 
         </div>
+
+        {/* Mobile Sub-Header for tenant selectors (only on mobile/tablet) */}
+        {user && (
+          <div className="xl:hidden flex items-center justify-between gap-3 border-t border-slate-200/40 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-950/50 px-4 py-2 backdrop-blur-md transition-colors duration-300">
+            
+            {/* Fazenda Selector */}
+            <div className="relative flex-1 z-50" ref={mobileFazendaRef}>
+              <button
+                onClick={() => {
+                  setShowFazendaMenu(!showFazendaMenu);
+                  setShowSafraMenu(false);
+                  setShowProfileMenu(false);
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-all focus:outline-none active:scale-98 cursor-pointer shadow-sm"
+              >
+                <div className="flex items-center gap-1.5 truncate">
+                  <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  <span className="truncate">{fazendaAtiva ? fazendaAtiva.nome : 'Fazenda...'}</span>
+                </div>
+                <ChevronDown className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${showFazendaMenu ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showFazendaMenu && (
+                <div className="absolute left-0 z-50 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-1 z-10 border-b border-slate-100 dark:border-slate-800/60 mb-1">
+                    Selecionar Fazenda
+                  </div>
+                  {sortedFazendas.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => {
+                        selecionarFazenda(f.id);
+                        setShowFazendaMenu(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors cursor-pointer active:bg-emerald-100 dark:active:bg-emerald-900/60 ${
+                        isFazendaSelecionada(f)
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{f.nome}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">{f.municipio}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Safra Selector */}
+            <div className="relative flex-1 z-50" ref={mobileSafraRef}>
+              <button
+                onClick={() => {
+                  setShowSafraMenu(!showSafraMenu);
+                  setShowFazendaMenu(false);
+                  setShowProfileMenu(false);
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-all focus:outline-none active:scale-98 cursor-pointer shadow-sm"
+              >
+                <div className="flex items-center gap-1.5 truncate">
+                  <Sprout className="h-3.5 w-3.5 text-teal-500 shrink-0" />
+                  <span className="truncate">{safraAtiva ? safraAtiva.nome : 'Safra...'}</span>
+                </div>
+                <ChevronDown className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${showSafraMenu ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showSafraMenu && (
+                <div className="absolute right-0 z-50 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-1 z-10 border-b border-slate-100 dark:border-slate-800/60 mb-1">
+                    Cultura / Safra
+                  </div>
+                  {safras.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        selecionarSafra(s);
+                        setShowSafraMenu(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors cursor-pointer active:bg-teal-100 dark:active:bg-teal-900/60 ${
+                        isSafraSelecionada(s)
+                          ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/50 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{s.nome}</span>
+                      {s.ativa && (
+                        <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 shrink-0">
+                          Ativa
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
       </header>
-
-      {/* Mobile Sub-Header for tenant selectors (only on mobile/tablet) */}
-      {user && (
-        <div className="xl:hidden flex items-center justify-between gap-4 border-b border-slate-200/50 bg-white/70 dark:border-slate-800/50 dark:bg-slate-900/70 px-4 py-2 backdrop-blur-md transition-colors duration-300">
-          
-          {/* Fazenda Selector */}
-          <div className="relative flex-1" ref={mobileFazendaRef}>
-            <button
-              onClick={() => {
-                setShowFazendaMenu(!showFazendaMenu);
-                setShowSafraMenu(false);
-              }}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none active:scale-98"
-            >
-              <div className="flex items-center gap-1.5 truncate">
-                <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                <span className="truncate">{fazendaAtiva ? fazendaAtiva.nome : 'Fazenda...'}</span>
-              </div>
-              <ChevronDown className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${showFazendaMenu ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {showFazendaMenu && (
-              <div className="absolute left-0 z-50 mt-1.5 w-full rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  Selecionar Fazenda
-                </div>
-                {sortedFazendas.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      selecionarFazenda(f.id);
-                      setShowFazendaMenu(false);
-                    }}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
-                      isFazendaSelecionada(f)
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
-                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                    }`}
-                  >
-                    <span>{f.nome}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{f.municipio}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Safra Selector */}
-          <div className="relative flex-1" ref={mobileSafraRef}>
-            <button
-              onClick={() => {
-                setShowSafraMenu(!showSafraMenu);
-                setShowFazendaMenu(false);
-              }}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none active:scale-98"
-            >
-              <div className="flex items-center gap-1.5 truncate">
-                <Sprout className="h-3.5 w-3.5 text-teal-500 shrink-0" />
-                <span className="truncate">{safraAtiva ? safraAtiva.nome : 'Safra...'}</span>
-              </div>
-              <ChevronDown className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${showSafraMenu ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {showSafraMenu && (
-              <div className="absolute right-0 z-50 mt-1.5 w-full rounded-xl border border-slate-200/60 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  Cultura / Safra
-                </div>
-                {safras.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => {
-                      selecionarSafra(s);
-                      setShowSafraMenu(false);
-                    }}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors cursor-pointer ${
-                      isSafraSelecionada(s)
-                        ? 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/50'
-                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                    }`}
-                  >
-                    <span>{s.nome}</span>
-                    {s.ativa && (
-                      <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400">
-                        Ativa
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-        </div>
-      )}
 
       {/* Alterar Senha Modal */}
       <ModalChangePassword 
@@ -449,3 +463,4 @@ export const Header = ({ activeView, setActiveView }) => {
     </>
   );
 };
+

@@ -1,9 +1,22 @@
 # Atualização do Codex - Ajustes de Transferência, Menus e Otimizações de Performance
 
 Este documento registra as alterações de layout, formulários, menus e melhorias de performance realizadas recentemente no projeto Inova Ceifa.
-*Última Atualização: 25/08/2026*
+*Última Atualização: 03/09/2026*
 
 ## Alterações Realizadas
+
+### 📱 Correção do Seletor Móvel de Fazenda e Safra no Header (03/09/2026)
+
+#### 1. Frontend (Posicionamento, Z-Index e Usabilidade Touch)
+- **Reorganização do Container do Cabeçalho (`Header.jsx`)**:
+  - Movida a sub-barra de contexto de seleção móvel de Fazenda e Safra para dentro do container principal `<header className="sticky top-0 z-50">`.
+  - Adicionada a classe `z-50` aos containers flex dos seletores móveis (`mobileFazendaRef` e `mobileSafraRef`).
+- **Rolagem Vertical Controlada (`max-h-64 overflow-y-auto`) e Sticky Header no Dropdown**:
+  - Aplicada a altura máxima `max-h-64` com rolagem vertical `overflow-y-auto` nos menus dropdowns de Fazenda e Safra em telas móveis, garantindo que mesmo com diversas fazendas cadastradas o menu não estoure a tela.
+  - Adicionado cabeçalho fixo (`sticky top-0 z-10`) com divisor e fundo correspondente (`bg-white dark:bg-slate-900`) para o título do dropdown ("Selecionar Fazenda" / "Cultura / Safra").
+- **Usabilidade em Telas Touch**:
+  - Adicionado manipulador de toque (`touchstart`) junto ao `mousedown` para fechar os menus ao tocar fora deles em dispositivos móveis.
+  - Adicionadas feedback visual em toque (`active:bg-emerald-100 dark:active:bg-emerald-900/60`), classes de truncação e cursor pointer.
 
 ### 🔧 Resolução de Travamentos e Validações no Modal de Manutenção de Máquinas (25/08/2026)
 
