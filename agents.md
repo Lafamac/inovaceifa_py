@@ -27,6 +27,9 @@
 
 ## Fases de Implementação (Ordem Recomendada)
 
+### Atualizações recentes de ambiente e acesso (04/09/2026)
+- [x] Corrigido o seletor de Safra e Fazenda ao alternar entre fazendas no cabeçalho: ajustado `SafraViewSet.get_queryset` no backend para retornar safras de todas as fazendas permitidas ao usuário sem restringir indevidamente pelo proprietário da safra anterior, atualizado `selecionarFazenda` no `TenantContext.jsx` para buscar safras atualizadas da nova fazenda e ajustado o feedback de carregamento em `Header.jsx`.
+
 ### Atualizações recentes de ambiente e acesso (03/09/2026)
 - [x] Corrigido o seletor móvel de Fazenda e Safra no `Header.jsx`, movendo a sub-barra de contexto para dentro do container `<header className="sticky top-0 z-50">` e definindo `z-50` com rolagem vertical controlada (`max-h-64 overflow-y-auto`) e manipuladores de eventos de toque (`touchstart`), garantindo que o menu dropdown de fazendas abra sobre todos os cards, ferramentas e elementos da página sem ficar oculto atrás de outros componentes em dispositivos móveis.
 

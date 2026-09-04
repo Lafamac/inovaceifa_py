@@ -109,12 +109,34 @@ class SafraViewSet(BaseCoreViewSet):
     def get_queryset(self):
         incluir_inativos = self.request.query_params.get('incluir_inativos', 'false').lower() == 'true'
         is_detail = self.action in ['retrieve', 'update', 'partial_update', 'destroy']
+        user = self.request.user
         
-        qs = Safra.objects.filter(
-            fazenda__in=self.request.fazendas_permitidas,
-            fazenda__ativo=True,
-            fazenda__proprietario__ativo=True
-        )
+        is_super = getattr(user, 'perfil', None) and user.perfil.nivel == 1
+        is_proprietario = getattr(user, 'perfil', None) and user.perfil.nivel == 2
+
+        if is_super or user.is_superuser:
+            qs = Safra.objects.filter(
+                fazenda__ativo=True,
+                fazenda__proprietario__ativo=True
+            )
+        elif is_proprietario:
+            try:
+                from core.models import Proprietario
+                prop = Proprietario.objects.get(email__iexact=user.email)
+                qs = Safra.objects.filter(
+                    fazenda__proprietario=prop,
+                    fazenda__ativo=True,
+                    fazenda__proprietario__ativo=True
+                )
+            except Proprietario.DoesNotExist:
+                qs = Safra.objects.none()
+        else:
+            qs = Safra.objects.filter(
+                fazenda__in=user.fazendas_permitidas.filter(ativo=True),
+                fazenda__ativo=True,
+                fazenda__proprietario__ativo=True
+            )
+
         if incluir_inativos or is_detail:
             return qs
         return qs.filter(ativo=True)
@@ -122,3 +144,4 @@ class SafraViewSet(BaseCoreViewSet):
     def perform_destroy(self, instance):
         instance.ativo = False
         instance.save()
+

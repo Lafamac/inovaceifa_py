@@ -92,7 +92,7 @@ export const TenantProvider = ({ children }) => {
   }, [loadTenantData]);
 
   // Handler para trocar de Fazenda
-  const selecionarFazenda = (fazendaOrId) => {
+  const selecionarFazenda = async (fazendaOrId) => {
     const fazendaId = normalizeId(typeof fazendaOrId === 'object' ? fazendaOrId?.id : fazendaOrId);
     if (!fazendaId) return;
 
@@ -102,8 +102,19 @@ export const TenantProvider = ({ children }) => {
     setFazendaAtiva(fazendaSelecionada);
     localStorage.setItem('fazenda_ativa_id', fazendaId);
 
+    let safrasAtuais = safras;
+    try {
+      const listaSafras = await relatorioService.getSafras();
+      if (Array.isArray(listaSafras)) {
+        setSafras(listaSafras);
+        safrasAtuais = listaSafras;
+      }
+    } catch (e) {
+      console.warn("Erro ao buscar safras atualizadas ao trocar de fazenda:", e);
+    }
+
     // Auto-selecionar a safra ativa dessa nova fazenda
-    const safrasDaFazenda = safras.filter(s => getFazendaIdFromSafra(s) === fazendaId);
+    const safrasDaFazenda = safrasAtuais.filter(s => getFazendaIdFromSafra(s) === fazendaId);
     const safraDefault = safrasDaFazenda.find(s => s.ativa) || safrasDaFazenda[0];
     
     setSafraAtiva(safraDefault || null);
@@ -115,6 +126,7 @@ export const TenantProvider = ({ children }) => {
 
     setTenantVersion(version => version + 1);
   };
+
 
   // Handler para trocar de Safra
   const selecionarSafra = (safra) => {

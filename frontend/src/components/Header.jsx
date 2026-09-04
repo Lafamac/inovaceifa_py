@@ -30,7 +30,8 @@ export const Header = ({ activeView, setActiveView }) => {
     fazendaAtiva, 
     safraAtiva, 
     selecionarFazenda, 
-    selecionarSafra 
+    selecionarSafra,
+    loading
   } = useTenant();
 
   const sortedFazendas = useMemo(() => {
@@ -193,7 +194,7 @@ export const Header = ({ activeView, setActiveView }) => {
                   className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none max-w-[160px] xl:max-w-[240px] cursor-pointer"
                 >
                   <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  <span className="truncate">{fazendaAtiva ? fazendaAtiva.nome : 'Carregando fazenda...'}</span>
+                  <span className="truncate">{loading ? 'Carregando fazenda...' : (fazendaAtiva ? fazendaAtiva.nome : 'Fazenda...')}</span>
                   <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${showFazendaMenu ? 'rotate-180' : ''}`} />
                 </button>
                 
@@ -234,7 +235,7 @@ export const Header = ({ activeView, setActiveView }) => {
                   className="flex items-center space-x-2 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all focus:outline-none max-w-[120px] xl:max-w-[180px] cursor-pointer"
                 >
                   <Sprout className="h-3.5 w-3.5 text-teal-500 shrink-0" />
-                  <span className="truncate">{safraAtiva ? safraAtiva.nome : 'Carregando safra...'}</span>
+                  <span className="truncate">{loading ? 'Carregando safra...' : (safraAtiva ? safraAtiva.nome : (safras.length === 0 ? 'Sem safra' : 'Safra...'))}</span>
                   <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${showSafraMenu ? 'rotate-180' : ''}`} />
                 </button>
                 
@@ -368,7 +369,7 @@ export const Header = ({ activeView, setActiveView }) => {
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  <span className="truncate">{fazendaAtiva ? fazendaAtiva.nome : 'Fazenda...'}</span>
+                  <span className="truncate">{loading ? 'Carregando fazenda...' : (fazendaAtiva ? fazendaAtiva.nome : 'Fazenda...')}</span>
                 </div>
                 <ChevronDown className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${showFazendaMenu ? 'rotate-180' : ''}`} />
               </button>
@@ -411,7 +412,7 @@ export const Header = ({ activeView, setActiveView }) => {
               >
                 <div className="flex items-center gap-1.5 truncate">
                   <Sprout className="h-3.5 w-3.5 text-teal-500 shrink-0" />
-                  <span className="truncate">{safraAtiva ? safraAtiva.nome : 'Safra...'}</span>
+                  <span className="truncate">{loading ? 'Carregando safra...' : (safraAtiva ? safraAtiva.nome : (safras.length === 0 ? 'Sem safra' : 'Safra...'))}</span>
                 </div>
                 <ChevronDown className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${showSafraMenu ? 'rotate-180' : ''}`} />
               </button>
