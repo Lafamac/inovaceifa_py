@@ -19,8 +19,9 @@ class PedidoCompraViewSet(BaseTenantPlanejamentoViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset().filter(
-            fazenda__in=self.request.fazendas_permitidas
-        )
+            fazenda__in=self.request.fazendas_permitidas,
+            de_planejamento=False
+        ).exclude(fornecedor__nome__icontains="PLANEJAMENTO")
         if self.request.safra_ativa:
             qs = qs.filter(safra=self.request.safra_ativa)
         return qs

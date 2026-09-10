@@ -277,13 +277,12 @@ class PlanejamentoAPITests(APITestCase):
         self.assertTrue(Produto.objects.filter(nome_comercial="ADUBO SECRETO XPTO", fazenda=self.fazenda).exists())
         prod_created = Produto.objects.get(nome_comercial="ADUBO SECRETO XPTO", fazenda=self.fazenda)
 
-        # Verify PO created with total quantity
-        from financeiro.models import PedidoCompra, ItemPedidoCompra
-        self.assertTrue(PedidoCompra.objects.filter(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO').exists())
-        po = PedidoCompra.objects.get(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO')
-        self.assertTrue(ItemPedidoCompra.objects.filter(pedido_compra=po, produto=prod_created).exists())
-        po_item = ItemPedidoCompra.objects.get(pedido_compra=po, produto=prod_created)
-        self.assertEqual(float(po_item.quantidade), 30.0)
+        # Verify necessities calculation
+        from planejamento.services import obter_necessidades_compra_planejamento
+        nec = obter_necessidades_compra_planejamento(self.fazenda, self.safra)
+        item_nec = next((i for i in nec if i['produto_id'] == prod_created.id), None)
+        self.assertIsNotNone(item_nec)
+        self.assertEqual(item_nec['deficit'], 30.0)
 
     def test_deficit_calculation_with_existing_stock(self):
         # 1. Add some initial stock
@@ -327,12 +326,13 @@ class PlanejamentoAPITests(APITestCase):
         response = self.client.post(os_url, os_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        from financeiro.models import PedidoCompra, ItemPedidoCompra
-        po = PedidoCompra.objects.get(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO')
-        po_item = ItemPedidoCompra.objects.get(pedido_compra=po, produto=self.produto)
-        self.assertEqual(float(po_item.quantidade), 30.0)  # 50 planned - 20 stock = 30 required
+        from planejamento.services import obter_necessidades_compra_planejamento
+        nec = obter_necessidades_compra_planejamento(self.fazenda, self.safra)
+        item_nec = next((i for i in nec if i['produto_id'] == self.produto.id), None)
+        self.assertIsNotNone(item_nec)
+        self.assertEqual(item_nec['deficit'], 30.0)  # 50 planned - 20 stock = 30 required
 
-        # Case B: Update plan to 15 units. Stock (20) >= 15, so deficit <= 0. PO item should be removed.
+        # Case B: Update plan to 15 units. Stock (20) >= 15, so deficit <= 0.
         os_plan = OrdemServicoPlanejada.objects.first()
         os_data_update = {
             "planejamento": planejamento.id,
@@ -352,8 +352,9 @@ class PlanejamentoAPITests(APITestCase):
         response_update = self.client.put(update_url, os_data_update, format='json')
         self.assertEqual(response_update.status_code, status.HTTP_200_OK)
 
-        # PO shouldn't contain product anymore
-        self.assertFalse(ItemPedidoCompra.objects.filter(pedido_compra=po, produto=self.produto).exists())
+        nec2 = obter_necessidades_compra_planejamento(self.fazenda, self.safra)
+        item_nec2 = next((i for i in nec2 if i['produto_id'] == self.produto.id), None)
+        self.assertEqual(item_nec2['deficit'], 0.0)
 
     def test_multi_plan_safra_consolidation(self):
         # Plan 30 in Plan 1 and Plan 40 in Plan 2. Stock is 10. Required = (30 + 40) - 10 = 60.
@@ -388,8 +389,10 @@ class PlanejamentoAPITests(APITestCase):
             "insumos": [{"produto": self.produto.id, "dose_planejada": "4.0000", "quantidade_planejada": "40.0000"}]
         }, format='json')
 
-        from financeiro.models import PedidoCompra, ItemPedidoCompra
-        po = PedidoCompra.objects.get(fazenda=self.fazenda, de_planejamento=True, status='RASCUNHO')
-        po_item = ItemPedidoCompra.objects.get(pedido_compra=po, produto=self.produto)
-        self.assertEqual(float(po_item.quantidade), 60.0)
+        from planejamento.services import obter_necessidades_compra_planejamento
+        nec = obter_necessidades_compra_planejamento(self.fazenda, self.safra)
+        item_nec = next((i for i in nec if i['produto_id'] == self.produto.id), None)
+        self.assertIsNotNone(item_nec)
+        self.assertEqual(item_nec['deficit'], 60.0)
+
 

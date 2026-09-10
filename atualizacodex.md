@@ -1,9 +1,28 @@
 # Atualização do Codex - Ajustes de Transferência, Menus e Otimizações de Performance
 
 Este documento registra as alterações de layout, formulários, menus e melhorias de performance realizadas recentemente no projeto Inova Ceifa.
-*Última Atualização: 03/09/2026*
+*Última Atualização: 10/09/2026*
 
 ## Alterações Realizadas
+
+### 🛒 Painel de Necessidades de Compra de Safra e Emissão Parcial de Pedidos (10/09/2026)
+
+#### 1. Backend (Cálculo de Necessidades, Déficit e Purga de Pedidos Fictícios)
+- **Função de Agregação e Cálculo de Déficit (`services.py`)**:
+  - Implementada a função `obter_necessidades_compra_planejamento(fazenda, safra)` em `planejamento/services.py`. Ela soma a quantidade total planejada de todos os insumos (`ItemInsumoOSPlanejado`) nas atividades ativas do planejamento de safra, subtrai o estoque físico disponível no sistema e subtrai os pedidos de compra reais já aprovados (`de_planejamento=False`).
+  - Adicionada rotina de limpeza automática que exclui registros de pedidos fictícios ou legados gerados pelo fluxo antigo (`de_planejamento=True` ou com fornecedor contendo "PLANEJAMENTO").
+- **Endpoint de Necessidades (`views.py`)**:
+  - Exposto o endpoint `GET /api/planejamentos/necessidades-compra/` via `@action(detail=False, methods=['get'], url_path='necessidades-compra')` no `PlanejamentoSafraViewSet`.
+- **Isolamento de Pedidos Reais (`financeiro/views.py`)**:
+  - Atualizado `PedidoCompraViewSet.get_queryset` para filtrar estritamente pedidos de compra reais (`de_planejamento=False`) e excluir compras associadas ao "FORNECEDOR PLANEJAMENTO", mantendo o módulo Financeiro focado em transações operacionais reais.
+
+#### 2. Frontend (Sub-aba Necessidades da Safra e Emissão de Ordens Reais)
+- **Serviço de Integração (`api.js`)**:
+  - Adicionado o método `getNecessidadesCompra(fazendaId, safraId)` ao `relatorioService` em `frontend/src/services/api.js`.
+- **Sub-aba "Necessidades da Safra" (`Financeiro.jsx`)**:
+  - Criada sub-aba dedicada no módulo Financeiro apresentando a visão agregada de todos os insumos da safra (combustíveis, adubos, defensivos).
+  - Exibe colunas de **Qtd Planejada**, **Qtd em Estoque**, **Qtd em Pedidos Aprovados**, **Déficit a Comprar**, **Valor Unitário Estimado** e **Custo Total Estimado**.
+  - **Ação "Comprar Lote"**: Permite emitir uma ordem de compra real a partir da tabela, preenchendo automaticamente o modal de Novo Pedido de Compra com o produto, preço e quantidade do déficit para emissão total ou parcial pelo usuário.
 
 ### 📱 Correção do Seletor Móvel de Fazenda e Safra no Header (03/09/2026)
 

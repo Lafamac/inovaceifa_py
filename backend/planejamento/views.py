@@ -206,6 +206,19 @@ class PlanejamentoSafraViewSet(BaseTenantPlanejamentoViewSet):
             "detail": f"Geração concluída com sucesso! Foram geradas {contador_gerado} Ordens de Serviço Reais."
         }, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'], url_path='necessidades-compra')
+    def necessidades_compra(self, request):
+        fazenda = getattr(request, 'fazenda_ativa', None)
+        safra = getattr(request, 'safra_ativa', None)
+        if not fazenda or not safra:
+            return Response(
+                {"detail": "Fazenda e Safra ativas são necessárias no contexto para consultar as necessidades de compra."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        from planejamento.services import obter_necessidades_compra_planejamento
+        dados = obter_necessidades_compra_planejamento(fazenda, safra)
+        return Response(dados, status=status.HTTP_200_OK)
+
 
 class OrdemServicoPlanejadaViewSet(BaseTenantPlanejamentoViewSet):
     queryset = OrdemServicoPlanejada.objects.all()

@@ -35,6 +35,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
   
   // Data State
   const [pedidosCompra, setPedidosCompra] = useState([]);
+  const [necessidadesCompra, setNecessidadesCompra] = useState([]);
   const [contasAPagar, setContasAPagar] = useState([]);
   const [pedidosVenda, setPedidosVenda] = useState([]);
   const [contasAReceber, setContasAReceber] = useState([]);
@@ -147,12 +148,13 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
         }
       }
 
-      const [comprasData, pagarData, vendasData, receberData, fornecedoresData] = await Promise.all([
+      const [comprasData, pagarData, vendasData, receberData, fornecedoresData, necessidadesData] = await Promise.all([
         relatorioService.getPedidosCompra(),
         relatorioService.getContasAPagar(),
         relatorioService.getPedidosVenda(),
         relatorioService.getContasAReceber(),
-        relatorioService.getFornecedores()
+        relatorioService.getFornecedores(),
+        relatorioService.getNecessidadesCompra()
       ]);
 
       // Filter by farm and active crop
@@ -171,6 +173,7 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
       };
 
       setPedidosCompra(filterByTenant(comprasData));
+      setNecessidadesCompra(necessidadesData || []);
       setContasAPagar(filterByTenant(pagarData));
       setPedidosVenda(filterByTenant(vendasData));
       setContasAReceber(filterByTenant(receberData));
@@ -254,6 +257,35 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleComprarLoteNecessidade = (nec) => {
+    setEditingCompraId(null);
+    setEditingItemIndex(null);
+
+    const qty = nec.deficit > 0 ? nec.deficit : nec.quantidade_planejada;
+    const price = nec.valor_unitario_estimado || 0;
+
+    setNewCompra({
+      fornecedor: '',
+      data_pedido: new Date().toISOString().slice(0, 10),
+      status: 'RASCUNHO',
+      itens: [{
+        produto: Number(nec.produto_id),
+        produto_nome: nec.produto_nome,
+        quantidade: Number(qty),
+        valor_unitario: Number(price),
+        valor_total: Number(qty) * Number(price)
+      }]
+    });
+
+    setTempItem({
+      produto: '',
+      quantidade: '',
+      valor_unitario: ''
+    });
+
+    setShowNewCompraModal(true);
   };
 
   // Pedidos de Compra handlers
@@ -903,6 +935,18 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
         {/* Navigation tabs */}
         <div className="flex flex-wrap gap-1.5 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200/60 dark:border-slate-800/80">
           <button
+            onClick={() => { setActiveSubTab('necessidades'); setStatusFilter('TODOS'); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'necessidades'
+                ? 'financial-tab-active bg-white dark:bg-slate-800 text-slate-800 shadow-md'
+                : 'financial-tab-inactive text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Boxes className="w-4.5 h-4.5 text-teal-500" />
+            <span>Necessidades da Safra</span>
+          </button>
+
+          <button
             onClick={() => { setActiveSubTab('compras'); setStatusFilter('TODOS'); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'compras'
@@ -1081,6 +1125,67 @@ export const Financeiro = ({ defaultSubTab = 'compras' }) => {
         ) : (
           <table className="w-full min-w-[768px] text-left border-collapse">
             
+            {/* 0. Necessidades da Safra View */}
+            {activeSubTab === 'necessidades' && (
+              <>
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-slate-950/30 text-[10px] uppercase tracking-wider text-slate-400 font-black">
+                    <th className="py-4.5 px-6">Produto / Categoria</th>
+                    <th className="py-4.5 px-6 text-right">Planejado (Safra)</th>
+                    <th className="py-4.5 px-6 text-right">Saldo Estoque</th>
+                    <th className="py-4.5 px-6 text-right">Já Comprado</th>
+                    <th className="py-4.5 px-6 text-right">Déficit Pendente</th>
+                    <th className="py-4.5 px-6 text-right">Custo Estimado</th>
+                    <th className="py-4.5 px-6 text-center">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04] text-xs">
+                  {necessidadesCompra.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-12 text-center text-slate-500 dark:text-slate-400 font-medium">
+                        Nenhuma necessidade de compra identificada no planejamento desta safra.
+                      </td>
+                    </tr>
+                  ) : (
+                    necessidadesCompra.map((nec) => (
+                      <tr key={nec.produto_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="py-4 px-6">
+                          <p className="font-bold text-slate-800 dark:text-slate-100">{nec.produto_nome}</p>
+                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">{nec.classificacao_nome} • {nec.produto_codigo}</p>
+                        </td>
+                        <td className="py-4 px-6 text-right font-medium text-slate-600 dark:text-slate-300">
+                          {Number(nec.quantidade_planejada).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {nec.unidade_sigla}
+                        </td>
+                        <td className="py-4 px-6 text-right font-medium text-slate-600 dark:text-slate-300">
+                          {Number(nec.quantidade_estoque).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {nec.unidade_sigla}
+                        </td>
+                        <td className="py-4 px-6 text-right font-medium text-teal-600 dark:text-teal-400">
+                          {Number(nec.quantidade_ordenada).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {nec.unidade_sigla}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <span className={`font-black text-sm ${nec.deficit > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {Number(nec.deficit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} {nec.unidade_sigla}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-right font-bold text-slate-800 dark:text-slate-200">
+                          R$ {money(nec.valor_total_deficit_estimado)}
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <button
+                            onClick={() => handleComprarLoteNecessidade(nec)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Comprar Lote</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </>
+            )}
+
             {/* 1. Pedidos de Compra View */}
             {activeSubTab === 'compras' && (
               <>

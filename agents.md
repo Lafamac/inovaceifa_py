@@ -27,6 +27,9 @@
 
 ## Fases de Implementação (Ordem Recomendada)
 
+### Atualizações recentes de ambiente e acesso (10/09/2026)
+- [x] Implementado o **Painel de Necessidades de Compra de Safra** e emissão parcial de pedidos de compra reais: criada a função `obter_necessidades_compra_planejamento` em `services.py`, exposto o endpoint `GET /api/planejamentos/necessidades-compra/` no backend, filtrados pedidos de compra reais (`de_planejamento=False`) em `PedidoCompraViewSet`, limpos automaticamente pedidos fictícios vinculados ao "FORNECEDOR PLANEJAMENTO", adicionada a sub-aba "Necessidades da Safra" em `Financeiro.jsx` com suporte universal a todos os insumos (diesel, adubos, defensivos) e botão "Comprar Lote" pré-preenchendo a ordem de compra real.
+
 ### Atualizações recentes de ambiente e acesso (04/09/2026)
 - [x] Corrigido o seletor de Safra e Fazenda ao alternar entre fazendas no cabeçalho: ajustado `SafraViewSet.get_queryset` no backend para retornar safras de todas as fazendas permitidas ao usuário sem restringir indevidamente pelo proprietário da safra anterior, atualizado `selecionarFazenda` no `TenantContext.jsx` para buscar safras atualizadas da nova fazenda e ajustado o feedback de carregamento em `Header.jsx`.
 

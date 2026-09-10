@@ -1636,6 +1636,13 @@ export const relatorioService = {
     }
   },
 
+  getNecessidadesCompra: () => {
+    return requestHandler(
+      () => api.get('/api/planejamentos/necessidades-compra/'),
+      () => []
+    );
+  },
+
   updatePedidoCompra: async (id, data) => {
     try {
       const res = await api.put(`/api/financeiro/pedidos-compra/${id}/`, data);
