@@ -1880,33 +1880,37 @@ export const OrdensServico = ({ defaultSubTab = 'os' }) => {
 
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Talhões Selecionados * (Clique para selecionar)</label>
-                  <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto p-2 bg-slate-950/60 rounded-xl border border-white/[0.04]">
-                    {talhoes.map(t => {
-                      const isSelected = newOSForm.talhoes_selecionados.includes(t.id);
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => {
-                            const exists = newOSForm.talhoes_selecionados.includes(t.id);
-                            setNewOSForm(prev => ({
-                              ...prev,
-                              talhoes_selecionados: exists
-                                ? prev.talhoes_selecionados.filter(id => id !== t.id)
-                                : [...prev.talhoes_selecionados, t.id]
-                            }));
-                          }}
-                          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
-                              : 'bg-slate-900 border border-white/5 text-white hover:bg-slate-800'
-                          }`}
-                        >
-                          {t.codigo}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {talhoes.length === 0 ? (
+                    <p className="text-xs text-slate-500">Nenhum talhão cadastrado para esta fazenda.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto p-2 bg-slate-950/60 rounded-xl border border-white/[0.04]">
+                      {talhoes.map(t => {
+                        const isSelected = newOSForm.talhoes_selecionados.includes(t.id);
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                              const exists = newOSForm.talhoes_selecionados.includes(t.id);
+                              setNewOSForm(prev => ({
+                                ...prev,
+                                talhoes_selecionados: exists
+                                  ? prev.talhoes_selecionados.filter(id => id !== t.id)
+                                  : [...prev.talhoes_selecionados, t.id]
+                              }));
+                            }}
+                            className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                              isSelected 
+                                ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
+                                : 'bg-slate-900 border border-white/5 text-white hover:bg-slate-800'
+                            }`}
+                          >
+                            {t.nome} {t.area ? `(${Number(t.area).toLocaleString('pt-BR')} ha)` : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div>

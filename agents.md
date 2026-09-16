@@ -27,6 +27,9 @@
 
 ## Fases de Implementação (Ordem Recomendada)
 
+### Atualizações recentes de ambiente e acesso (16/09/2026)
+- [x] Atualizado o formulário de criação de **Nova Ordem de Serviço Real** no componente [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx) no módulo Execução & Operações Agrícolas para exibir o nome do talhão (`t.nome`) juntamente com a área em hectares (`ha`) nos botões de seleção, substituindo a exibição anterior que trazia apenas o código numérico.
+
 ### Atualizações recentes de ambiente e acesso (10/09/2026)
 - [x] Implementado o **Painel de Necessidades de Compra de Safra** e emissão parcial de pedidos de compra reais: criada a função `obter_necessidades_compra_planejamento` em `services.py`, exposto o endpoint `GET /api/planejamentos/necessidades-compra/` no backend, filtrados pedidos de compra reais (`de_planejamento=False`) em `PedidoCompraViewSet`, limpos automaticamente pedidos fictícios vinculados ao "FORNECEDOR PLANEJAMENTO", adicionada a sub-aba "Necessidades da Safra" em `Financeiro.jsx` com suporte universal a todos os insumos (diesel, adubos, defensivos) e botão "Comprar Lote" pré-preenchendo a ordem de compra real.
 

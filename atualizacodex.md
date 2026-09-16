@@ -5,6 +5,13 @@ Este documento registra as alterações de layout, formulários, menus e melhori
 
 ## Alterações Realizadas
 
+### 🚜 Exibição do Nome dos Talhões no Form de Nova OS Real (16/09/2026)
+
+#### 1. Frontend (OrdensServico.jsx)
+- **Exibição do Nome e Área do Talhão nos Botões de Seleção**:
+  - No formulário modal de **Nova Ordem de Serviço Real** em [OrdensServico.jsx](file:///c:/workspace/inovaceifa/frontend/src/components/OrdensServico.jsx), alteramos os botões da lista de seleção de talhões para exibir o nome completo do talhão (`t.nome`) juntamente com a sua área em hectares (`ha`), no formato `{t.nome} ({t.area} ha)`.
+  - Substituída a exibição anterior que mostrava apenas o código numérico (`{t.codigo}`).
+
 ### 🛒 Painel de Necessidades de Compra de Safra e Emissão Parcial de Pedidos (10/09/2026)
 
 #### 1. Backend (Cálculo de Necessidades, Déficit e Purga de Pedidos Fictícios)
